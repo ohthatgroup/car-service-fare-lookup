@@ -720,7 +720,7 @@ async function shareQuote(btn){
   }
   try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
   catch(e){ btn.textContent = url; }
-  setTimeout(() => btn.textContent = "Share with coordinator", 1600);
+  setTimeout(() => btn.textContent = "Share price", 1600);
 }
 
 function renderQuote(){
@@ -741,8 +741,8 @@ function renderQuote(){
     '<div id="q-breakdown"></div>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
-    '<div class="loop-bar"><button class="btn" id="share">Share with coordinator</button>' +
-    '<button class="btn secondary" id="new-rate">Next rate</button></div>' +
+    '<div class="loop-bar"><button class="btn" id="share">Share price</button>' +
+    '<button class="btn secondary" id="new-rate">New rate</button></div>' +
     '<div id="q-suggest"></div>'
   );
   const segBtns = $view.querySelectorAll("#seg-trip button");
@@ -801,8 +801,8 @@ function renderFlatbush(base){
     '<div class="q-summary" id="fb-summary"></div>' +
     '<div id="fb-extra-btns"></div>' +
     '<div id="fb-breakdown"></div>' +
-    '<div class="loop-bar"><button class="btn" id="share">Share with coordinator</button>' +
-    '<button class="btn secondary" id="new-rate">Next rate</button></div>'
+    '<div class="loop-bar"><button class="btn" id="share">Share price</button>' +
+    '<button class="btn secondary" id="new-rate">New rate</button></div>'
   );
   const upd = () => {
     const r = document.getElementById("fb-row").value;

@@ -21,14 +21,14 @@ problems by building things — using LLMs and a bit of creativity.
   live as you toggle round trip, mini van, and airport pickup.
 - **Price page, built around the driver loop** — get a rate, share it with
   the coordinator, get the next rate. A pinned bar at the bottom holds
-  exactly two actions: **Share with coordinator** (primary) and **Next rate**.
+  exactly two actions: **Share price** (primary) and **New rate**.
   Modifiers are plain rows, wait/extra are quiet text links, and suggesting
   a price change is a small muted link at the bottom — community maintenance,
   not part of the loop.
 - **Extras** — under the price, **Add wait** (per hour or flat) and
   **Add extra** (custom charges like tolls) open drawers and roll into the
   total and the breakdown.
-- **Share with coordinator** — shares a short link (e.g. `farelookup.vercel.app/s/83`)
+- **Share price** — shares a short link (e.g. `farelookup.vercel.app/s/83`)
   built for WhatsApp: the link preview image *is* the amount, options and
   extras included, and the link opens straight on the quote.
 - **Add a price** — for a route that isn't listed, from the Board. It goes
