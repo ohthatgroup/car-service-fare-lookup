@@ -33,8 +33,8 @@ problems by building things — using LLMs and a bit of creativity.
   score reaches **10**, the new price applies automatically. Until then the
   current price stays in effect.
 - **The + button** — opens a drawer with the sheet notes, how voting works,
-  links (original May 2023 price-sheets PDF, the open-source repo, and Hire
-  Shimmy together), and an About section with a link to message Shimmy.
+  a download link for the original May 2023 price-sheets PDF, and an About
+  section with the open-source link above a link to message Shimmy.
 
 ## How it runs (all free tiers)
 
