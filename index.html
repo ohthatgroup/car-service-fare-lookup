@@ -43,22 +43,22 @@
   #steprow .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
   #steprow .dot.done{ background:var(--accent); cursor:pointer; }
   #steprow .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
-  #details-bar{
-    flex:none; display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:7px 12px;
-    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-    border-top:1px solid var(--border);
-    background:color-mix(in srgb, var(--bg) 82%, transparent);
-    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  #fab{
+    position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:40;
+    width:56px; height:56px; border-radius:50%; border:0; cursor:pointer;
+    background:var(--accent); color:var(--accent-text); font-size:32px; font-weight:300; line-height:1;
+    display:grid; place-items:center; padding:0 0 3px;
+    box-shadow:0 6px 22px rgba(0,0,0,.28);
   }
-  #details-bar .src{ grid-column:1 / -1; grid-row:2; text-align:center; font-size:12.5px; color:var(--muted); }
-  #details-bar .foot-actions{ display:contents; }
-  .foot-btn{
+  #fab:active{ transform:scale(.95); }
+  .drawer-foot{ margin-top:22px; border-top:1px solid var(--border); padding-top:12px; }
+  .drawer-links{ display:flex; justify-content:space-between; align-items:center; }
+  .drawer-links a, .drawer-links button{
     background:none; border:0; padding:4px 2px; font-family:inherit;
-    color:var(--accent); font-size:14.5px; cursor:pointer; text-decoration:none; white-space:nowrap;
+    color:var(--accent); font-size:14.5px; cursor:pointer; text-decoration:none;
   }
-  a.foot-btn{ justify-self:start; }
-  #details-btn{ justify-self:end; }
-  .foot-btn:active{ opacity:.55; }
+  .drawer-src{ text-align:center; color:var(--muted); font-size:12.5px; margin-top:10px; }
+  .hire-btn{ display:block; text-align:center; text-decoration:none; margin-top:14px; }
   nav.on-board #nav-pending{ display:block; }
   nav.on-board .badge{ display:none !important; }
   #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; padding:0; }
@@ -86,7 +86,7 @@
     vertical-align:2px; margin-left:4px;
   }
   #scroll{ flex:1; overflow-y:auto; overscroll-behavior:contain; }
-  .col{ max-width:600px; margin:0 auto; padding:20px 16px 40px; }
+  .col{ max-width:600px; margin:0 auto; padding:20px 16px 96px; }
   h1{ font-size:26px; font-weight:700; letter-spacing:-.02em; margin:6px 0 14px; }
   .sub{ color:var(--muted); font-size:15px; margin:-8px 0 16px; }
   .group-label{ font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:18px 2px 8px; }
@@ -170,7 +170,7 @@
 </head>
 <body>
 <nav id="topnav">
-  <button class="link" id="nav-back">Home</button>
+  <button class="link" id="nav-back">‹ Home</button>
   <span class="title" id="nav-title">Fare Lookup</span>
   <span class="spacer"></span>
   <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
@@ -185,21 +185,20 @@
     <div id="view"></div>
   </div>
 </div>
-<div id="details-bar">
-  <span class="src">May 2023 sheet · Community updates since</span>
-  <span class="foot-actions">
-    <a class="foot-btn" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a>
-    <button class="foot-btn" id="details-btn">Details</button>
-  </span>
-</div>
+<button id="fab" aria-label="Add ride">+</button>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
     <div class="grab"></div>
-    <div class="sheet-head"><span>Details</span><button id="modal-close" aria-label="Close">✕</button></div>
+    <div class="sheet-head"><span id="sheet-title">Details</span><button id="modal-close" aria-label="Close">✕</button></div>
+    <div id="sheet-body">
     <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
     <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
-    <p>Prices anyone adds go live right away. Changing a price takes a proposal and a net score of 10 votes on the Board — a down vote cancels an up vote, and the current price stays until the score gets there.</p>
+    <div class="group-label" style="margin-top:18px">How voting works</div>
+    <p>Anyone can add a missing price — it goes live right away. Changing a price starts as a proposal on the Board.</p>
+    <p>Tap ▲ Up or ▼ Down to vote on a proposal. A down vote cancels an up vote, and tapping your vote again undoes it.</p>
+    <p>When a proposal reaches a net score of 10, the new price applies automatically.</p>
+    </div>
   </div>
 </div>
 <script src="config.js"></script>
@@ -450,6 +449,7 @@ function setStep(n, label){
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
+  document.getElementById("steprow").style.display = view === "pending" ? "none" : "";
   $scroll.scrollTop = 0;
 }
 function goToStep(n){
@@ -502,7 +502,7 @@ function renderPlacePicker(step){
   bindPlaceRows(step);
   const px = document.getElementById("pill-x");
   if(px) px.addEventListener("click", () => renderPlacePicker(1));
-  document.getElementById("add-link").addEventListener("click", () => renderAdd(isFrom ? {} : { from: sel.from }));
+  document.getElementById("add-link").addEventListener("click", () => openAddDrawer(isFrom ? {} : { from: sel.from }));
 }
 function bindPlaceRows(step){
   $view.querySelectorAll("[data-place]").forEach(b => {
@@ -638,7 +638,7 @@ function refreshQuote(){
     document.getElementById("to-pending").addEventListener("click", renderPending);
   } else {
     sg.innerHTML = '<button class="btn secondary" id="suggest" style="margin-top:14px">Propose a price change</button>';
-    document.getElementById("suggest").addEventListener("click", renderSuggest);
+    document.getElementById("suggest").addEventListener("click", openSuggestDrawer);
   }
 }
 
@@ -689,7 +689,7 @@ function renderNotListed(msg){
     '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
     '<button class="btn" id="add">Add this price</button>'
   );
-  document.getElementById("add").addEventListener("click", () => renderAdd({ from: sel.from, to: sel.to }));
+  document.getElementById("add").addEventListener("click", () => openAddDrawer({ from: sel.from, to: sel.to }));
 }
 
 /* ---------- Add a price ---------- */
@@ -700,10 +700,26 @@ function categoriesFor(from, to){
     : [...new Set(fares.map(r => r.category).filter(Boolean))];
   return [...cats, "Other"];
 }
-function renderAdd(prefill){
-  view = "add"; setStep(2, "Add a price");
+const PDF_LINK = "https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf";
+const WA_LINK = "https://wa.me/13476613902?text=" + encodeURIComponent("Can you build me something?");
+let DETAILS_HTML = "";
+function openDrawer(title, bodyHtml){
+  document.getElementById("sheet-title").textContent = title;
+  document.getElementById("sheet-body").innerHTML = bodyHtml;
+  $modal.classList.remove("hidden");
+}
+function closeDrawer(){ $modal.classList.add("hidden"); }
+function openDetails(){ openDrawer("Details", DETAILS_HTML); }
+function drawerFootHtml(){
+  return '<div class="drawer-foot"><div class="drawer-links">' +
+    '<button id="d-details">Details</button>' +
+    '<a href="' + PDF_LINK + '" target="_blank" rel="noopener">Download PDF</a></div>' +
+    '<div class="drawer-src">May 2023 sheet · Community updates since</div></div>';
+}
+function openAddDrawer(prefill){
+  prefill = prefill || {};
   const dl = '<datalist id="places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
-  h(
+  openDrawer("Add ride",
     '<div class="sub">Goes live right away for everyone.</div>' + dl +
     '<label class="field">From</label><input type="text" id="f-from" list="places-dl" value="' + esc(prefill.from || "") + '" placeholder="Where from?">' +
     '<label class="field">To</label><input type="text" id="f-to" list="places-dl" value="' + esc(prefill.to || "") + '" placeholder="Where to?">' +
@@ -711,8 +727,9 @@ function renderAdd(prefill){
     '<label class="field">One-way price</label><input type="text" id="f-price" placeholder="$85">' +
     '<label class="field">Round trip price (optional)</label><input type="text" id="f-rt" placeholder="$130">' +
     '<div class="error hidden" id="f-err"></div>' +
-    '<button class="btn" id="f-save">Add price</button>'
-  );
+    '<button class="btn" id="f-save">Add price</button>' +
+    '<a class="btn secondary hire-btn" href="' + WA_LINK + '" target="_blank" rel="noopener">Hire Shimmy</a>' +
+    drawerFootHtml());
   const catSel = document.getElementById("f-cat");
   const fillCats = () => {
     const f = document.getElementById("f-from").value.trim(), t = document.getElementById("f-to").value.trim();
@@ -721,6 +738,7 @@ function renderAdd(prefill){
   fillCats();
   document.getElementById("f-from").addEventListener("change", fillCats);
   document.getElementById("f-to").addEventListener("change", fillCats);
+  document.getElementById("d-details").addEventListener("click", openDetails);
   document.getElementById("f-save").addEventListener("click", async () => {
     const from = document.getElementById("f-from").value.trim();
     const to = document.getElementById("f-to").value.trim();
@@ -732,34 +750,31 @@ function renderAdd(prefill){
     if(!from || !to || !price){ err.textContent = "From, To, and price are all needed."; err.classList.remove("hidden"); return; }
     if(from === to){ err.textContent = "From and To are the same place."; err.classList.remove("hidden"); return; }
     if(!price.startsWith("$")) price = "$" + price;
-    // Store sheet fares base-first: if one side is a base, it becomes from_place.
     let rec = { from_place: from, to_place: to, category: cat, price, round_trip: rt ? (rt.startsWith("$") ? rt : "$" + rt) : null, note: null, origin: "community" };
     if(bases.includes(to) && !bases.includes(from)) rec = { from_place: to, to_place: from, category: cat, price, round_trip: rec.round_trip, note: null, origin: "community" };
     try {
       await sb("fares", { method: "POST", headers: { "Prefer": "return=representation" }, body: JSON.stringify(rec) });
     } catch(e) {
       if(!/409|duplicate|unique/i.test(e.message)){ err.textContent = "Couldn't save. Try again."; err.classList.remove("hidden"); return; }
-      // Already exists — fall through and show it.
     }
     await loadData();
+    closeDrawer();
     sel.from = from; sel.to = to;
     const res = findFare(from, to);
-    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; renderQuote(); }
+    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; inFlow = true; renderQuote(); }
     else renderPlacePicker(1);
   });
 }
 
 /* ---------- Suggest a change ---------- */
-function renderSuggest(){
-  view = "suggest"; setStep(3, "Propose a change");
+function openSuggestDrawer(){
   const { fare } = sel.resolved;
-  h(
+  openDrawer("Propose a change",
     '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your proposal applies when its net score reaches " + VOTES_NEEDED + " votes.</div>" +
     '<label class="field">New one-way price</label><input type="text" id="s-price" placeholder="$90">' +
     '<label class="field">New round trip price (optional)</label><input type="text" id="s-rt" placeholder="">' +
     '<div class="error hidden" id="s-err"></div>' +
-    '<button class="btn" id="s-save">Post proposal</button>'
-  );
+    '<button class="btn" id="s-save">Post proposal</button>');
   document.getElementById("s-save").addEventListener("click", async () => {
     let price = document.getElementById("s-price").value.trim();
     const rt = document.getElementById("s-rt").value.trim();
@@ -777,6 +792,7 @@ function renderSuggest(){
       })});
     } catch(e){ err.textContent = "Couldn't post. Try again."; err.classList.remove("hidden"); return; }
     await loadData();
+    closeDrawer();
     renderPending();
   });
 }
@@ -827,7 +843,7 @@ async function castVote(id, dir){
 
 /* ---------- init ---------- */
 document.getElementById("nav-pending").addEventListener("click", () => {
-  if(view === "pending"){ addReturn = "board"; renderAdd({}); }
+  if(view === "pending"){ openAddDrawer({}); }
   else renderPending();
 });
 document.getElementById("nav-back").addEventListener("click", () => {
@@ -837,7 +853,8 @@ document.querySelectorAll("#nav-steps .dot").forEach(d => {
   d.addEventListener("click", () => goToStep(Number(d.dataset.dot)));
 });
 const $modal = document.getElementById("modal");
-document.getElementById("details-btn").addEventListener("click", () => $modal.classList.remove("hidden"));
+DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
+document.getElementById("fab").addEventListener("click", () => openAddDrawer({}));
 document.getElementById("modal-close").addEventListener("click", () => $modal.classList.add("hidden"));
 document.getElementById("modal-backdrop").addEventListener("click", () => $modal.classList.add("hidden"));
 
