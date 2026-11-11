@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fare Lookup — Car Service Prices</title>
+<meta name="description" content="Community car service price list. Pick a route, get the price. Add prices, vote on changes.">
+<style>
+  :root{
+    --bg:#f5f5f7; --surface:#ffffff; --text:#1d1d1f; --muted:#6e6e73;
+    --border:#d2d2d7; --accent:#0071e3; --accent-text:#ffffff;
+    --chip:#e8e8ed; --danger:#b42318;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#000000; --surface:#1c1c1e; --text:#f5f5f7; --muted:#98989d;
+           --border:#38383a; --chip:#2c2c2e; }
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+    background:var(--bg); color:var(--text);
+    display:flex; flex-direction:column; height:100dvh; overflow:hidden;
+  }
+  nav{
+    flex:none; display:flex; align-items:center; gap:12px;
+    padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border); z-index:5;
+  }
+  nav .title{ font-weight:600; font-size:17px; letter-spacing:-.01em; }
+  nav .steps{ display:flex; align-items:center; gap:6px; margin-left:2px; }
+  nav .dot{ width:7px; height:7px; border-radius:50%; background:var(--border); }
+  nav .dot.on{ background:var(--accent); }
+  nav .step-label{ font-size:13px; color:var(--muted); }
+  nav .spacer{ flex:1; }
+  nav button.link{
+    background:none; border:0; color:var(--accent); font-size:15px; padding:6px 2px; cursor:pointer;
+  }
+  nav .badge{
+    display:inline-block; min-width:18px; text-align:center; padding:0 5px;
+    background:var(--accent); color:var(--accent-text); border-radius:9px; font-size:12px; line-height:18px;
+    vertical-align:2px; margin-left:4px;
+  }
+  #scroll{ flex:1; overflow-y:auto; overscroll-behavior:contain; }
+  .col{ max-width:600px; margin:0 auto; padding:20px 16px 40px; }
+  h1{ font-size:26px; font-weight:700; letter-spacing:-.02em; margin:6px 0 14px; }
+  .sub{ color:var(--muted); font-size:15px; margin:-8px 0 16px; }
+  .group-label{ font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:18px 2px 8px; }
+  .list{ background:var(--surface); border-radius:14px; overflow:hidden; }
+  .row{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    padding:14px 16px; font-size:17px; background:var(--surface); color:var(--text);
+    border:0; border-bottom:1px solid var(--border); cursor:pointer;
+  }
+  .row:last-child{ border-bottom:0; }
+  .row:active{ background:var(--chip); }
+  .row .chev{ margin-left:auto; color:var(--muted); font-size:15px; }
+  .row .tag{ margin-left:auto; font-size:12px; color:var(--muted); }
+  .search-wrap{ position:sticky; top:0; padding:4px 0 10px; background:var(--bg); z-index:2; }
+  input[type="search"], input[type="text"], select{
+    width:100%; font-size:17px; padding:12px 14px; border-radius:12px;
+    border:1px solid var(--border); background:var(--surface); color:var(--text); appearance:none;
+  }
+  .btn{
+    display:block; width:100%; padding:14px; border:0; border-radius:980px;
+    background:var(--accent); color:var(--accent-text); font-size:17px; font-weight:500; cursor:pointer; margin-top:18px;
+  }
+  .btn:disabled{ opacity:.4; cursor:default; }
+  .btn.secondary{ background:var(--chip); color:var(--text); }
+  .btn.small{ width:auto; display:inline-block; padding:9px 18px; font-size:15px; margin-top:0; }
+  .quiet-link{ display:inline-block; background:none; border:0; color:var(--accent); font-size:15px; padding:10px 0; cursor:pointer; }
+  .seg{ display:flex; background:var(--chip); border-radius:12px; padding:2px; gap:2px; }
+  .seg button{
+    flex:1; border:0; background:transparent; color:var(--text); font-size:15px;
+    padding:10px 4px; border-radius:10px; cursor:pointer;
+  }
+  .seg button.on{ background:var(--surface); font-weight:600; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .seg button:disabled{ color:var(--muted); cursor:default; }
+  .toggle-row{
+    display:flex; align-items:center; gap:10px; background:var(--surface);
+    border-radius:14px; padding:14px 16px; margin-top:10px; font-size:16px;
+  }
+  .toggle-row .amt{ margin-left:auto; color:var(--muted); font-size:15px; }
+  .toggle-row input{ width:22px; height:22px; accent-color:var(--accent); }
+  .price-big{ font-size:52px; font-weight:700; letter-spacing:-.03em; text-align:center; margin:26px 0 2px; }
+  .route-line{ text-align:center; font-size:17px; color:var(--muted); }
+  .breakdown{ max-width:340px; margin:18px auto 0; font-size:15px; }
+  .breakdown .line{ display:flex; justify-content:space-between; padding:5px 0; color:var(--muted); }
+  .breakdown .line.total{ color:var(--text); font-weight:600; border-top:1px solid var(--border); margin-top:5px; padding-top:9px; }
+  .note-line{ text-align:center; color:var(--muted); font-size:13px; margin-top:14px; }
+  .card{ background:var(--surface); border-radius:14px; padding:16px; margin-top:12px; }
+  .card .route{ font-size:16px; font-weight:600; }
+  .card .change{ color:var(--muted); font-size:15px; margin-top:3px; }
+  .card .vote-row{ display:flex; align-items:center; gap:12px; margin-top:12px; }
+  .votes{ font-size:14px; color:var(--muted); }
+  .bar{ flex:1; height:6px; border-radius:3px; background:var(--chip); overflow:hidden; }
+  .bar i{ display:block; height:100%; background:var(--accent); border-radius:3px; }
+  label.field{ display:block; font-size:14px; color:var(--muted); margin:16px 2px 6px; }
+  .empty{ text-align:center; color:var(--muted); padding:28px 10px; font-size:16px; }
+  .error{ color:var(--danger); text-align:center; padding:14px; font-size:15px; }
+  details.details{ margin-top:30px; }
+  details.details summary{ color:var(--accent); font-size:15px; cursor:pointer; list-style:none; }
+  details.details .body{ color:var(--muted); font-size:14.5px; line-height:1.55; margin-top:10px; }
+  details.details .body p{ margin:8px 0; }
+  footer{ text-align:center; color:var(--muted); font-size:12.5px; padding:22px 0 6px; }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+<nav>
+  <span class="title">Fare Lookup</span>
+  <span class="steps" id="nav-steps">
+    <span class="dot" data-dot="1"></span><span class="dot" data-dot="2"></span>
+    <span class="dot" data-dot="3"></span><span class="dot" data-dot="4"></span>
+    <span class="step-label" id="step-label">Step 1 of 4</span>
+  </span>
+  <span class="spacer"></span>
+  <button class="link" id="nav-pending">Pending<span class="badge hidden" id="pending-count">0</span></button>
+</nav>
+<div id="scroll">
+  <div class="col">
+    <div id="view"></div>
+    <details class="details" id="details-box">
+      <summary>Details</summary>
+      <div class="body">
+        <p>Borough Park prices are 7am–11pm and don't include tolls. Late night (11pm–3am) and before 7am add 10% per hour. Waiting time is $40/hr, with free minutes by fare size. Hourly: Brooklyn car $45 / mini van $55 (30 min minimum).</p>
+        <p>Some fares were printed differently on different sheets (for example Monroe–JFK appears as both $195 and $225). The base sheet's price is the one used here.</p>
+        <p>Prices anyone adds go live right away. Changing a price takes a suggestion plus 10 votes from different people — the old price stays until the votes are in.</p>
+      </div>
+    </details>
+    <footer>May 2023 sheet · Community updates since</footer>
+  </div>
+</div>
+<script src="config.js"></script>
+<script>
+"use strict";
+
+/* ---------- Flatbush grid (Borough Park sheet, static reference data) ---------- */
+const FLATBUSH_COLS = ["Church~H","I/J/K/L","M/N/O","P/Q/R","K.H.","S/T","U/V/W","X/Y/Z"];
+const FLATBUSH_ROWS = [
+  ["McDonald, 2, 3, 4, 5",  [18,19,20,22,24,25.20,26.60,28]],
+  ["O. Pkwy, 7, 8, 9, 10",  [19,20,22,24,25,27,28,29]],
+  ["Coney I., 12, 13, 14",  [20,22,24,25,27,28,29,30]],
+  ["15, 16, 17, 18, 19",    [22,24,25,27,28,29,30,32]],
+  ["Ocean, 21, 22, 23, 24", [24,25,27,28,29,30,32,34]],
+  ["Bdfrd, 26, 27, 28, 29", [25,27,28,29,30,32,34,35]],
+  ["Nostrnd, 31, 32, 33",   [27,28,29,30,32,34,35,36]],
+  ["34, 35, Flatbush av.",  [28,29,30,32,34,35,36,0]]  // last cell reads $0.00 on the scan — unverified
+];
+const FLATBUSH_NAME = "Flatbush zone fare";
+
+const BASES = ["Borough Park","Monroe","Monsey","Lakewood"];
+const VOTES_NEEDED = 10;
+
+const cfg = window.FL_CONFIG || {};
+const SB = (cfg.SUPABASE_URL || "").replace(/\/+$/,"");
+const KEY = cfg.SUPABASE_ANON_KEY || "";
+
+/* ---------- state ---------- */
+let fares = [];          // all fare rows from the database
+let proposals = [];      // open proposals
+let places = [];         // all pickable places
+let sel = {};            // current wizard selection
+let view = "step1";      // step1|step2|options|result|flatbush|add|suggest|pending
+
+const $view = document.getElementById("view");
+const $scroll = document.getElementById("scroll");
+
+function voterId(){
+  let v = localStorage.getItem("fl_voter");
+  if(!v){ v = "v-" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("fl_voter", v); }
+  return v;
+}
+function votedSet(){
+  try { return new Set(JSON.parse(localStorage.getItem("fl_voted") || "[]")); }
+  catch(e){ return new Set(); }
+}
+function markVoted(id){
+  const s = votedSet(); s.add(id);
+  localStorage.setItem("fl_voted", JSON.stringify([...s]));
+}
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function money(n){ return "$" + (Number.isInteger(n) ? String(n) : n.toFixed(2)); }
+/* A price is "plain" when it is a single dollar amount like $85.00 */
+function plainPrice(p){
+  const m = /^\$?\s*([\d,]+(?:\.\d{1,2})?)\s*$/.exec(String(p || ""));
+  return m ? parseFloat(m[1].replace(/,/g,"")) : null;
+}
+
+/* ---------- Supabase REST ---------- */
+async function sb(path, opts){
+  const r = await fetch(SB + "/rest/v1/" + path, Object.assign({}, opts, {
+    headers: Object.assign({
+      "apikey": KEY, "Authorization": "Bearer " + KEY, "Content-Type": "application/json"
+    }, (opts && opts.headers) || {})
+  }));
+  if(!r.ok){ const t = await r.text(); throw new Error("DB " + r.status + ": " + t.slice(0,200)); }
+  const t = await r.text();
+  return t ? JSON.parse(t) : null;
+}
+async function loadData(){
+  const [f, p] = await Promise.all([
+    sb("fares?select=id,from_place,category,to_place,price,round_trip,note,origin&order=from_place.asc,to_place.asc"),
+    sb("proposals?select=id,fare_id,new_price,new_round_trip,votes,status,fare:fares(from_place,to_place,price,round_trip)&status=eq.open&order=created_at.desc")
+  ]);
+  fares = f || []; proposals = p || [];
+  const set = new Set(BASES);
+  fares.forEach(r => { set.add(r.from_place); set.add(r.to_place); });
+  places = [...set];
+  const badge = document.getElementById("pending-count");
+  badge.textContent = proposals.length;
+  badge.classList.toggle("hidden", proposals.length === 0);
+}
+
+/* ---------- fare resolution & pricing ---------- */
+function findFare(from, to){
+  let f = fares.find(r => r.from_place === from && r.to_place === to);
+  if(f) return { fare: f, reversed: false };
+  f = fares.find(r => r.from_place === to && r.to_place === from);
+  if(f) return { fare: f, reversed: true };
+  return null;
+}
+function miniVanAddition(oneWay){
+  if(oneWay == null) return null;
+  if(oneWay <= 20) return 5;
+  if(oneWay <= 100) return 10;
+  if(oneWay <= 200) return 15;
+  if(oneWay <= 300) return 20;
+  if(oneWay <= 400) return 25;
+  return null;
+}
+function computeQuote(){
+  // returns {display, breakdown:[{label, amount}], complex} or null
+  const { fare, reversed } = sel.resolved;
+  const oneWay = plainPrice(fare.price);
+  const rt = fare.round_trip ? plainPrice(fare.round_trip) : null;
+  if(sel.trip === "round" && fare.round_trip && rt == null){
+    return { total: null, lines: [], complex: true, printed: fare.round_trip };
+  }
+  if(sel.trip === "round" && rt != null){
+    const lines = [{ label: "Round trip", amount: rt }];
+    let total = rt;
+    if(sel.airport){ lines.push({ label: "Airport pickup", amount: 5 }); total += 5; }
+    if(sel.minivan){
+      const add = miniVanAddition(oneWay);
+      if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
+    }
+    return { total, lines, complex: false };
+  }
+  if(oneWay == null){
+    return { total: null, lines: [], complex: true, printed: fare.price };
+  }
+  const lines = [{ label: "One way", amount: oneWay }];
+  let total = oneWay;
+  if(sel.airport){ lines.push({ label: "Airport pickup", amount: 5 }); total += 5; }
+  if(sel.minivan){
+    const add = miniVanAddition(oneWay);
+    if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
+  }
+  return { total, lines, complex: false };
+}
+function optionsApply(){
+  const { fare, reversed } = sel.resolved;
+  const oneWay = plainPrice(fare.price);
+  const hasRT = !!fare.round_trip;
+  const bp = fare.from_place === "Borough Park";
+  const minivan = bp && oneWay != null && miniVanAddition(oneWay) != null;
+  // $5 airport pickup: Borough Park sheet, Airports category, trip starts at the airport side
+  const airport = bp && fare.category === "Airports" && reversed;
+  return { hasRT, minivan, airport, any: hasRT || minivan || airport };
+}
+
+/* ---------- rendering helpers ---------- */
+function setStep(n, label){
+  document.querySelectorAll("#nav-steps .dot").forEach(d => {
+    d.classList.toggle("on", Number(d.dataset.dot) <= n);
+  });
+  document.getElementById("step-label").textContent = label || ("Step " + n + " of 4");
+  $scroll.scrollTop = 0;
+}
+function h(html){ $view.innerHTML = html; }
+
+function placeListHTML(query, exclude){
+  const q = (query || "").trim().toLowerCase();
+  const match = p => !q || p.toLowerCase().includes(q);
+  const top = BASES.filter(p => p !== exclude && match(p));
+  const rest = places.filter(p => !BASES.includes(p) && p !== exclude && match(p)).sort();
+  let out = "";
+  if(top.length){
+    out += '<div class="group-label">Top 4</div><div class="list">' +
+      top.map(p => '<button class="row" data-place="' + esc(p) + '">' + esc(p) + '<span class="chev">›</span></button>').join("") + "</div>";
+  }
+  if(rest.length){
+    out += '<div class="group-label">All places</div><div class="list">' +
+      rest.map(p => '<button class="row" data-place="' + esc(p) + '">' + esc(p) + '<span class="chev">›</span></button>').join("") + "</div>";
+  }
+  if(!top.length && !rest.length) out = '<div class="empty">No places match.</div>';
+  return out;
+}
+
+function renderPlacePicker(step){
+  const isFrom = step === 1;
+  view = isFrom ? "step1" : "step2";
+  setStep(step);
+  const other = isFrom ? null : sel.from;
+  const showFlatbush = !isFrom && sel.from === "Borough Park";
+  h(
+    "<h1>" + (isFrom ? "Where from?" : "Where to?") + "</h1>" +
+    '<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
+    (showFlatbush
+      ? '<div class="list"><button class="row" data-place="' + esc(FLATBUSH_NAME) + '">' + esc(FLATBUSH_NAME) + '<span class="tag">Borough Park</span><span class="chev">›</span></button></div>'
+      : "") +
+    '<div id="plist">' + placeListHTML("", other) + "</div>" +
+    '<button class="quiet-link" id="add-link">Add a price</button>'
+  );
+  const input = document.getElementById("q");
+  input.addEventListener("input", () => {
+    document.getElementById("plist").innerHTML = placeListHTML(input.value, other);
+    bindPlaceRows(step);
+  });
+  bindPlaceRows(step);
+  document.getElementById("add-link").addEventListener("click", () => renderAdd(isFrom ? {} : { from: sel.from }));
+}
+function bindPlaceRows(step){
+  $view.querySelectorAll("[data-place]").forEach(b => {
+    b.addEventListener("click", () => pickPlace(step, b.dataset.place));
+  });
+}
+function pickPlace(step, place){
+  if(step === 1){
+    if(place === FLATBUSH_NAME){ sel.from = FLATBUSH_NAME; renderPlacePicker(2); return; }
+    sel.from = place; renderPlacePicker(2);
+  } else {
+    sel.to = place; afterRoutePicked();
+  }
+}
+
+function afterRoutePicked(){
+  if(sel.from === FLATBUSH_NAME || sel.to === FLATBUSH_NAME){
+    const otherSide = sel.from === FLATBUSH_NAME ? sel.to : sel.from;
+    if(otherSide === "Borough Park"){ renderFlatbush(); return; }
+    renderNotListed("The Flatbush zone fare only runs to and from Borough Park.");
+    return;
+  }
+  const res = findFare(sel.from, sel.to);
+  if(!res){ renderNotListed(""); return; }
+  sel.resolved = res;
+  sel.trip = "oneway"; sel.minivan = false; sel.airport = false;
+  if(optionsApply().any) renderOptions(); else renderResult();
+}
+
+function renderOptions(){
+  view = "options"; setStep(3);
+  const { fare } = sel.resolved;
+  const o = optionsApply();
+  h(
+    "<h1>Trip options</h1>" +
+    '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + "</div>" +
+    '<div class="seg" id="seg-trip">' +
+      '<button data-trip="oneway" class="on">One way</button>' +
+      '<button data-trip="round"' + (o.hasRT ? "" : " disabled") + ">Round trip</button>" +
+    "</div>" +
+    (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price))) + "</span></label>" : "") +
+    (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+$5</span></label>' : "") +
+    '<button class="btn" id="to-price">See price</button>' +
+    '<button class="quiet-link" id="back">‹ Start over</button>'
+  );
+  $view.querySelectorAll("#seg-trip button").forEach(b => {
+    b.addEventListener("click", () => {
+      sel.trip = b.dataset.trip;
+      $view.querySelectorAll("#seg-trip button").forEach(x => x.classList.toggle("on", x === b));
+    });
+  });
+  const mv = document.getElementById("opt-minivan");
+  if(mv) mv.addEventListener("change", () => sel.minivan = mv.checked);
+  const ap = document.getElementById("opt-airport");
+  if(ap) ap.addEventListener("change", () => sel.airport = ap.checked);
+  document.getElementById("to-price").addEventListener("click", renderResult);
+  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+}
+
+function quoteText(priceStr){
+  return sel.from + " → " + sel.to + ": " + priceStr +
+    (sel.trip === "round" ? " (round trip)" : " (one way)");
+}
+
+function renderResult(){
+  view = "result"; setStep(4);
+  const { fare } = sel.resolved;
+  const q = computeQuote();
+  const priceStr = q.complex ? q.printed : money(q.total);
+  const open = proposals.find(p => p.fare_id === fare.id);
+  let breakdown = "";
+  if(!q.complex && q.lines.length > 1){
+    breakdown = '<div class="breakdown">' + q.lines.map(l =>
+      '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") +
+      '<div class="line total"><span>Total</span><span>' + money(q.total) + "</span></div></div>";
+  }
+  h(
+    '<div class="route-line">' + esc(sel.from) + " → " + esc(sel.to) + "</div>" +
+    '<div class="price-big">' + esc(priceStr) + "</div>" +
+    (q.complex ? "" : '<div class="route-line">' + (sel.trip === "round" ? "Round trip" : "One way") + "</div>") +
+    breakdown +
+    '<div class="note-line">' + (fare.origin === "community" ? "Community price" : "May 2023 sheet") +
+      (fare.note ? " · " + esc(fare.note) : "") + "</div>" +
+    '<button class="btn" id="copy">Copy quote</button>' +
+    (open
+      ? '<div class="note-line">A change to this price is pending — ' + open.votes + " of " + VOTES_NEEDED + ' votes.</div><button class="btn secondary" id="to-pending">See pending changes</button>'
+      : '<button class="quiet-link" id="suggest">Suggest a different price</button>') +
+    '<br><button class="quiet-link" id="again">‹ Start over</button>'
+  );
+  document.getElementById("copy").addEventListener("click", async (e) => {
+    try { await navigator.clipboard.writeText(quoteText(priceStr)); e.target.textContent = "✓ Copied"; }
+    catch(err){ e.target.textContent = quoteText(priceStr); }
+    setTimeout(() => e.target.textContent = "Copy quote", 1600);
+  });
+  const tp = document.getElementById("to-pending");
+  if(tp) tp.addEventListener("click", renderPending);
+  const sg = document.getElementById("suggest");
+  if(sg) sg.addEventListener("click", renderSuggest);
+  document.getElementById("again").addEventListener("click", () => renderPlacePicker(1));
+}
+
+function renderFlatbush(){
+  view = "flatbush"; setStep(2, "Flatbush zone fare");
+  h(
+    "<h1>Flatbush zone fare</h1>" +
+    '<div class="sub">Borough Park ↔ Flatbush, by street and cross-street.</div>' +
+    '<label class="field">Street / avenue</label><select id="fb-row">' +
+      FLATBUSH_ROWS.map((r,i) => '<option value="' + i + '">' + esc(r[0]) + "</option>").join("") + "</select>" +
+    '<label class="field">Cross-street</label><select id="fb-col">' +
+      FLATBUSH_COLS.map((c,i) => '<option value="' + i + '">' + esc(c) + "</option>").join("") + "</select>" +
+    '<button class="btn" id="fb-go">See price</button>' +
+    '<button class="quiet-link" id="back">‹ Start over</button>'
+  );
+  document.getElementById("fb-go").addEventListener("click", () => {
+    const ri = Number(document.getElementById("fb-row").value);
+    const ci = Number(document.getElementById("fb-col").value);
+    const val = FLATBUSH_ROWS[ri][1][ci];
+    sel.trip = "oneway";
+    view = "result"; setStep(4);
+    h(
+      '<div class="route-line">Borough Park ↔ Flatbush · ' + esc(FLATBUSH_ROWS[ri][0]) + " × " + esc(FLATBUSH_COLS[ci]) + "</div>" +
+      '<div class="price-big">' + (val === 0 ? "—" : money(val)) + "</div>" +
+      (val === 0 ? '<div class="note-line">This cell is unreadable on the sheet — unverified.</div>' : '<div class="note-line">May 2023 sheet · One way</div>') +
+      '<button class="btn" id="copy">Copy quote</button>' +
+      '<br><button class="quiet-link" id="again">‹ Start over</button>'
+    );
+    document.getElementById("copy").addEventListener("click", async (e) => {
+      const txt = "Borough Park ↔ Flatbush (" + FLATBUSH_ROWS[ri][0] + " × " + FLATBUSH_COLS[ci] + "): " + (val === 0 ? "unverified" : money(val));
+      try { await navigator.clipboard.writeText(txt); e.target.textContent = "✓ Copied"; } catch(err){}
+      setTimeout(() => e.target.textContent = "Copy quote", 1600);
+    });
+    document.getElementById("again").addEventListener("click", () => renderPlacePicker(1));
+  });
+  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+}
+
+function renderNotListed(msg){
+  view = "notlisted"; setStep(2);
+  h(
+    "<h1>Not listed</h1>" +
+    '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
+    '<button class="btn" id="add">Add this price</button>' +
+    '<button class="quiet-link" id="back">‹ Start over</button>'
+  );
+  document.getElementById("add").addEventListener("click", () => renderAdd({ from: sel.from, to: sel.to }));
+  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+}
+
+/* ---------- Add a price ---------- */
+function categoriesFor(from, to){
+  const base = BASES.includes(from) ? from : (BASES.includes(to) ? to : null);
+  const cats = base
+    ? [...new Set(fares.filter(r => r.from_place === base).map(r => r.category).filter(Boolean))]
+    : [...new Set(fares.map(r => r.category).filter(Boolean))];
+  return [...cats, "Other"];
+}
+function renderAdd(prefill){
+  view = "add"; setStep(2, "Add a price");
+  const dl = '<datalist id="places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
+  h(
+    "<h1>Add a price</h1>" +
+    '<div class="sub">Goes live right away for everyone.</div>' + dl +
+    '<label class="field">From</label><input type="text" id="f-from" list="places-dl" value="' + esc(prefill.from || "") + '" placeholder="Where from?">' +
+    '<label class="field">To</label><input type="text" id="f-to" list="places-dl" value="' + esc(prefill.to || "") + '" placeholder="Where to?">' +
+    '<label class="field">Category</label><select id="f-cat"></select>' +
+    '<label class="field">One-way price</label><input type="text" id="f-price" placeholder="$85">' +
+    '<label class="field">Round trip price (optional)</label><input type="text" id="f-rt" placeholder="$130">' +
+    '<div class="error hidden" id="f-err"></div>' +
+    '<button class="btn" id="f-save">Add price</button>' +
+    '<button class="quiet-link" id="back">‹ Back</button>'
+  );
+  const catSel = document.getElementById("f-cat");
+  const fillCats = () => {
+    const f = document.getElementById("f-from").value.trim(), t = document.getElementById("f-to").value.trim();
+    catSel.innerHTML = categoriesFor(f, t).map(c => "<option>" + esc(c) + "</option>").join("");
+  };
+  fillCats();
+  document.getElementById("f-from").addEventListener("change", fillCats);
+  document.getElementById("f-to").addEventListener("change", fillCats);
+  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+  document.getElementById("f-save").addEventListener("click", async () => {
+    const from = document.getElementById("f-from").value.trim();
+    const to = document.getElementById("f-to").value.trim();
+    const cat = catSel.value;
+    let price = document.getElementById("f-price").value.trim();
+    const rt = document.getElementById("f-rt").value.trim();
+    const err = document.getElementById("f-err");
+    err.classList.add("hidden");
+    if(!from || !to || !price){ err.textContent = "From, To, and price are all needed."; err.classList.remove("hidden"); return; }
+    if(from === to){ err.textContent = "From and To are the same place."; err.classList.remove("hidden"); return; }
+    if(!price.startsWith("$")) price = "$" + price;
+    // Store sheet fares base-first: if one side is a base, it becomes from_place.
+    let rec = { from_place: from, to_place: to, category: cat, price, round_trip: rt ? (rt.startsWith("$") ? rt : "$" + rt) : null, note: null, origin: "community" };
+    if(BASES.includes(to) && !BASES.includes(from)) rec = { from_place: to, to_place: from, category: cat, price, round_trip: rec.round_trip, note: null, origin: "community" };
+    try {
+      await sb("fares", { method: "POST", headers: { "Prefer": "return=representation" }, body: JSON.stringify(rec) });
+    } catch(e) {
+      if(!/409|duplicate|unique/i.test(e.message)){ err.textContent = "Couldn't save. Try again."; err.classList.remove("hidden"); return; }
+      // Already exists — fall through and show it.
+    }
+    await loadData();
+    sel.from = from; sel.to = to;
+    const res = findFare(from, to);
+    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; renderResult(); }
+    else renderPlacePicker(1);
+  });
+}
+
+/* ---------- Suggest a change ---------- */
+function renderSuggest(){
+  view = "suggest"; setStep(4, "Suggest a change");
+  const { fare } = sel.resolved;
+  h(
+    "<h1>Suggest a new price</h1>" +
+    '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your suggestion applies when it reaches " + VOTES_NEEDED + " votes.</div>" +
+    '<label class="field">New one-way price</label><input type="text" id="s-price" placeholder="$90">' +
+    '<label class="field">New round trip price (optional)</label><input type="text" id="s-rt" placeholder="">' +
+    '<div class="error hidden" id="s-err"></div>' +
+    '<button class="btn" id="s-save">Post suggestion</button>' +
+    '<button class="quiet-link" id="back">‹ Back to price</button>'
+  );
+  document.getElementById("back").addEventListener("click", renderResult);
+  document.getElementById("s-save").addEventListener("click", async () => {
+    let price = document.getElementById("s-price").value.trim();
+    const rt = document.getElementById("s-rt").value.trim();
+    const err = document.getElementById("s-err");
+    err.classList.add("hidden");
+    if(!price){ err.textContent = "Enter the new price."; err.classList.remove("hidden"); return; }
+    if(!price.startsWith("$")) price = "$" + price;
+    if(proposals.some(p => p.fare_id === fare.id)){
+      err.textContent = "A change for this route is already pending."; err.classList.remove("hidden"); return;
+    }
+    try {
+      await sb("proposals", { method: "POST", body: JSON.stringify({
+        fare_id: fare.id, new_price: price,
+        new_round_trip: rt ? (rt.startsWith("$") ? rt : "$" + rt) : null
+      })});
+    } catch(e){ err.textContent = "Couldn't post. Try again."; err.classList.remove("hidden"); return; }
+    await loadData();
+    renderPending();
+  });
+}
+
+/* ---------- Pending changes ---------- */
+function renderPending(){
+  view = "pending"; setStep(0, "Pending changes");
+  if(!proposals.length){
+    h("<h1>Pending changes</h1><div class=\"empty\">No price changes are waiting on votes.</div>" +
+      '<button class="quiet-link" id="back">‹ Back</button>');
+  } else {
+    const voted = votedSet();
+    h("<h1>Pending changes</h1>" +
+      '<div class="sub">A change applies at ' + VOTES_NEEDED + " votes.</div>" +
+      proposals.map(p => {
+        const f = p.fare || {};
+        const pct = Math.min(100, Math.round(p.votes / VOTES_NEEDED * 100));
+        return '<div class="card">' +
+          '<div class="route">' + esc(f.from_place) + " → " + esc(f.to_place) + "</div>" +
+          '<div class="change">' + esc(f.price) + " → <b>" + esc(p.new_price) + "</b>" +
+            (p.new_round_trip ? " · round trip " + esc(p.new_round_trip) : "") + "</div>" +
+          '<div class="vote-row"><span class="bar"><i style="width:' + pct + '%"></i></span>' +
+          '<span class="votes">' + p.votes + " of " + VOTES_NEEDED + "</span>" +
+          (voted.has(p.id)
+            ? '<span class="votes">✓ Voted</span>'
+            : '<button class="btn small" data-vote="' + p.id + '">Vote</button>') +
+          "</div></div>";
+      }).join("") +
+      '<button class="quiet-link" id="back">‹ Back</button>'
+    );
+    $view.querySelectorAll("[data-vote]").forEach(b => {
+      b.addEventListener("click", async () => {
+        b.disabled = true; b.textContent = "Voting…";
+        try {
+          await sb("rpc/cast_vote", { method: "POST", body: JSON.stringify({
+            p_proposal_id: Number(b.dataset.vote), p_voter_id: voterId()
+          })});
+          markVoted(Number(b.dataset.vote));
+        } catch(e){ /* leave button state to re-render below */ }
+        await loadData();
+        renderPending();
+      });
+    });
+  }
+  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+}
+
+/* ---------- init ---------- */
+document.getElementById("nav-pending").addEventListener("click", renderPending);
+
+async function init(){
+  if(!SB || !KEY){
+    h('<div class="empty">This app is being set up — the price database is not connected yet.</div>');
+    setStep(0, "");
+    return;
+  }
+  h('<div class="empty">Loading prices…</div>');
+  try {
+    await loadData();
+    renderPlacePicker(1);
+  } catch(e){
+    h('<div class="error">Couldn\'t load prices.</div><button class="btn" id="retry">Try again</button>');
+    document.getElementById("retry").addEventListener("click", init);
+  }
+}
+init();
+</script>
+</body>
+</html>
