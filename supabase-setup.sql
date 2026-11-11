@@ -27,6 +27,7 @@ create table if not exists public.proposals (
 create table if not exists public.votes (
   proposal_id bigint not null references public.proposals(id) on delete cascade,
   voter_id text not null,
+  value int not null default 1,
   created_at timestamptz not null default now(),
   primary key (proposal_id, voter_id)
 );
@@ -48,15 +49,17 @@ create policy "proposals read" on public.proposals for select using (true);
 create policy "proposals add" on public.proposals for insert with check (status = 'open' and votes = 0);
 create policy "votes none" on public.votes for select using (false);
 
--- One vote per voter per proposal; at 10 votes the change applies atomically.
-create or replace function public.cast_vote(p_proposal_id bigint, p_voter_id text)
+-- Up/down voting: each voter's row carries +1 or -1 (re-casting replaces it,
+-- value 0 removes it). A proposal's score is the net sum; at net 10 the
+-- change applies atomically.
+create or replace function public.cast_vote(p_proposal_id bigint, p_voter_id text, p_value int)
 returns int
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_count int;
+  v_net int;
   v_status text;
   v_fare bigint;
   v_price text;
@@ -67,28 +70,30 @@ begin
     from proposals where id = p_proposal_id;
   if v_status is null then raise exception 'proposal not found'; end if;
   if v_status <> 'open' then
-    select votes into v_count from proposals where id = p_proposal_id;
-    return v_count;
+    select votes into v_net from proposals where id = p_proposal_id;
+    return v_net;
   end if;
-  insert into votes (proposal_id, voter_id) values (p_proposal_id, p_voter_id)
-    on conflict do nothing;
-  if not found then
-    select votes into v_count from proposals where id = p_proposal_id;
-    return v_count;
+  if p_value = 0 then
+    delete from votes where proposal_id = p_proposal_id and voter_id = p_voter_id;
+  elsif p_value in (1, -1) then
+    insert into votes (proposal_id, voter_id, value) values (p_proposal_id, p_voter_id, p_value)
+      on conflict (proposal_id, voter_id) do update set value = excluded.value;
+  else
+    raise exception 'invalid vote value';
   end if;
-  update proposals set votes = votes + 1 where id = p_proposal_id
-    returning votes into v_count;
-  if v_count >= 10 then
+  select coalesce(sum(value), 0) into v_net from votes where proposal_id = p_proposal_id;
+  update proposals set votes = v_net where id = p_proposal_id;
+  if v_net >= 10 then
     update fares set price = v_price,
                      round_trip = coalesce(v_rt, round_trip)
       where id = v_fare;
     update proposals set status = 'applied' where id = p_proposal_id;
   end if;
-  return v_count;
+  return v_net;
 end;
 $$;
 
-grant execute on function public.cast_vote(bigint, text) to anon, authenticated;
+grant execute on function public.cast_vote(bigint, text, int) to anon, authenticated;
 
 -- Seed: the fares from the May 22, 2023 price sheets. 277 fare rows are
 -- printed, stored here as 276 routes: Borough Park's "Beth Israel" is two

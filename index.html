@@ -121,6 +121,12 @@
   .card .route{ font-size:16px; font-weight:600; }
   .card .change{ color:var(--muted); font-size:15px; margin-top:3px; }
   .card .vote-row{ display:flex; align-items:center; gap:12px; margin-top:12px; }
+  .vote-btns{ display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .vbtn{
+    border:1px solid var(--border); background:var(--chip); color:var(--text);
+    border-radius:980px; padding:7px 14px; font-size:14.5px; cursor:pointer;
+  }
+  .vbtn.on{ background:var(--accent); border-color:var(--accent); color:var(--accent-text); font-weight:600; }
   .votes{ font-size:14px; color:var(--muted); }
   .bar{ flex:1; height:6px; border-radius:3px; background:var(--chip); overflow:hidden; }
   .bar i{ display:block; height:100%; background:var(--accent); border-radius:3px; }
@@ -145,7 +151,7 @@
   <button class="link" id="nav-back">‹ Start over</button>
   <span class="title">Fare Lookup</span>
   <span class="spacer"></span>
-  <button class="link" id="nav-pending">Vote<span class="badge hidden" id="pending-count">0</span></button>
+  <button class="link" id="nav-pending">Board<span class="badge hidden" id="pending-count">0</span></button>
 </nav>
 <div id="steprow">
   <span class="steps" id="nav-steps">
@@ -166,7 +172,7 @@
     <div class="sheet-head"><span>Details</span><button id="modal-close" aria-label="Close">✕</button></div>
     <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
     <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
-    <p>Prices anyone adds go live right away. Changing a price takes a proposal plus 10 votes from different people — the current price stays until the votes are in.</p>
+    <p>Prices anyone adds go live right away. Changing a price takes a proposal and a net score of 10 votes on the Board — a down vote cancels an up vote, and the current price stays until the score gets there.</p>
   </div>
 </div>
 <script src="config.js"></script>
@@ -208,6 +214,7 @@ let places = [];         // all pickable places
 let sel = {};            // current wizard selection
 let view = "step1";      // step1|step2|options|result|flatbush|add|suggest|pending
 let inFlow = false;      // true once a starting point is picked
+let addReturn = null;    // where the add form goes back to ("board" or null)
 const VOTES_NEEDED = 10; // votes required for a proposed price change to apply
 
 const $view = document.getElementById("view");
@@ -218,13 +225,14 @@ function voterId(){
   if(!v){ v = "v-" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("fl_voter", v); }
   return v;
 }
-function votedSet(){
-  try { return new Set(JSON.parse(localStorage.getItem("fl_voted") || "[]")); }
-  catch(e){ return new Set(); }
+function myVotes(){
+  try { return JSON.parse(localStorage.getItem("fl_my_votes") || "{}"); }
+  catch(e){ return {}; }
 }
-function markVoted(id){
-  const s = votedSet(); s.add(id);
-  localStorage.setItem("fl_voted", JSON.stringify([...s]));
+function setMyVote(id, val){
+  const m = myVotes();
+  if(val === 0) delete m[id]; else m[id] = val;
+  localStorage.setItem("fl_my_votes", JSON.stringify(m));
 }
 function esc(s){
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -511,7 +519,7 @@ function refreshQuote(){
   const open = proposals.find(p => p.fare_id === fare.id);
   const sg = document.getElementById("q-suggest");
   if(open){
-    sg.innerHTML = '<div class="note-line">A change to this price is pending — ' + open.votes + " of " + VOTES_NEEDED + ' votes.</div><button class="btn secondary" id="to-pending">See pending changes</button>';
+    sg.innerHTML = '<div class="note-line">A change to this price is pending — ' + open.votes + " of " + VOTES_NEEDED + ' votes.</div><button class="btn secondary" id="to-pending">See the board</button>';
     document.getElementById("to-pending").addEventListener("click", renderPending);
   } else {
     sg.innerHTML = '<button class="btn secondary" id="suggest" style="margin-top:14px">Propose a price change</button>';
@@ -594,7 +602,9 @@ function renderAdd(prefill){
   fillCats();
   document.getElementById("f-from").addEventListener("change", fillCats);
   document.getElementById("f-to").addEventListener("change", fillCats);
-  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+  document.getElementById("back").addEventListener("click", () => {
+    if(addReturn === "board"){ addReturn = null; renderPending(); } else renderPlacePicker(1);
+  });
   document.getElementById("f-save").addEventListener("click", async () => {
     const from = document.getElementById("f-from").value.trim();
     const to = document.getElementById("f-to").value.trim();
@@ -629,7 +639,7 @@ function renderSuggest(){
   const { fare } = sel.resolved;
   h(
     "<h1>Propose a price change</h1>" +
-    '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your proposal applies when it reaches " + VOTES_NEEDED + " votes.</div>" +
+    '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your proposal applies when its net score reaches " + VOTES_NEEDED + " votes.</div>" +
     '<label class="field">New one-way price</label><input type="text" id="s-price" placeholder="$90">' +
     '<label class="field">New round trip price (optional)</label><input type="text" id="s-rt" placeholder="">' +
     '<div class="error hidden" id="s-err"></div>' +
@@ -660,45 +670,51 @@ function renderSuggest(){
 
 /* ---------- Pending changes ---------- */
 function renderPending(){
-  view = "pending"; setStep(0, "Pending changes");
-  if(!proposals.length){
-    h("<h1>Pending changes</h1><div class=\"empty\">No price changes are waiting on votes.</div>" +
-      '<button class="quiet-link" id="back">‹ Back</button>');
-  } else {
-    const voted = votedSet();
-    h("<h1>Pending changes</h1>" +
-      '<div class="sub">A change applies at ' + VOTES_NEEDED + " votes.</div>" +
-      proposals.map(p => {
-        const f = p.fare || {};
-        const pct = Math.min(100, Math.round(p.votes / VOTES_NEEDED * 100));
-        return '<div class="card">' +
-          '<div class="route">' + esc(f.from_place) + " → " + esc(f.to_place) + "</div>" +
-          '<div class="change">' + esc(f.price) + " → <b>" + esc(p.new_price) + "</b>" +
-            (p.new_round_trip ? " · round trip " + esc(p.new_round_trip) : "") + "</div>" +
-          '<div class="vote-row"><span class="bar"><i style="width:' + pct + '%"></i></span>' +
-          '<span class="votes">' + p.votes + " of " + VOTES_NEEDED + "</span>" +
-          (voted.has(p.id)
-            ? '<span class="votes">✓ Voted</span>'
-            : '<button class="btn small" data-vote="' + p.id + '">Vote</button>') +
-          "</div></div>";
-      }).join("") +
-      '<button class="quiet-link" id="back">‹ Back</button>'
-    );
-    $view.querySelectorAll("[data-vote]").forEach(b => {
-      b.addEventListener("click", async () => {
-        b.disabled = true; b.textContent = "Voting…";
-        try {
-          await sb("rpc/cast_vote", { method: "POST", body: JSON.stringify({
-            p_proposal_id: Number(b.dataset.vote), p_voter_id: voterId()
-          })});
-          markVoted(Number(b.dataset.vote));
-        } catch(e){ /* leave button state to re-render below */ }
-        await loadData();
-        renderPending();
-      });
-    });
-  }
+  view = "pending"; setStep(0, "Board");
+  const mine = myVotes();
+  const sorted = [...proposals].sort((a, b) => b.votes - a.votes);
+  h("<h1>Board</h1>" +
+    '<button class="btn" id="board-add">Add a price</button>' +
+    '<div class="group-label">Open votes</div>' +
+    (sorted.length ? sorted.map(p => {
+      const f = p.fare || {};
+      const my = mine[p.id] || 0;
+      const pct = Math.max(0, Math.min(100, Math.round(p.votes / VOTES_NEEDED * 100)));
+      return '<div class="card">' +
+        '<div class="route">' + esc(f.from_place) + " → " + esc(f.to_place) + "</div>" +
+        '<div class="change">' + esc(f.price) + " → <b>" + esc(p.new_price) + "</b>" +
+          (p.new_round_trip ? " · round trip " + esc(p.new_round_trip) : "") + "</div>" +
+        '<div class="vote-row"><span class="bar"><i style="width:' + pct + '%"></i></span>' +
+        '<span class="votes">' + p.votes + " of " + VOTES_NEEDED + "</span></div>" +
+        '<div class="vote-btns">' +
+          '<button class="vbtn' + (my === 1 ? " on" : "") + '" data-vote-up="' + p.id + '">▲ Up</button>' +
+          '<button class="vbtn' + (my === -1 ? " on" : "") + '" data-vote-down="' + p.id + '">▼ Down</button>' +
+          (my !== 0 ? '<span class="votes">Tap your vote again to undo</span>' : "") +
+        "</div></div>";
+    }).join("") : '<div class="empty">No price changes are waiting on votes.</div>') +
+    '<button class="quiet-link" id="back">‹ Back</button>'
+  );
+  document.getElementById("board-add").addEventListener("click", () => { addReturn = "board"; renderAdd({}); });
   document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+  $view.querySelectorAll("[data-vote-up]").forEach(b => {
+    b.addEventListener("click", () => castVote(Number(b.dataset.voteUp), 1));
+  });
+  $view.querySelectorAll("[data-vote-down]").forEach(b => {
+    b.addEventListener("click", () => castVote(Number(b.dataset.voteDown), -1));
+  });
+}
+
+async function castVote(id, dir){
+  const cur = myVotes()[id] || 0;
+  const next = cur === dir ? 0 : dir;   // tapping your own vote again undoes it
+  try {
+    await sb("rpc/cast_vote", { method: "POST", body: JSON.stringify({
+      p_proposal_id: id, p_voter_id: voterId(), p_value: next
+    })});
+    setMyVote(id, next);
+  } catch(e){ /* re-render below shows the stored state */ }
+  await loadData();
+  renderPending();
 }
 
 /* ---------- init ---------- */
