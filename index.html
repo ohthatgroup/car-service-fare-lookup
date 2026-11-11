@@ -13,12 +13,12 @@
 <style>
   :root{
     --bg:#f5f5f7; --surface:#ffffff; --text:#1d1d1f; --muted:#6e6e73;
-    --border:#d2d2d7; --accent:#0071e3; --accent-text:#ffffff;
+    --border:#d2d2d7; --accent:#0071e3; --accent-text:#ffffff; --link:#0066cc;
     --chip:#e8e8ed; --danger:#b42318;
   }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#000000; --surface:#1c1c1e; --text:#f5f5f7; --muted:#98989d;
-           --border:#38383a; --chip:#2c2c2e; }
+           --border:#38383a; --chip:#2c2c2e; --link:#0a84ff; }
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ height:100%; }
@@ -38,10 +38,10 @@
   nav #nav-back{ display:none; }
   nav.in-flow #nav-back{ display:block; }
   nav .steps{ display:flex; align-items:center; gap:7px; }
-  nav .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
-  nav .dot.done{ background:var(--accent); cursor:pointer; }
+  nav .dot{ width:10px; height:10px; padding:17px; margin:-17px; border-radius:50%; border:0; background:var(--border); background-clip:content-box; cursor:default; transition:background .2s; }
+  nav .dot.done{ background:var(--text); background-clip:content-box; cursor:pointer; }
   nav .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
-  nav .dot.cur{ background:var(--muted); }
+  nav .dot.cur{ background:var(--muted); background-clip:content-box; }
   #nav-logo{ display:flex; align-items:baseline; font-weight:800; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
   #nav-logo .wm-b{ color:var(--accent); }
   nav.in-flow #nav-logo{ display:none; }
@@ -55,7 +55,7 @@
   #fab:active{ transform:scale(.95); }
   .drawer-src{ text-align:center; color:var(--muted); font-size:12.5px; margin-top:10px; }
   .hire-line{ text-align:center; margin-top:14px; font-size:14px; }
-  .inline-link{ color:var(--accent); text-decoration:none; }
+  .inline-link{ color:var(--link); text-decoration:none; }
   .drawer-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
   .drawer-actions.top{ margin-top:4px; }
   .drawer-section{ margin-top:22px; border-top:1px solid var(--border); padding-top:4px; }
@@ -87,7 +87,7 @@
   #modal .sub{ margin-top:0; }
   nav .spacer{ flex:1; }
   nav button.link{
-    background:none; border:0; color:var(--accent); font-size:15px; padding:8px 10px; margin:-8px -4px; border-radius:10px; cursor:pointer;
+    background:none; border:0; color:var(--link); font-size:15px; padding:8px 10px; margin:-8px -4px; border-radius:10px; cursor:pointer;
   }
   nav .badge{
     display:inline-block; min-width:18px; text-align:center; padding:0 5px;
@@ -95,7 +95,7 @@
     vertical-align:2px; margin-left:4px;
   }
   #scroll{ flex:1; overflow-y:auto; overscroll-behavior:contain; }
-  .col{ max-width:600px; margin:0 auto; padding:20px 16px 96px; }
+  .col{ max-width:600px; margin:0 auto; padding:20px 16px 180px; }
   .sub{ color:var(--muted); font-size:15px; margin:-8px 0 16px; }
   .group-label{ font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:18px 2px 8px; }
   .list{ background:var(--surface); border-radius:14px; overflow:hidden; }
@@ -119,24 +119,36 @@
   }
   .btn:disabled{ opacity:.4; cursor:default; }
   .btn.secondary{ background:var(--chip); color:var(--text); }
-  #new-rate{ position:sticky; bottom:0; background:transparent; }
   .btn.small{ width:auto; display:inline-block; padding:9px 18px; font-size:15px; margin-top:0; }
-  .quiet-link{ display:inline-block; background:none; border:0; color:var(--accent); font-size:15px; padding:10px 0; cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--link); outline-offset:2px; }
+  .quiet-link{ display:inline-block; background:none; border:0; color:var(--link); font-size:15px; padding:10px 0; cursor:pointer; }
+  .loop-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    background:var(--bg); border-top:1px solid var(--border);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .loop-bar .btn{ margin-top:0; min-height:52px; }
+  .loop-bar .btn + .btn{ margin-top:10px; }
+  .loop-bar #share{ font-weight:600; }
+  .propose-link{ display:block; margin:20px auto 0; background:none; border:0; color:var(--muted); font-size:14px; padding:12px 8px; cursor:pointer; text-align:center; }
   .seg{ display:flex; background:var(--chip); border-radius:12px; padding:2px; gap:2px; }
   .seg button{
-    flex:1; border:0; background:transparent; color:var(--text); font-size:15px;
-    padding:10px 4px; border-radius:10px; cursor:pointer;
+    flex:1; border:0; background:transparent; color:var(--text); font-size:14px;
+    padding:12px 4px; border-radius:10px; cursor:pointer;
   }
   .seg button.on{ background:var(--surface); font-weight:600; box-shadow:0 1px 4px rgba(0,0,0,.12); }
   .seg button:disabled{ color:var(--muted); cursor:default; }
   .toggle-row{
-    display:flex; align-items:center; gap:10px; background:var(--surface);
-    border-radius:14px; padding:14px 16px; margin-top:10px; font-size:16px;
+    display:flex; align-items:center; gap:10px; background:transparent;
+    border-radius:0; border-bottom:1px solid var(--border); padding:14px 2px; margin-top:0; font-size:16px; min-height:48px;
   }
-  .toggle-row .amt{ margin-left:auto; color:var(--muted); font-size:15px; }
+  .toggle-row .amt{ margin-left:auto; color:var(--text); font-size:15px; }
   .toggle-row input{ width:22px; height:22px; accent-color:var(--accent); }
-  .price-big{ font-size:52px; font-weight:700; letter-spacing:-.03em; text-align:center; margin:26px 0 2px; }
-  .route-line{ text-align:center; font-size:17px; color:var(--muted); }
+  .price-big{ font-size:52px; font-weight:700; letter-spacing:-.03em; text-align:center; margin:32px 0 4px; }
+  .route-line{ text-align:center; font-size:17px; color:var(--text); font-weight:600; }
+  .q-summary{ text-align:center; font-size:15px; color:var(--muted); margin-top:2px; }
+  .extra-links{ display:flex; gap:28px; margin-top:14px; }
+  .extra-links button{ background:none; border:0; color:var(--link); font-size:15px; padding:12px 0; cursor:pointer; min-height:44px; }
   .extra-btns{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
   .extra-btn{
     border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit;
@@ -161,6 +173,7 @@
   .x-hrs-row input[type="text"]{ width:76px; flex:none; }
   .breakdown{ max-width:340px; margin:18px auto 0; font-size:15px; }
   .breakdown .line{ display:flex; justify-content:space-between; padding:5px 0; color:var(--muted); }
+  .breakdown .line span:last-child{ color:var(--text); }
   .breakdown .line.total{ color:var(--text); font-weight:600; border-top:1px solid var(--border); margin-top:5px; padding-top:9px; }
   .note-line{ text-align:center; color:var(--muted); font-size:13px; margin-top:14px; }
   .card{ background:var(--surface); border-radius:14px; padding:16px; margin-top:12px; }
@@ -400,8 +413,7 @@ function withExtras(total, lines){
 }
 function breakdownHtml(lines, total){
   return '<div class="breakdown">' + lines.map(l =>
-    '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") +
-    '<div class="line total"><span>Total</span><span>' + money(total) + "</span></div></div>";
+    '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") + "</div>";
 }
 function extraBtnsHtml(){
   const w = sel.wait || {};
@@ -414,9 +426,9 @@ function extraBtnsHtml(){
   const adds = (sel.addons || []).filter(a => a.name && a.name.trim() && parseFloat(a.amount) > 0);
   const addSum = adds.reduce((sm, a) => sm + parseFloat(a.amount), 0);
   const addLabel = adds.length ? "Extra · " + money(addSum) : "Add extra";
-  return '<div class="extra-btns">' +
-    '<button class="extra-btn" id="x-wait-btn">' + (waitSet ? "" : '<span class="x-plus">+</span> ') + esc(waitLabel) + "</button>" +
-    '<button class="extra-btn" id="x-extra-btn">' + (adds.length ? "" : '<span class="x-plus">+</span> ') + esc(addLabel) + "</button></div>";
+  return '<div class="extra-links">' +
+    '<button id="x-wait-btn">' + (waitSet ? "" : '<span class="x-plus">+</span> ') + esc(waitLabel) + "</button>" +
+    '<button id="x-extra-btn">' + (adds.length ? "" : '<span class="x-plus">+</span> ') + esc(addLabel) + "</button></div>";
 }
 function wireExtraBtns(mountId, onChange){
   const m = document.getElementById(mountId);
@@ -504,7 +516,7 @@ function computeQuote(){
     return { total: null, lines: [], complex: true, printed: fare.round_trip };
   }
   if(sel.trip === "round" && rt != null){
-    const lines = [{ label: "Round trip", amount: rt }];
+    const lines = [{ label: "Base fare", amount: rt }];
     let total = rt;
     if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
     if(sel.minivan){
@@ -516,7 +528,7 @@ function computeQuote(){
   if(oneWay == null){
     return { total: null, lines: [], complex: true, printed: fare.price };
   }
-  const lines = [{ label: "One way", amount: oneWay }];
+  const lines = [{ label: "Base fare", amount: oneWay }];
   let total = oneWay;
   if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
   if(sel.minivan){
@@ -536,6 +548,27 @@ function optionsApply(){
   return { hasRT, minivan, airport, any: hasRT || minivan || airport };
 }
 
+function summaryLine(withOptions){
+  const parts = [sel.trip === "round" ? "Round trip" : "One way"];
+  if(withOptions){
+    const { fare } = sel.resolved;
+    const o = optionsApply();
+    if(sel.minivan && o.minivan) parts.push("Mini van +" + money(miniVanAddition(plainPrice(fare.price), fare.from_place)));
+    if(sel.airport && o.airport) parts.push("Airport pickup +" + money(airportFee(fare.from_place)));
+  }
+  const w = sel.wait || {};
+  const wa = parseFloat(w.amount);
+  if(wa && wa > 0){
+    if(w.unit === "once") parts.push("Wait " + money(wa));
+    else { const hrs = Math.max(1, parseFloat(w.hours) || 1); parts.push("Wait " + hrs + " hr " + money(wa * hrs)); }
+  }
+  (sel.addons || []).forEach(a => {
+    const amt = parseFloat(a.amount);
+    if(a.name && a.name.trim() && amt > 0) parts.push(a.name.trim() + " " + money(amt));
+  });
+  return parts.join(" · ");
+}
+
 /* ---------- rendering helpers ---------- */
 const STEP_NAMES = { 1: "Where from?", 2: "Where to?", 3: "Price" };
 let currentStep = 1;
@@ -544,7 +577,7 @@ function setStep(n, label){
   const onSteps = n >= 1 && n <= 3 && view !== "pending";
   const curName = label || STEP_NAMES[n] || "";
   document.getElementById("nav-steps").innerHTML = [1, 2, 3].map(i => {
-    if(onSteps && i === n) return '<span class="dot cur"></span><span class="step-name">' + esc(curName) + "</span>";
+    if(onSteps && i === n) return '<span class="dot cur" aria-current="step"></span><span class="step-name">' + esc(curName) + "</span>";
     return '<button class="dot' + (i < n ? " done" : "") + '" data-dot="' + i + '" aria-label="Step ' + i + '"></button>';
   }).join("");
   const $t = document.getElementById("nav-title");
@@ -587,6 +620,7 @@ function placeListHTML(query, exclude){
 }
 
 function renderPlacePicker(step){
+  document.getElementById("fab").style.display = "";
   const isFrom = step === 1;
   if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; }
   view = isFrom ? "step1" : "step2";
@@ -686,37 +720,38 @@ async function shareQuote(btn){
   }
   try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
   catch(e){ btn.textContent = url; }
-  setTimeout(() => btn.textContent = "Share quote", 1600);
+  setTimeout(() => btn.textContent = "Share with coordinator", 1600);
 }
 
 function renderQuote(){
   view = "quote"; setStep(3);
+  document.getElementById("fab").style.display = "none";
   const { fare } = sel.resolved;
   const o = optionsApply();
   h(
     '<div class="route-line">' + esc(sel.from) + " → " + esc(sel.to) + "</div>" +
-    '<div class="price-big" id="q-price"></div>' +
-    '<div class="route-line" id="q-sub"></div>' +
-    (o.hasRT ? '<div class="seg" id="seg-trip" style="margin-top:20px">' +
-      '<button data-trip="oneway" class="on">One way</button>' +
-      '<button data-trip="round">Round trip</button></div>' : "") +
+    '<div class="price-big" id="q-price" aria-live="polite"></div>' +
+    '<div class="q-summary" id="q-summary"></div>' +
+    '<div class="seg" id="seg-trip" role="group" aria-label="Trip type" style="margin-top:20px' + (o.hasRT ? "" : ";visibility:hidden") + '">' +
+      '<button data-trip="oneway" class="on" aria-pressed="true">One way</button>' +
+      '<button data-trip="round" aria-pressed="false">Round trip</button></div>' +
     (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-extra-btns"></div>' +
     '<div id="q-breakdown"></div>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
-    '<div id="q-suggest"></div>' +
-    '<button class="btn" id="share">Share quote</button>' +
-    '<button class="btn secondary" id="new-rate">Start new rate</button>'
+    '<div class="loop-bar"><button class="btn" id="share">Share with coordinator</button>' +
+    '<button class="btn secondary" id="new-rate">Next rate</button></div>' +
+    '<div id="q-suggest"></div>'
   );
   const segBtns = $view.querySelectorAll("#seg-trip button");
   segBtns.forEach(b => b.addEventListener("click", () => {
     sel.trip = b.dataset.trip;
-    segBtns.forEach(x => x.classList.toggle("on", x === b));
+    segBtns.forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
     refreshQuote();
   }));
-  segBtns.forEach(x => x.classList.toggle("on", x.dataset.trip === sel.trip));
+  segBtns.forEach(x => { x.classList.toggle("on", x.dataset.trip === sel.trip); x.setAttribute("aria-pressed", x.dataset.trip === sel.trip ? "true" : "false"); });
   const mv = document.getElementById("opt-minivan");
   if(mv) mv.addEventListener("change", () => { sel.minivan = mv.checked; refreshQuote(); });
   const ap = document.getElementById("opt-airport");
@@ -738,22 +773,23 @@ function refreshQuote(){
   const q = computeQuote();
   const priceStr = q.complex ? q.printed : money(q.total);
   document.getElementById("q-price").textContent = priceStr;
-  document.getElementById("q-sub").textContent = q.complex ? "" : (sel.trip === "round" ? "Round trip" : "One way");
+  document.getElementById("q-summary").textContent = q.complex ? "" : summaryLine(true);
   const bd = document.getElementById("q-breakdown");
   bd.innerHTML = (!q.complex && q.lines.length > 1) ? breakdownHtml(q.lines, q.total) : "";
   const open = proposals.find(p => p.fare_id === fare.id);
   const sg = document.getElementById("q-suggest");
   if(open){
-    sg.innerHTML = '<div class="note-line">A change to this price is pending — ' + open.votes + " of " + VOTES_NEEDED + ' votes.</div><button class="btn secondary" id="to-pending">See the board</button>';
+    sg.innerHTML = '<button class="propose-link" id="to-pending">Price change pending · ' + open.votes + " of " + VOTES_NEEDED + " votes</button>";
     document.getElementById("to-pending").addEventListener("click", renderPending);
   } else {
-    sg.innerHTML = '<button class="btn secondary" id="suggest" style="margin-top:14px">Propose a price change</button>';
+    sg.innerHTML = '<button class="propose-link" id="suggest">Price looks wrong? Suggest a change</button>';
     document.getElementById("suggest").addEventListener("click", openSuggestDrawer);
   }
 }
 
 function renderFlatbush(base){
   view = "flatbush"; setStep(3, zoneLabel(base));
+  document.getElementById("fab").style.display = "none";
   const grid = gridFor(base);
   h(
     '<div class="sub">' + esc(base) + " zone, by street and cross-street.</div>" +
@@ -761,12 +797,12 @@ function renderFlatbush(base){
       grid.rows.map(r => "<option>" + esc(r) + "</option>").join("") + "</select>" +
     '<label class="field">Cross-street</label><select id="fb-col">' +
       grid.cols.map(c => "<option>" + esc(c) + "</option>").join("") + "</select>" +
-    '<div class="price-big" id="fb-price"></div>' +
+    '<div class="price-big" id="fb-price" aria-live="polite"></div>' +
+    '<div class="q-summary" id="fb-summary"></div>' +
     '<div id="fb-extra-btns"></div>' +
     '<div id="fb-breakdown"></div>' +
-    '<div class="note-line">One way</div>' +
-    '<button class="btn" id="share">Share quote</button>' +
-    '<button class="btn secondary" id="new-rate">Start new rate</button>'
+    '<div class="loop-bar"><button class="btn" id="share">Share with coordinator</button>' +
+    '<button class="btn secondary" id="new-rate">Next rate</button></div>'
   );
   const upd = () => {
     const r = document.getElementById("fb-row").value;
@@ -778,6 +814,7 @@ function renderFlatbush(base){
     const showTotal = baseNum != null && exSum > 0;
     const shown = showTotal ? money(baseNum + exSum) : price;
     document.getElementById("fb-price").textContent = shown;
+    document.getElementById("fb-summary").textContent = summaryLine(false);
     document.getElementById("fb-breakdown").innerHTML = showTotal
       ? breakdownHtml([{ label: "Zone fare", amount: baseNum }].concat(exLines), baseNum + exSum) : "";
     wireExtraBtns("fb-extra-btns", upd);
@@ -795,6 +832,7 @@ function renderFlatbush(base){
 
 function renderNotListed(msg){
   view = "notlisted"; setStep(2, "Not listed");
+  document.getElementById("fab").style.display = "";
   h(
     '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
     '<button class="btn" id="add">Add this price</button>'
@@ -903,6 +941,7 @@ function openSuggestDrawer(){
 /* ---------- Pending changes ---------- */
 function renderPending(){
   view = "pending"; setStep(0, "Board");
+  document.getElementById("fab").style.display = "";
   const mine = myVotes();
   const sorted = [...proposals].sort((a, b) => b.votes - a.votes);
   h(    '<div class="group-label">Open votes</div>' +
