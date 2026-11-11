@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/q",
+      "destination": "/api/quote"
+    },
+    {
+      "source": "/s/:code",
+      "destination": "/api/quote?code=:code"
+    },
+    {
+      "source": "/ogimg",
+      "destination": "/api/ogimg"
+    }
+  ]
+}
