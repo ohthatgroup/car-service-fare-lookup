@@ -34,10 +34,33 @@
     border-bottom:1px solid var(--border); z-index:5;
   }
   nav .title{ font-weight:600; font-size:17px; letter-spacing:-.01em; }
-  nav .steps{ display:flex; align-items:center; gap:6px; margin-left:2px; }
-  nav .dot{ width:7px; height:7px; border-radius:50%; background:var(--border); }
-  nav .dot.on{ background:var(--accent); }
-  nav .step-label{ font-size:13px; color:var(--muted); }
+  nav #nav-back{ display:none; }
+  nav.in-flow #nav-back{ display:block; }
+  nav.in-flow #nav-pending{ display:none; }
+  nav.in-flow .title{ margin-left:auto; }
+  #steprow{ flex:none; display:flex; align-items:center; gap:10px; padding:8px 16px 4px; }
+  #steprow .steps{ display:flex; align-items:center; gap:7px; }
+  #steprow .dot{ width:9px; height:9px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; }
+  #steprow .dot.done{ background:var(--accent); cursor:pointer; }
+  #steprow .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  #steprow .step-label{ font-size:13.5px; color:var(--muted); }
+  #details-bar{
+    flex:none; text-align:center; padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--border);
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  }
+  #details-bar button{ background:none; border:0; color:var(--accent); font-size:15px; cursor:pointer; padding:4px 10px; }
+  #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
+  #modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.42); }
+  #modal .sheet{
+    position:relative; background:var(--surface); color:var(--text);
+    border-radius:18px; max-width:440px; width:100%; padding:20px 20px 14px;
+    box-shadow:0 18px 50px rgba(0,0,0,.28);
+  }
+  #modal .sheet-head{ display:flex; align-items:center; justify-content:space-between; font-weight:600; font-size:17px; margin-bottom:6px; }
+  #modal .sheet-head button{ background:none; border:0; color:var(--muted); font-size:17px; cursor:pointer; padding:4px 6px; }
+  #modal .sheet p{ color:var(--muted); font-size:14.5px; line-height:1.55; margin:8px 0; }
   nav .spacer{ flex:1; }
   nav button.link{
     background:none; border:0; color:var(--accent); font-size:15px; padding:6px 2px; cursor:pointer;
@@ -104,10 +127,6 @@
   label.field{ display:block; font-size:14px; color:var(--muted); margin:16px 2px 6px; }
   .empty{ text-align:center; color:var(--muted); padding:28px 10px; font-size:16px; }
   .error{ color:var(--danger); text-align:center; padding:14px; font-size:15px; }
-  details.details{ margin-top:30px; }
-  details.details summary{ color:var(--accent); font-size:15px; cursor:pointer; list-style:none; }
-  details.details .body{ color:var(--muted); font-size:14.5px; line-height:1.55; margin-top:10px; }
-  details.details .body p{ margin:8px 0; }
   footer{ text-align:center; color:var(--muted); font-size:12.5px; padding:22px 0 6px; }
   .pill-row{ display:flex; margin:2px 0 12px; }
   .pill{
@@ -122,28 +141,32 @@
 </style>
 </head>
 <body>
-<nav>
+<nav id="topnav">
+  <button class="link" id="nav-back">‹ Start over</button>
   <span class="title">Fare Lookup</span>
-  <span class="steps" id="nav-steps">
-    <span class="dot" data-dot="1"></span><span class="dot" data-dot="2"></span>
-    <span class="dot" data-dot="3"></span>
-    <span class="step-label" id="step-label">Step 1 of 3</span>
-  </span>
   <span class="spacer"></span>
-  <button class="link" id="nav-pending">Pending<span class="badge hidden" id="pending-count">0</span></button>
+  <button class="link" id="nav-pending">Vote<span class="badge hidden" id="pending-count">0</span></button>
 </nav>
+<div id="steprow">
+  <span class="steps" id="nav-steps">
+    <button class="dot" data-dot="1" aria-label="Step 1"></button><button class="dot" data-dot="2" aria-label="Step 2"></button><button class="dot" data-dot="3" aria-label="Step 3"></button>
+  </span>
+  <span class="step-label" id="step-label">Where from?</span>
+</div>
 <div id="scroll">
   <div class="col">
     <div id="view"></div>
-    <details class="details" id="details-box">
-      <summary>Details</summary>
-      <div class="body">
-        <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
-        <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
-        <p>Prices anyone adds go live right away. Changing a price takes a proposal plus 10 votes from different people — the current price stays until the votes are in.</p>
-      </div>
-    </details>
     <footer>May 2023 sheet · Community updates since</footer>
+  </div>
+</div>
+<div id="details-bar"><button id="details-btn">Details</button></div>
+<div id="modal" class="hidden">
+  <div class="backdrop" id="modal-backdrop"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
+    <div class="sheet-head"><span>Details</span><button id="modal-close" aria-label="Close">✕</button></div>
+    <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
+    <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
+    <p>Prices anyone adds go live right away. Changing a price takes a proposal plus 10 votes from different people — the current price stays until the votes are in.</p>
   </div>
 </div>
 <script src="config.js"></script>
@@ -184,6 +207,7 @@ let proposals = [];      // open proposals
 let places = [];         // all pickable places
 let sel = {};            // current wizard selection
 let view = "step1";      // step1|step2|options|result|flatbush|add|suggest|pending
+let inFlow = false;      // true once a starting point is picked
 const VOTES_NEEDED = 10; // votes required for a proposed price change to apply
 
 const $view = document.getElementById("view");
@@ -308,12 +332,23 @@ function optionsApply(){
 }
 
 /* ---------- rendering helpers ---------- */
+const STEP_NAMES = { 1: "Where from?", 2: "Where to?", 3: "Price" };
+let currentStep = 1;
 function setStep(n, label){
+  currentStep = n;
   document.querySelectorAll("#nav-steps .dot").forEach(d => {
-    d.classList.toggle("on", Number(d.dataset.dot) <= n);
+    const dn = Number(d.dataset.dot);
+    d.classList.toggle("done", dn < n);
+    d.classList.toggle("current", dn === n);
   });
-  document.getElementById("step-label").textContent = label || ("Step " + n + " of 3");
+  document.getElementById("step-label").textContent = label || STEP_NAMES[n] || "";
+  document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   $scroll.scrollTop = 0;
+}
+function goToStep(n){
+  if(n >= currentStep) return;
+  if(n === 1) renderPlacePicker(1);
+  else if(n === 2 && sel.from) renderPlacePicker(2);
 }
 function h(html){ $view.innerHTML = html; }
 
@@ -367,6 +402,7 @@ function bindPlaceRows(step){
   });
 }
 function pickPlace(step, place){
+  inFlow = true;
   if(step === 1){
     sel.from = place; renderPlacePicker(2);
   } else {
@@ -667,6 +703,16 @@ function renderPending(){
 
 /* ---------- init ---------- */
 document.getElementById("nav-pending").addEventListener("click", renderPending);
+document.getElementById("nav-back").addEventListener("click", () => {
+  inFlow = false; sel = {}; renderPlacePicker(1);
+});
+document.querySelectorAll("#nav-steps .dot").forEach(d => {
+  d.addEventListener("click", () => goToStep(Number(d.dataset.dot)));
+});
+const $modal = document.getElementById("modal");
+document.getElementById("details-btn").addEventListener("click", () => $modal.classList.remove("hidden"));
+document.getElementById("modal-close").addEventListener("click", () => $modal.classList.add("hidden"));
+document.getElementById("modal-backdrop").addEventListener("click", () => $modal.classList.add("hidden"));
 
 async function init(){
   if(!SB || !KEY){
@@ -679,6 +725,7 @@ async function init(){
     await loadData();
     const q = new URLSearchParams(location.search);
     if(q.get("gf") && gridFor(q.get("gf"))){
+      inFlow = true;
       renderFlatbush(q.get("gf"));
       const fr = document.getElementById("fb-row"), fc = document.getElementById("fb-col");
       if(q.get("gr")) fr.value = q.get("gr");
@@ -687,6 +734,7 @@ async function init(){
     } else if(q.get("f") && q.get("t")){
       const res = findFare(q.get("f"), q.get("t"));
       if(res){
+        inFlow = true;
         sel.from = q.get("f"); sel.to = q.get("t"); sel.resolved = res;
         sel.trip = (q.get("trip") === "round" && res.fare.round_trip) ? "round" : "oneway";
         sel.minivan = q.get("mv") === "1"; sel.airport = q.get("ap") === "1";
