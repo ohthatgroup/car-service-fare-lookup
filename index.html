@@ -105,6 +105,15 @@
   details.details .body{ color:var(--muted); font-size:14.5px; line-height:1.55; margin-top:10px; }
   details.details .body p{ margin:8px 0; }
   footer{ text-align:center; color:var(--muted); font-size:12.5px; padding:22px 0 6px; }
+  .pill-row{ display:flex; margin:2px 0 12px; }
+  .pill{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 8px 8px 14px;
+    background:var(--chip); border-radius:980px; font-size:15px; font-weight:500;
+  }
+  .pill button{
+    border:0; background:var(--surface); color:var(--muted); width:22px; height:22px;
+    border-radius:50%; font-size:13px; line-height:1; cursor:pointer; padding:0;
+  }
   .hidden{ display:none !important; }
 </style>
 </head>
@@ -113,8 +122,8 @@
   <span class="title">Fare Lookup</span>
   <span class="steps" id="nav-steps">
     <span class="dot" data-dot="1"></span><span class="dot" data-dot="2"></span>
-    <span class="dot" data-dot="3"></span><span class="dot" data-dot="4"></span>
-    <span class="step-label" id="step-label">Step 1 of 4</span>
+    <span class="dot" data-dot="3"></span>
+    <span class="step-label" id="step-label">Step 1 of 3</span>
   </span>
   <span class="spacer"></span>
   <button class="link" id="nav-pending">Pending<span class="badge hidden" id="pending-count">0</span></button>
@@ -279,7 +288,7 @@ function setStep(n, label){
   document.querySelectorAll("#nav-steps .dot").forEach(d => {
     d.classList.toggle("on", Number(d.dataset.dot) <= n);
   });
-  document.getElementById("step-label").textContent = label || ("Step " + n + " of 4");
+  document.getElementById("step-label").textContent = label || ("Step " + n + " of 3");
   $scroll.scrollTop = 0;
 }
 function h(html){ $view.innerHTML = html; }
@@ -310,6 +319,7 @@ function renderPlacePicker(step){
   const showFlatbush = !isFrom && sel.from === "Borough Park";
   h(
     "<h1>" + (isFrom ? "Where from?" : "Where to?") + "</h1>" +
+    (isFrom ? "" : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
     '<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
     (showFlatbush
       ? '<div class="list"><button class="row" data-place="' + esc(FLATBUSH_NAME) + '">' + esc(FLATBUSH_NAME) + '<span class="tag">Borough Park</span><span class="chev">›</span></button></div>'
@@ -323,6 +333,8 @@ function renderPlacePicker(step){
     bindPlaceRows(step);
   });
   bindPlaceRows(step);
+  const px = document.getElementById("pill-x");
+  if(px) px.addEventListener("click", () => renderPlacePicker(1));
   document.getElementById("add-link").addEventListener("click", () => renderAdd(isFrom ? {} : { from: sel.from }));
 }
 function bindPlaceRows(step){
@@ -350,37 +362,7 @@ function afterRoutePicked(){
   if(!res){ renderNotListed(""); return; }
   sel.resolved = res;
   sel.trip = "oneway"; sel.minivan = false; sel.airport = false;
-  if(optionsApply().any) renderOptions(); else renderResult();
-}
-
-function renderOptions(){
-  view = "options"; setStep(3);
-  const { fare } = sel.resolved;
-  const o = optionsApply();
-  h(
-    "<h1>Trip options</h1>" +
-    '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + "</div>" +
-    '<div class="seg" id="seg-trip">' +
-      '<button data-trip="oneway" class="on">One way</button>' +
-      '<button data-trip="round"' + (o.hasRT ? "" : " disabled") + ">Round trip</button>" +
-    "</div>" +
-    (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price))) + "</span></label>" : "") +
-    (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+$5</span></label>' : "") +
-    '<button class="btn" id="to-price">See price</button>' +
-    '<button class="quiet-link" id="back">‹ Start over</button>'
-  );
-  $view.querySelectorAll("#seg-trip button").forEach(b => {
-    b.addEventListener("click", () => {
-      sel.trip = b.dataset.trip;
-      $view.querySelectorAll("#seg-trip button").forEach(x => x.classList.toggle("on", x === b));
-    });
-  });
-  const mv = document.getElementById("opt-minivan");
-  if(mv) mv.addEventListener("change", () => sel.minivan = mv.checked);
-  const ap = document.getElementById("opt-airport");
-  if(ap) ap.addEventListener("change", () => sel.airport = ap.checked);
-  document.getElementById("to-price").addEventListener("click", renderResult);
-  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
+  renderQuote();
 }
 
 function quoteText(priceStr){
@@ -388,45 +370,72 @@ function quoteText(priceStr){
     (sel.trip === "round" ? " (round trip)" : " (one way)");
 }
 
-function renderResult(){
-  view = "result"; setStep(4);
+function renderQuote(){
+  view = "quote"; setStep(3);
   const { fare } = sel.resolved;
-  const q = computeQuote();
-  const priceStr = q.complex ? q.printed : money(q.total);
-  const open = proposals.find(p => p.fare_id === fare.id);
-  let breakdown = "";
-  if(!q.complex && q.lines.length > 1){
-    breakdown = '<div class="breakdown">' + q.lines.map(l =>
-      '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") +
-      '<div class="line total"><span>Total</span><span>' + money(q.total) + "</span></div></div>";
-  }
+  const o = optionsApply();
   h(
     '<div class="route-line">' + esc(sel.from) + " → " + esc(sel.to) + "</div>" +
-    '<div class="price-big">' + esc(priceStr) + "</div>" +
-    (q.complex ? "" : '<div class="route-line">' + (sel.trip === "round" ? "Round trip" : "One way") + "</div>") +
-    breakdown +
+    '<div class="price-big" id="q-price"></div>' +
+    '<div class="route-line" id="q-sub"></div>' +
+    (o.hasRT ? '<div class="seg" id="seg-trip" style="margin-top:20px">' +
+      '<button data-trip="oneway" class="on">One way</button>' +
+      '<button data-trip="round">Round trip</button></div>' : "") +
+    (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price))) + "</span></label>" : "") +
+    (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+$5</span></label>' : "") +
+    '<div id="q-breakdown"></div>' +
     '<div class="note-line">' + (fare.origin === "community" ? "Community price" : "May 2023 sheet") +
       (fare.note ? " · " + esc(fare.note) : "") + "</div>" +
     '<button class="btn" id="copy">Copy quote</button>' +
-    (open
-      ? '<div class="note-line">A change to this price is pending — ' + open.votes + " of " + VOTES_NEEDED + ' votes.</div><button class="btn secondary" id="to-pending">See pending changes</button>'
-      : '<button class="quiet-link" id="suggest">Suggest a different price</button>') +
-    '<br><button class="quiet-link" id="again">‹ Start over</button>'
+    '<div id="q-suggest"></div>' +
+    '<button class="quiet-link" id="again">‹ Start over</button>'
   );
+  const segBtns = $view.querySelectorAll("#seg-trip button");
+  segBtns.forEach(b => b.addEventListener("click", () => {
+    sel.trip = b.dataset.trip;
+    segBtns.forEach(x => x.classList.toggle("on", x === b));
+    refreshQuote();
+  }));
+  const mv = document.getElementById("opt-minivan");
+  if(mv) mv.addEventListener("change", () => { sel.minivan = mv.checked; refreshQuote(); });
+  const ap = document.getElementById("opt-airport");
+  if(ap) ap.addEventListener("change", () => { sel.airport = ap.checked; refreshQuote(); });
   document.getElementById("copy").addEventListener("click", async (e) => {
+    const q = computeQuote();
+    const priceStr = q.complex ? q.printed : money(q.total);
     try { await navigator.clipboard.writeText(quoteText(priceStr)); e.target.textContent = "✓ Copied"; }
     catch(err){ e.target.textContent = quoteText(priceStr); }
     setTimeout(() => e.target.textContent = "Copy quote", 1600);
   });
-  const tp = document.getElementById("to-pending");
-  if(tp) tp.addEventListener("click", renderPending);
-  const sg = document.getElementById("suggest");
-  if(sg) sg.addEventListener("click", renderSuggest);
   document.getElementById("again").addEventListener("click", () => renderPlacePicker(1));
+  refreshQuote();
+}
+
+function refreshQuote(){
+  const { fare } = sel.resolved;
+  const q = computeQuote();
+  const priceStr = q.complex ? q.printed : money(q.total);
+  document.getElementById("q-price").textContent = priceStr;
+  document.getElementById("q-sub").textContent = q.complex ? "" : (sel.trip === "round" ? "Round trip" : "One way");
+  const bd = document.getElementById("q-breakdown");
+  if(!q.complex && q.lines.length > 1){
+    bd.innerHTML = '<div class="breakdown">' + q.lines.map(l =>
+      '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") +
+      '<div class="line total"><span>Total</span><span>' + money(q.total) + "</span></div></div>";
+  } else bd.innerHTML = "";
+  const open = proposals.find(p => p.fare_id === fare.id);
+  const sg = document.getElementById("q-suggest");
+  if(open){
+    sg.innerHTML = '<div class="note-line">A change to this price is pending — ' + open.votes + " of " + VOTES_NEEDED + ' votes.</div><button class="btn secondary" id="to-pending">See pending changes</button>';
+    document.getElementById("to-pending").addEventListener("click", renderPending);
+  } else {
+    sg.innerHTML = '<button class="quiet-link" id="suggest">Suggest a different price</button>';
+    document.getElementById("suggest").addEventListener("click", renderSuggest);
+  }
 }
 
 function renderFlatbush(){
-  view = "flatbush"; setStep(2, "Flatbush zone fare");
+  view = "flatbush"; setStep(3, "Flatbush zone fare");
   h(
     "<h1>Flatbush zone fare</h1>" +
     '<div class="sub">Borough Park ↔ Flatbush, by street and cross-street.</div>' +
@@ -434,28 +443,27 @@ function renderFlatbush(){
       FLATBUSH_ROWS.map((r,i) => '<option value="' + i + '">' + esc(r[0]) + "</option>").join("") + "</select>" +
     '<label class="field">Cross-street</label><select id="fb-col">' +
       FLATBUSH_COLS.map((c,i) => '<option value="' + i + '">' + esc(c) + "</option>").join("") + "</select>" +
-    '<button class="btn" id="fb-go">See price</button>' +
-    '<button class="quiet-link" id="back">‹ Start over</button>'
+    '<div class="price-big" id="fb-price"></div>' +
+    '<div class="note-line" id="fb-note"></div>' +
+    '<button class="btn" id="copy">Copy quote</button>' +
+    '<br><button class="quiet-link" id="back">‹ Start over</button>'
   );
-  document.getElementById("fb-go").addEventListener("click", () => {
+  const upd = () => {
     const ri = Number(document.getElementById("fb-row").value);
     const ci = Number(document.getElementById("fb-col").value);
     const val = FLATBUSH_ROWS[ri][1][ci];
-    sel.trip = "oneway";
-    view = "result"; setStep(4);
-    h(
-      '<div class="route-line">Borough Park ↔ Flatbush · ' + esc(FLATBUSH_ROWS[ri][0]) + " × " + esc(FLATBUSH_COLS[ci]) + "</div>" +
-      '<div class="price-big">' + (val === 0 ? "—" : money(val)) + "</div>" +
-      (val === 0 ? '<div class="note-line">This cell is unreadable on the sheet — unverified.</div>' : '<div class="note-line">May 2023 sheet · One way</div>') +
-      '<button class="btn" id="copy">Copy quote</button>' +
-      '<br><button class="quiet-link" id="again">‹ Start over</button>'
-    );
-    document.getElementById("copy").addEventListener("click", async (e) => {
-      const txt = "Borough Park ↔ Flatbush (" + FLATBUSH_ROWS[ri][0] + " × " + FLATBUSH_COLS[ci] + "): " + (val === 0 ? "unverified" : money(val));
-      try { await navigator.clipboard.writeText(txt); e.target.textContent = "✓ Copied"; } catch(err){}
-      setTimeout(() => e.target.textContent = "Copy quote", 1600);
-    });
-    document.getElementById("again").addEventListener("click", () => renderPlacePicker(1));
+    document.getElementById("fb-price").textContent = val === 0 ? "—" : money(val);
+    document.getElementById("fb-note").textContent = val === 0
+      ? "This cell is unreadable on the sheet — unverified."
+      : "May 2023 sheet · One way";
+    sel.fbText = "Borough Park ↔ Flatbush (" + FLATBUSH_ROWS[ri][0] + " × " + FLATBUSH_COLS[ci] + "): " + (val === 0 ? "unverified" : money(val));
+  };
+  document.getElementById("fb-row").addEventListener("change", upd);
+  document.getElementById("fb-col").addEventListener("change", upd);
+  upd();
+  document.getElementById("copy").addEventListener("click", async (e) => {
+    try { await navigator.clipboard.writeText(sel.fbText); e.target.textContent = "✓ Copied"; } catch(err){}
+    setTimeout(() => e.target.textContent = "Copy quote", 1600);
   });
   document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
 }
@@ -527,14 +535,14 @@ function renderAdd(prefill){
     await loadData();
     sel.from = from; sel.to = to;
     const res = findFare(from, to);
-    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; renderResult(); }
+    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; renderQuote(); }
     else renderPlacePicker(1);
   });
 }
 
 /* ---------- Suggest a change ---------- */
 function renderSuggest(){
-  view = "suggest"; setStep(4, "Suggest a change");
+  view = "suggest"; setStep(3, "Suggest a change");
   const { fare } = sel.resolved;
   h(
     "<h1>Suggest a new price</h1>" +
@@ -545,7 +553,7 @@ function renderSuggest(){
     '<button class="btn" id="s-save">Post suggestion</button>' +
     '<button class="quiet-link" id="back">‹ Back to price</button>'
   );
-  document.getElementById("back").addEventListener("click", renderResult);
+  document.getElementById("back").addEventListener("click", renderQuote);
   document.getElementById("s-save").addEventListener("click", async () => {
     let price = document.getElementById("s-price").value.trim();
     const rt = document.getElementById("s-rt").value.trim();
