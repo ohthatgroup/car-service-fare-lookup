@@ -62,14 +62,16 @@ async function resolveShare(code){
   const row = rows && rows[0];
   if(!row) return null;
   const ex = extrasOf(row);
-  const extras = ex.parts.join(" · ");
+  const custom = row.custom_price != null ? Number(row.custom_price) : null;
+  const extras = ((custom != null ? ["CUSTOM $" + trimNum(custom)] : []).concat(ex.parts)).join(" · ");
   if(row.grid){
     const cells = await db("grid_cells?base=eq." + encodeURIComponent(row.grid.base) +
       "&row_index=eq." + row.grid.row + "&col_index=eq." + row.grid.col + "&select=price");
     const cell = cells && cells[0];
     const p = cell ? plainPrice(cell.price) : null;
+    const base = custom != null ? custom : p;
     return { route: row.grid.base + " zone fare",
-      amount: p != null ? money(p + ex.add) : (cell ? cell.price : ""), extras,
+      amount: base != null ? money(base + ex.add) : (cell ? cell.price : ""), extras,
       appParams: { sh: row.code } };
   }
   if(row.fare_id){
@@ -82,14 +84,16 @@ async function resolveShare(code){
     const round = row.trip === "round" && !!fare.round_trip;
     const rtVal = fare.round_trip ? plainPrice(fare.round_trip) : null;
     let total = null, printed = fare.price;
-    if(round && rtVal != null){ total = rtVal; printed = fare.round_trip; }
-    else if(!round && oneWay != null){ total = oneWay; }
+    if(round && rtVal != null){ total = custom != null ? custom : rtVal; printed = fare.round_trip; }
+    else if(round && custom != null){ total = custom; printed = fare.round_trip; }
+    else if(!round && oneWay != null){ total = custom != null ? custom : oneWay; }
+    else if(!round && custom != null){ total = custom; }
     else if(round){ printed = fare.round_trip; }
     if(total != null){
       total += ex.add;
       if(row.airport && rules && rules.airport_pickup_fee != null) total += Number(rules.airport_pickup_fee);
       if(row.minivan){
-        const add = miniVanAddition(oneWay, rules);
+        const add = miniVanAddition(!round && custom != null ? custom : oneWay, rules);
         if(add != null) total += add;
       }
     }

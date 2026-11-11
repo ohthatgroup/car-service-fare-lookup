@@ -474,6 +474,7 @@ create table if not exists public.shares (
   wait_amount numeric,
   wait_unit text,
   wait_hours numeric,
+  custom_price numeric,
   addons jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );

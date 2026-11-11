@@ -22,12 +22,14 @@ problems by building things — using LLMs and a bit of creativity.
 - **Price page, built around the driver loop** — get a rate, share it with
   the coordinator, get the next rate. A pinned bar at the bottom holds
   exactly two actions: **Share price** (primary) and **New rate**.
-  Modifiers are plain rows, wait/extra are quiet text links, and suggesting
-  a price change is a small muted link at the bottom — community maintenance,
-  not part of the loop.
-- **Extras** — under the price, **Add wait** (per hour or flat) and
-  **Add extra** (custom charges like tolls) open drawers and roll into the
-  total and the breakdown.
+  Modifiers are plain rows, and suggesting a price change is a small muted
+  link at the bottom — community maintenance, not part of the loop.
+- **Customize price** — one drawer to customize the quote for this ride:
+  change the base price (the list price is shown next to it, and only this
+  quote changes — nothing is proposed or voted on), add wait (per hour or
+  flat), and add custom charges like tolls. Everything rolls into the total,
+  the breakdown (which shows the list price next to the custom one), and the
+  shared link.
 - **Share price** — shares a short link (e.g. `farelookup.vercel.app/s/83`)
   built for WhatsApp: the link preview image *is* the amount, options and
   extras included, and the link opens straight on the quote.

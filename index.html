@@ -147,25 +147,6 @@
   .price-big{ font-size:52px; font-weight:700; letter-spacing:-.03em; text-align:center; margin:32px 0 4px; }
   .route-line{ text-align:center; font-size:17px; color:var(--text); font-weight:600; }
   .q-summary{ text-align:center; font-size:15px; color:var(--muted); margin-top:2px; }
-  .extra-links{ display:flex; justify-content:center; flex-wrap:wrap; gap:10px 28px; margin:14px auto 0; max-width:340px; }
-  .extra-links button{ background:none; border:0; color:var(--link); font-size:15px; padding:12px 0; cursor:pointer; min-height:44px; }
-  .extra-chip{ display:inline-flex; align-items:center; background:var(--chip); border-radius:980px; padding:4px 4px 4px 14px; }
-  .extra-chip button{ background:none; border:0; color:var(--text); font-size:15px; padding:8px 4px; cursor:pointer; min-height:36px; }
-  .extra-chip .extra-chip-x{ color:var(--muted); width:32px; height:32px; min-height:32px; border-radius:50%; padding:0; font-size:13px; flex:none; }
-  .extra-btns{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
-  .extra-btn{
-    border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit;
-    font-size:15.5px; font-weight:500; padding:13px 10px; border-radius:14px; cursor:pointer;
-  }
-  .extra-btn:active{ background:var(--chip); }
-  .extra-btn .x-plus{ color:var(--accent); font-weight:600; }
-  .extra-row{ display:flex; align-items:center; gap:8px; margin:8px 0; }
-  .extra-row .xa-name{ flex:1; min-width:0; }
-  .extra-row input[type="text"]{ padding:10px 12px; font-size:16px; }
-  .extra-row .x-amt{ width:88px; flex:none; }
-  .extra-row .x-unit{ width:112px; flex:none; padding:10px 8px; font-size:15px; }
-  .extra-row .x-hrs{ width:58px; flex:none; }
-  .extra-row .x-del{ flex:none; border:0; background:var(--chip); color:var(--muted); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:13px; }
   .xa-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin:12px 0; }
   .xa-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
   .xa-title{ font-size:14px; font-weight:600; color:var(--muted); }
@@ -418,62 +399,22 @@ function breakdownHtml(lines, total){
   return '<div class="breakdown">' + lines.map(l =>
     '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") + "</div>";
 }
-function extraBtnsHtml(){
-  const w = sel.wait || {};
-  const wa = parseFloat(w.amount);
-  const waitSet = !!(wa && wa > 0);
-  const hrs = parseFloat(w.hours) || 1;
-  const waitLabel = waitSet
-    ? "Wait " + (w.unit === "once" ? money(wa) : hrs + " hr · " + money(wa * hrs))
-    : "Add wait";
-  const adds = (sel.addons || []).filter(a => a.name && a.name.trim() && parseFloat(a.amount) > 0);
-  const addSum = adds.reduce((sm, a) => sm + parseFloat(a.amount), 0);
-  const addLabel = adds.length ? "Extra · " + money(addSum) : "Add extra";
-  return '<div class="extra-links">' +
-    (waitSet
-      ? '<span class="extra-chip"><button id="x-wait-btn">' + esc(waitLabel) + '</button><button class="extra-chip-x" id="x-wait-x" aria-label="Remove wait">✕</button></span>'
-      : '<button id="x-wait-btn"><span class="x-plus">+</span> ' + esc(waitLabel) + "</button>") +
-    (adds.length
-      ? '<span class="extra-chip"><button id="x-extra-btn">' + esc(addLabel) + '</button><button class="extra-chip-x" id="x-extra-x" aria-label="Remove extra charges">✕</button></span>'
-      : '<button id="x-extra-btn"><span class="x-plus">+</span> ' + esc(addLabel) + "</button>") + "</div>";
+function currentTripKey(){ return view === "flatbush" ? "flatbush" : (sel.trip === "round" ? "round" : "oneway"); }
+function currentListBase(){
+  if(view === "flatbush") return sel.fb ? plainPrice(sel.fb.price) : null;
+  if(!sel.resolved) return null;
+  const { fare } = sel.resolved;
+  return sel.trip === "round" && fare.round_trip ? plainPrice(fare.round_trip) : plainPrice(fare.price);
 }
-function wireExtraBtns(mountId, onChange){
-  const m = document.getElementById(mountId);
-  if(!m) return;
-  m.innerHTML = extraBtnsHtml();
-  m.querySelector("#x-wait-btn").addEventListener("click", () => openWaitDrawer(onChange));
-  m.querySelector("#x-extra-btn").addEventListener("click", () => openExtrasDrawer(onChange));
-  const wx = m.querySelector("#x-wait-x");
-  if(wx) wx.addEventListener("click", (e) => { e.stopPropagation(); sel.wait = { amount: "", unit: "hour", hours: 1 }; onChange(); });
-  const ax = m.querySelector("#x-extra-x");
-  if(ax) ax.addEventListener("click", (e) => { e.stopPropagation(); sel.addons = []; onChange(); });
-}
-function openWaitDrawer(onChange){
+function openCustomizeDrawer(onChange){
   const w = sel.wait || (sel.wait = { amount: "", unit: "hour", hours: 1 });
-  const body = () =>
-    '<div class="sub">Waiting time, charged on top of the fare.</div>' +
-    (w.unit === "hour" ? '<label class="field">Hours</label><div class="x-hrs-row"><input type="text" id="x-wait-hrs" inputmode="numeric" maxlength="2" value="' + esc(w.hours || 1) + '"><span class="votes">hrs</span></div>' : "") +
-    '<label class="field">Amount</label>' +
-    '<input type="text" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '">' +
-    '<label class="field">Type</label>' +
-    '<select id="x-wait-unit"><option value="hour"' + (w.unit === "hour" ? " selected" : "") + '>per hour</option><option value="once"' + (w.unit === "once" ? " selected" : "") + '>add-on</option></select>' +
-    '<button class="btn" id="x-done">Done</button>';
-  openDrawer("Add wait", body());
-  const wire = () => {
-    document.getElementById("x-wait-amt").addEventListener("input", e => { w.amount = e.target.value; onChange(); });
-    document.getElementById("x-wait-unit").addEventListener("change", e => {
-      w.unit = e.target.value;
-      document.getElementById("sheet-body").innerHTML = body(); wire(); onChange();
-    });
-    const hrs = document.getElementById("x-wait-hrs");
-    if(hrs) hrs.addEventListener("input", e => { w.hours = e.target.value; onChange(); });
-    document.getElementById("x-done").addEventListener("click", closeDrawer);
-  };
-  wire();
-}
-function openExtrasDrawer(onChange){
   if(!sel.addons) sel.addons = [];
+  const listBase = currentListBase();
+  const tripKey = currentTripKey();
   const body = () => {
+    const cp = sel.customPrice;
+    const isCustom = !!(cp && cp.trip === tripKey && cp.price > 0);
+    const shown = isCustom ? cp.price : listBase;
     const rows = sel.addons.map((a, i) =>
       '<div class="xa-card"><div class="xa-head"><span class="xa-title">Add-on ' + (i + 1) + '</span>' +
       '<button class="x-del" data-i="' + i + '" aria-label="Remove">✕</button></div>' +
@@ -481,27 +422,55 @@ function openExtrasDrawer(onChange){
       '<input type="text" class="xa-name" data-i="' + i + '" placeholder="Name (e.g. Toll)" value="' + esc(a.name || "") + '">' +
       '<label class="field">Amount</label>' +
       '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="$" value="' + esc(a.amount || "") + '"></div>').join("");
-    return '<div class="sub">Custom charges on top of the fare — tolls, extra stops, anything else.</div>' + rows +
+    return '<div class="group-label" style="margin-top:2px">Price</div>' +
+      '<input type="text" id="x-price" inputmode="decimal" placeholder="$" value="' + esc(shown != null ? String(shown) : "") + '">' +
+      (listBase != null ? '<div class="os-line" style="text-align:left;margin:6px 0 0">List price ' + money(listBase) + (isCustom ? ' · <button class="quiet-link" id="x-reset-price" style="padding:0">Reset</button>' : "") + '</div>' : "") +
+      '<div class="group-label">Wait</div>' +
+      (w.unit === "hour" ? '<label class="field">Hours</label><div class="x-hrs-row"><input type="text" id="x-wait-hrs" inputmode="numeric" maxlength="2" value="' + esc(w.hours || 1) + '"><span class="votes">hrs</span></div>' : "") +
+      '<label class="field">Amount</label>' +
+      '<input type="text" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '">' +
+      '<label class="field">Type</label>' +
+      '<select id="x-wait-unit"><option value="hour"' + (w.unit === "hour" ? " selected" : "") + '>per hour</option><option value="once"' + (w.unit === "once" ? " selected" : "") + '>add-on</option></select>' +
+      '<div class="group-label">Add-ons</div>' +
+      rows +
       '<button class="quiet-link" id="x-add">+ Custom add-on</button>' +
       '<button class="btn" id="x-done">Done</button>';
   };
-  openDrawer("Add extra", body());
+  openDrawer("Customize price", body());
   const wire = () => {
     const root = document.getElementById("sheet-body");
+    const price = document.getElementById("x-price");
+    if(price) price.addEventListener("input", e => {
+      const v = parseFloat(String(e.target.value).replace(/[$,]/g, ""));
+      if(v > 0 && listBase != null && v !== listBase) sel.customPrice = { trip: tripKey, price: v };
+      else sel.customPrice = null;
+      onChange();
+    });
+    const reset = document.getElementById("x-reset-price");
+    if(reset) reset.addEventListener("click", () => { sel.customPrice = null; root.innerHTML = body(); wire(); onChange(); });
+    const amt = document.getElementById("x-wait-amt");
+    if(amt) amt.addEventListener("input", e => { w.amount = e.target.value; onChange(); });
+    document.getElementById("x-wait-unit").addEventListener("change", e => {
+      w.unit = e.target.value;
+      root.innerHTML = body(); wire(); onChange();
+    });
+    const hrs = document.getElementById("x-wait-hrs");
+    if(hrs) hrs.addEventListener("input", e => { w.hours = e.target.value; onChange(); });
     root.querySelectorAll(".xa-name").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].name = e.target.value; onChange(); }));
     root.querySelectorAll(".xa-amt").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].amount = e.target.value; onChange(); }));
     root.querySelectorAll(".x-del").forEach(b => b.addEventListener("click", e => {
       sel.addons.splice(Number(e.target.dataset.i), 1);
-      document.getElementById("sheet-body").innerHTML = body(); wire(); onChange();
+      root.innerHTML = body(); wire(); onChange();
     }));
     document.getElementById("x-add").addEventListener("click", () => {
       sel.addons.push({ name: "", amount: "" });
-      document.getElementById("sheet-body").innerHTML = body(); wire();
+      root.innerHTML = body(); wire();
     });
     document.getElementById("x-done").addEventListener("click", closeDrawer);
   };
   wire();
 }
+
 function extrasPayload(){
   const w = sel.wait || {};
   const wa = parseFloat(w.amount);
@@ -523,12 +492,16 @@ function computeQuote(){
   const { fare, reversed } = sel.resolved;
   const oneWay = plainPrice(fare.price);
   const rt = fare.round_trip ? plainPrice(fare.round_trip) : null;
-  if(sel.trip === "round" && fare.round_trip && rt == null){
+  const cp = sel.customPrice;
+  const custom = (cp && cp.trip === sel.trip && cp.price > 0) ? cp.price : null;
+  if(sel.trip === "round" && fare.round_trip && rt == null && custom == null){
     return { total: null, lines: [], complex: true, printed: fare.round_trip };
   }
-  if(sel.trip === "round" && rt != null){
-    const lines = [{ label: "Base fare", amount: rt }];
-    let total = rt;
+  if(sel.trip === "round" && fare.round_trip && (rt != null || custom != null)){
+    const lines = [];
+    if(custom != null && rt != null) lines.push({ label: "List price", amount: rt });
+    lines.push({ label: "Base fare", amount: custom != null ? custom : rt });
+    let total = custom != null ? custom : rt;
     if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
     if(sel.minivan){
       const add = miniVanAddition(oneWay, fare.from_place);
@@ -536,14 +509,16 @@ function computeQuote(){
     }
     return withExtras(total, lines);
   }
-  if(oneWay == null){
+  if(oneWay == null && custom == null){
     return { total: null, lines: [], complex: true, printed: fare.price };
   }
-  const lines = [{ label: "Base fare", amount: oneWay }];
-  let total = oneWay;
+  const lines = [];
+  if(custom != null && oneWay != null) lines.push({ label: "List price", amount: oneWay });
+  lines.push({ label: "Base fare", amount: custom != null ? custom : oneWay });
+  let total = custom != null ? custom : oneWay;
   if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
   if(sel.minivan){
-    const add = miniVanAddition(oneWay, fare.from_place);
+    const add = miniVanAddition(custom != null ? custom : oneWay, fare.from_place);
     if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
   }
   return withExtras(total, lines);
@@ -633,7 +608,7 @@ function placeListHTML(query, exclude){
 function renderPlacePicker(step){
   document.getElementById("fab").style.display = "";
   const isFrom = step === 1;
-  if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; }
+  if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; sel.customPrice = null; }
   view = isFrom ? "step1" : "step2";
   setStep(step);
   const other = isFrom ? null : sel.from;
@@ -682,7 +657,7 @@ function afterRoutePicked(){
   const res = findFare(sel.from, sel.to);
   if(!res){ renderNotListed(""); return; }
   sel.resolved = res;
-  sel.trip = "oneway"; sel.minivan = false; sel.airport = false;
+  sel.trip = "oneway"; sel.minivan = false; sel.airport = false; sel.customPrice = null;
   renderQuote();
 }
 
@@ -707,9 +682,12 @@ function shareUrl(){
 async function shareQuote(btn){
   let url = null;
   const ex = extrasPayload();
-  if(ex){
-    const row = { code: makeShareCode(), addons: ex.addons, wait_amount: ex.wait_amount,
-      wait_unit: ex.wait_unit, wait_hours: ex.wait_hours };
+  const cp = sel.customPrice;
+  const customSet = !!(cp && cp.price > 0 && cp.trip === currentTripKey());
+  if(ex || customSet){
+    const row = { code: makeShareCode(), addons: ex ? ex.addons : [], wait_amount: ex ? ex.wait_amount : null,
+      wait_unit: ex ? ex.wait_unit : null, wait_hours: ex ? ex.wait_hours : null };
+    if(customSet) row.custom_price = cp.price;
     if(view === "flatbush" && sel.fb){
       row.grid = { base: sel.fb.base, row: sel.fb.rowIdx, col: sel.fb.colIdx };
     } else if(sel.resolved){
@@ -749,7 +727,7 @@ function renderQuote(){
     (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-breakdown"></div>' +
-    '<div id="q-extra-btns"></div>' +
+    '<button class="btn secondary" id="customize">Customize price</button>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
     '<div class="loop-bar"><button class="btn" id="share">Share price</button>' +
@@ -775,12 +753,12 @@ function renderQuote(){
     shareQuote(e.target, quoteText(priceStr), priceStr);
   });
   document.getElementById("new-rate").addEventListener("click", () => { inFlow = false; sel = {}; renderPlacePicker(1); });
+  document.getElementById("customize").addEventListener("click", () => openCustomizeDrawer(refreshQuote));
   refreshQuote();
 }
 
 function refreshQuote(){
   const { fare } = sel.resolved;
-  wireExtraBtns("q-extra-btns", refreshQuote);
   const q = computeQuote();
   const priceStr = q.complex ? q.printed : money(q.total);
   document.getElementById("q-price").textContent = priceStr;
@@ -811,24 +789,27 @@ function renderFlatbush(base){
     '<div class="price-big" id="fb-price" aria-live="polite"></div>' +
     '<div class="q-summary" id="fb-summary"></div>' +
     '<div id="fb-breakdown"></div>' +
-    '<div id="fb-extra-btns"></div>' +
+    '<button class="btn secondary" id="customize">Customize price</button>' +
     '<div class="loop-bar"><button class="btn" id="share">Share price</button>' +
     '<button class="btn secondary" id="new-rate">New rate</button></div>'
   );
   const upd = () => {
     const r = document.getElementById("fb-row").value;
     const c = document.getElementById("fb-col").value;
+    if(sel.fb && (sel.fb.row !== r || sel.fb.col !== c)) sel.customPrice = null;
     const price = grid.price(r, c);
-    const baseNum = plainPrice(price);
+    const listNum = plainPrice(price);
+    const cp = sel.customPrice;
+    const custom = (cp && cp.trip === "flatbush" && cp.price > 0) ? cp.price : null;
+    const baseNum = custom != null ? custom : listNum;
     const exLines = extrasLines();
     const exSum = exLines.reduce((sm, l) => sm + l.amount, 0);
-    const showTotal = baseNum != null && exSum > 0;
+    const showTotal = baseNum != null && (exSum > 0 || custom != null);
     const shown = showTotal ? money(baseNum + exSum) : price;
     document.getElementById("fb-price").textContent = shown;
     document.getElementById("fb-summary").textContent = summaryLine(false);
     document.getElementById("fb-breakdown").innerHTML = showTotal
-      ? breakdownHtml([{ label: "Zone fare", amount: baseNum }].concat(exLines), baseNum + exSum) : "";
-    wireExtraBtns("fb-extra-btns", upd);
+      ? breakdownHtml((custom != null && listNum != null ? [{ label: "List price", amount: listNum }] : []).concat([{ label: "Zone fare", amount: baseNum }]).concat(exLines), baseNum + exSum) : "";
     sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + shown;
     sel.fb = { base: base, row: r, col: c, price: price, rowIdx: grid.rows.indexOf(r), colIdx: grid.cols.indexOf(c) };
   };
@@ -839,6 +820,7 @@ function renderFlatbush(base){
     shareQuote(e.target, sel.fbText, sel.fb ? sel.fb.price : "");
   });
   document.getElementById("new-rate").addEventListener("click", () => { inFlow = false; sel = {}; renderPlacePicker(1); });
+  document.getElementById("customize").addEventListener("click", () => openCustomizeDrawer(upd));
 }
 
 function renderNotListed(msg){
@@ -913,7 +895,7 @@ function openAddDrawer(prefill){
     closeDrawer();
     sel.from = from; sel.to = to;
     const res = findFare(from, to);
-    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; inFlow = true; renderQuote(); }
+    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; sel.customPrice = null; inFlow = true; renderQuote(); }
     else renderPlacePicker(1);
   });
 }
@@ -1028,6 +1010,7 @@ async function init(){
     if(shared){
       sel.wait = { amount: shared.wait_amount != null ? String(shared.wait_amount) : "", unit: shared.wait_unit || "hour", hours: shared.wait_hours || 1 };
       sel.addons = (shared.addons || []).map(a => ({ name: a.name, amount: String(a.amount) }));
+      sel.customPrice = shared.custom_price != null ? { trip: shared.grid ? "flatbush" : (shared.trip === "round" ? "round" : "oneway"), price: Number(shared.custom_price) } : null;
       if(shared.grid && gridFor(shared.grid.base)){
         inFlow = true;
         renderFlatbush(shared.grid.base);
