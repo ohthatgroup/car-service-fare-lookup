@@ -90,7 +90,11 @@ $$;
 
 grant execute on function public.cast_vote(bigint, text) to anon, authenticated;
 
--- Seed: the 277 fares from the May 22, 2023 price sheets.
+-- Seed: the fares from the May 22, 2023 price sheets. 277 fare rows are
+-- printed, stored here as 276 routes: Borough Park's "Beth Israel" is two
+-- different places (the cemetery at $105 and the hospital at $60), so they
+-- are stored as "Beth Israel (Cemetery)" and "Beth Israel (Hospital)";
+-- Monroe's "Nyack" is printed at the same $80 in two sections, stored once.
 insert into public.fares (from_place, category, to_place, price, round_trip, note, origin) values
 ('Borough Park','Airports','Airport pickups — add $5.00','',NULL,'Applies to airport pickups','sheet'),
 ('Borough Park','Airports','Islip','$135.00','$200.00',NULL,'sheet'),
@@ -136,13 +140,13 @@ insert into public.fares (from_place, category, to_place, price, round_trip, not
 ('Borough Park','Catskills (printed below Cemeteries)','Swan / White Lake','$365.00','$545.00',NULL,'sheet'),
 ('Borough Park','Catskills (printed below Cemeteries)','Up to Monticello','$335.00','$500.00',NULL,'sheet'),
 ('Borough Park','Cemeteries','Beth David','$90.00','$135.00',NULL,'sheet'),
-('Borough Park','Cemeteries','Beth Israel','$105.00','$160.00',NULL,'sheet'),
+('Borough Park','Cemeteries','Beth Israel (Cemetery)','$105.00','$160.00',NULL,'sheet'),
 ('Borough Park','Cemeteries','Floral Park Deans','$135.00','$200.00',NULL,'sheet'),
 ('Borough Park','Cemeteries','Montefiore/Chabad','$90.00','$135.00',NULL,'sheet'),
 ('Borough Park','Cemeteries','Mount Hebron','$80.00','$120.00',NULL,'sheet'),
 ('Borough Park','Cemeteries','New Montefiore','$135.00','$200.00',NULL,'sheet'),
 ('Borough Park','Cemeteries','Wellwood','$135.00','$200.00',NULL,'sheet'),
-('Borough Park','Hospitals','Beth Israel','$60.00','$90.00',NULL,'sheet'),
+('Borough Park','Hospitals','Beth Israel (Hospital)','$60.00','$90.00',NULL,'sheet'),
 ('Borough Park','Hospitals','Beth Israel North','$85.00','$130.00',NULL,'sheet'),
 ('Borough Park','Hospitals','Brookdale','$50.00','$75.00',NULL,'sheet'),
 ('Borough Park','Hospitals','Brooklyn','$45.00','$70.00',NULL,'sheet'),
@@ -274,7 +278,6 @@ insert into public.fares (from_place, category, to_place, price, round_trip, not
 ('Monroe','Long distance','New Square','$65.00',NULL,NULL,'sheet'),
 ('Monroe','Long distance','New Winsor','$50.00',NULL,NULL,'sheet'),
 ('Monroe','Long distance','Newburg','$75.00',NULL,NULL,'sheet'),
-('Monroe','Long distance','Nyack','$80.00',NULL,NULL,'sheet'),
 ('Monroe','Long distance','Orangeburg','$80.00',NULL,NULL,'sheet'),
 ('Monroe','Long distance','Palisades Mall','$75.00',NULL,NULL,'sheet'),
 ('Monroe','Long distance','Paramus','$80.00',NULL,NULL,'sheet'),
