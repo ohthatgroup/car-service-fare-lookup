@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fare Lookup — Car Service Prices</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%230071e3'/%3E%3Cpath d='M24 6.5c-7 0-12.6 5.5-12.6 12.3 0 8.4 12.6 18.7 12.6 18.7s12.6-10.3 12.6-18.7C36.6 12 31 6.5 24 6.5z' fill='%23ffffff'/%3E%3Cpath d='M27 15.4c-.6-.8-1.7-1.3-3-1.3-1.7 0-3 .9-3 2.3 0 3 6.2 1.6 6.2 4.5 0 1.4-1.3 2.4-3.2 2.4-1.1 0-2.2-.5-2.9-1.3M24 12.6v11.8' stroke='%230071e3' stroke-width='2.1' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%230071e3'/%3E%3Ctext x='24' y='35' font-family='Arial,Helvetica,sans-serif' font-size='29' font-weight='700' fill='%23ffffff' text-anchor='middle'%3EF%3C/text%3E%3C/svg%3E">
 <meta name="description" content="Community car service price list. Pick a route, get the price. Add prices, vote on changes.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Car Service Fare Lookup">
@@ -40,11 +40,10 @@
   nav .steps{ display:flex; align-items:center; gap:7px; }
   nav .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
   nav .dot.done{ background:var(--accent); cursor:pointer; }
-  nav .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
   nav .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
   nav .dot.cur{ background:var(--muted); }
-  #nav-logo{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:17px; letter-spacing:-.02em; white-space:nowrap; }
-  #nav-logo svg{ display:block; flex:none; }
+  #nav-logo{ display:flex; align-items:baseline; font-weight:800; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
+  #nav-logo .wm-b{ color:var(--accent); }
   nav.in-flow #nav-logo{ display:none; }
   #fab{
     position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:40;
@@ -54,19 +53,12 @@
     box-shadow:0 6px 22px rgba(0,0,0,.28);
   }
   #fab:active{ transform:scale(.95); }
-  .drawer-foot{ margin-top:22px; border-top:1px solid var(--border); padding-top:12px; }
-  .drawer-links{ display:flex; justify-content:space-between; align-items:center; }
-  .drawer-links a, .drawer-links button{
-    background:none; border:0; padding:4px 2px; font-family:inherit;
-    color:var(--accent); font-size:14.5px; cursor:pointer; text-decoration:none;
-  }
   .drawer-src{ text-align:center; color:var(--muted); font-size:12.5px; margin-top:10px; }
   .hire-btn{ display:block; text-align:center; text-decoration:none; margin-top:14px; }
   .inline-link{ color:var(--accent); text-decoration:none; }
   .drawer-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
   .drawer-actions .btn{ margin-top:0; }
   .os-line{ text-align:center; color:var(--muted); font-size:14px; margin:16px 0 0; }
-  nav.on-board #nav-pending{ display:block; }
   nav.on-board .badge{ display:none !important; }
   #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; padding:0; }
   #modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.42); }
@@ -83,6 +75,7 @@
   #modal .sheet-head{ display:flex; align-items:center; justify-content:space-between; font-weight:600; font-size:17px; margin-bottom:6px; }
   #modal .sheet-head button{ background:none; border:0; color:var(--muted); font-size:17px; cursor:pointer; padding:4px 6px; }
   #modal .sheet p{ color:var(--muted); font-size:14.5px; line-height:1.55; margin:8px 0; }
+  #modal .sub{ margin-top:0; }
   nav .spacer{ flex:1; }
   nav button.link{
     background:none; border:0; color:var(--accent); font-size:15px; padding:8px 10px; margin:-8px -4px; border-radius:10px; cursor:pointer;
@@ -94,7 +87,6 @@
   }
   #scroll{ flex:1; overflow-y:auto; overscroll-behavior:contain; }
   .col{ max-width:600px; margin:0 auto; padding:20px 16px 96px; }
-  h1{ font-size:26px; font-weight:700; letter-spacing:-.02em; margin:6px 0 14px; }
   .sub{ color:var(--muted); font-size:15px; margin:-8px 0 16px; }
   .group-label{ font-size:13px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:18px 2px 8px; }
   .list{ background:var(--surface); border-radius:14px; overflow:hidden; }
@@ -144,7 +136,6 @@
   .extra-btn .x-plus{ color:var(--accent); font-weight:600; }
   .extra-row{ display:flex; align-items:center; gap:8px; margin:8px 0; }
   .extra-row .xa-name{ flex:1; min-width:0; }
-  .extra-row .x-name{ flex:1; font-size:15.5px; }
   .extra-row input[type="text"]{ padding:10px 12px; font-size:16px; }
   .extra-row .x-amt{ width:88px; flex:none; }
   .extra-row .x-unit{ width:112px; flex:none; padding:10px 8px; font-size:15px; }
@@ -186,7 +177,7 @@
 <body>
 <nav id="topnav">
   <button class="link" id="nav-back">‹ Start over</button>
-  <span id="nav-logo"><svg width="30" height="30" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="11" fill="#0071e3"/><path d="M24 6.5c-7 0-12.6 5.5-12.6 12.3 0 8.4 12.6 18.7 12.6 18.7s12.6-10.3 12.6-18.7C36.6 12 31 6.5 24 6.5z" fill="#ffffff"/><path d="M27 15.4c-.6-.8-1.7-1.3-3-1.3-1.7 0-3 .9-3 2.3 0 3 6.2 1.6 6.2 4.5 0 1.4-1.3 2.4-3.2 2.4-1.1 0-2.2-.5-2.9-1.3M24 12.6v11.8" stroke="#0071e3" stroke-width="2.1" fill="none" stroke-linecap="round"/></svg><span>Fare Lookup</span></span>
+  <span id="nav-logo"><span>Fare</span><span class="wm-b">Lookup</span></span></span>
   <span class="steps" id="nav-steps">
     <button class="dot" data-dot="1" aria-label="Step 1"></button><button class="dot" data-dot="2" aria-label="Step 2"></button><button class="dot" data-dot="3" aria-label="Step 3"></button>
   </span>
@@ -516,9 +507,13 @@ function setStep(n, label){
     return '<button class="dot' + (i < n ? " done" : "") + '" data-dot="' + i + '" aria-label="Step ' + i + '"></button>';
   }).join("");
   const $t = document.getElementById("nav-title");
-  $t.style.display = (onSteps || view !== "pending") && !(n === 0 && view === "pending") ? "none" : "";
-  if(view === "pending") $t.style.display = "";
+  $t.style.display = view === "pending" ? "" : "none";
   $t.textContent = view === "pending" ? "Board" : (label || "Fare Lookup");
+  const backTxt = view === "pending" ? "Start over"
+    : (view === "notlisted" || n === 3) ? "Where to?"
+    : n === 2 ? "Where from?"
+    : "Start over";
+  document.getElementById("nav-back").textContent = "‹ " + backTxt;
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
@@ -527,7 +522,7 @@ function setStep(n, label){
 }
 function goToStep(n){
   if(n >= currentStep) return;
-  if(n === 1) renderPlacePicker(1);
+  if(n === 1){ inFlow = false; renderPlacePicker(1); }
   else if(n === 2 && sel.from) renderPlacePicker(2);
 }
 function h(html){ $view.innerHTML = html; }
@@ -770,8 +765,6 @@ function categoriesFor(from, to){
     : [...new Set(fares.map(r => r.category).filter(Boolean))];
   return [...cats, "Other"];
 }
-const PDF_LINK = "https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf";
-const WA_LINK = "https://wa.me/13476613902?text=" + encodeURIComponent("Can you build me something?");
 let DETAILS_HTML = "";
 function openDrawer(title, bodyHtml){
   document.getElementById("sheet-title").textContent = title;
@@ -912,7 +905,8 @@ document.getElementById("nav-pending").addEventListener("click", () => {
   else renderPending();
 });
 document.getElementById("nav-back").addEventListener("click", () => {
-  inFlow = false; sel = {}; renderPlacePicker(1);
+  if(view === "quote" || view === "flatbush" || view === "notlisted"){ renderPlacePicker(2); }
+  else { inFlow = false; sel = {}; renderPlacePicker(1); }
 });
 document.getElementById("nav-steps").addEventListener("click", e => {
   const d = e.target.closest("[data-dot]");
