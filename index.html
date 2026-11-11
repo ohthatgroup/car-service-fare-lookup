@@ -134,9 +134,9 @@
     <details class="details" id="details-box">
       <summary>Details</summary>
       <div class="body">
-        <p>Borough Park prices are 7am–11pm and don't include tolls. Late night (11pm–3am) and before 7am add 10% per hour. Waiting time is $40/hr, with free minutes by fare size. Hourly: Brooklyn car $45 / mini van $55 (30 min minimum).</p>
-        <p>Some fares were printed differently on different sheets (for example Monroe–JFK appears as both $195 and $225). The base sheet's price is the one used here.</p>
-        <p>Prices anyone adds go live right away. Changing a price takes a suggestion plus 10 votes from different people — the old price stays until the votes are in.</p>
+        <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
+        <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
+        <p>Prices anyone adds go live right away. Changing a price takes a proposal plus 10 votes from different people — the current price stays until the votes are in.</p>
       </div>
     </details>
     <footer>May 2023 sheet · Community updates since</footer>
@@ -146,22 +146,29 @@
 <script>
 "use strict";
 
-/* ---------- Flatbush grid (Borough Park sheet, static reference data) ---------- */
-const FLATBUSH_COLS = ["Church~H","I/J/K/L","M/N/O","P/Q/R","K.H.","S/T","U/V/W","X/Y/Z"];
-const FLATBUSH_ROWS = [
-  ["McDonald, 2, 3, 4, 5",  [18,19,20,22,24,25.20,26.60,28]],
-  ["O. Pkwy, 7, 8, 9, 10",  [19,20,22,24,25,27,28,29]],
-  ["Coney I., 12, 13, 14",  [20,22,24,25,27,28,29,30]],
-  ["15, 16, 17, 18, 19",    [22,24,25,27,28,29,30,32]],
-  ["Ocean, 21, 22, 23, 24", [24,25,27,28,29,30,32,34]],
-  ["Bdfrd, 26, 27, 28, 29", [25,27,28,29,30,32,34,35]],
-  ["Nostrnd, 31, 32, 33",   [27,28,29,30,32,34,35,36]],
-  ["34, 35, Flatbush av.",  [28,29,30,32,34,35,36,0]]  // last cell prints $0.00 on the sheet itself (checked on the scan) — shown as printed
-];
-const FLATBUSH_NAME = "Flatbush zone fare";
+/* ---------- data-driven state (nothing item-specific is hardcoded) ---------- */
+let gridCells = [];      // zone-grid cells from the database
+let rulesByBase = {};    // per-base pricing rules from the database
+let bases = [];          // bases derived from the sheet fares in the data
+let topPlaces = [];      // those bases, most fares first
 
-const BASES = ["Borough Park","Monroe","Monsey","Lakewood"];
-const VOTES_NEEDED = 10;
+function gridFor(base){
+  const cells = gridCells.filter(c => c.base === base);
+  if(!cells.length) return null;
+  const rows = [], cols = [], map = {};
+  cells.forEach(c => {
+    if(!rows.includes(c.row_label)) rows.push(c.row_label);
+    if(!cols.includes(c.col_label)) cols.push(c.col_label);
+    map[c.row_label + "|" + c.col_label] = c.price;
+  });
+  return { rows, cols, price: (r, c) => map[r + "|" + c] };
+}
+function zoneLabel(base){
+  const r = rulesByBase[base];
+  return (r && r.grid_label) || (base + " zone fare");
+}
+function isZoneLabel(p){ return bases.some(b => gridFor(b) && zoneLabel(b) === p); }
+function zoneBaseOf(p){ return bases.find(b => gridFor(b) && zoneLabel(b) === p); }
 
 const cfg = window.FL_CONFIG || {};
 const SB = (cfg.SUPABASE_URL || "").replace(/\/+$/,"");
@@ -212,12 +219,21 @@ async function sb(path, opts){
   return t ? JSON.parse(t) : null;
 }
 async function loadData(){
-  const [f, p] = await Promise.all([
+  const [f, p, g, r] = await Promise.all([
     sb("fares?select=id,from_place,category,to_place,price,round_trip,note,origin&order=from_place.asc,to_place.asc"),
-    sb("proposals?select=id,fare_id,new_price,new_round_trip,votes,status,fare:fares(from_place,to_place,price,round_trip)&status=eq.open&order=created_at.desc")
+    sb("proposals?select=id,fare_id,new_price,new_round_trip,votes,status,fare:fares(from_place,to_place,price,round_trip)&status=eq.open&order=created_at.desc"),
+    sb("grid_cells?select=base,row_index,row_label,col_index,col_label,price&order=base.asc,row_index.asc,col_index.asc"),
+    sb("base_rules?select=base,airport_pickup_fee,minivan_brackets,grid_label")
   ]);
   fares = f || []; proposals = p || [];
-  const set = new Set(BASES);
+  gridCells = g || [];
+  rulesByBase = {};
+  (r || []).forEach(x => rulesByBase[x.base] = x);
+  const counts = {};
+  fares.forEach(row => { if(row.origin === "sheet") counts[row.from_place] = (counts[row.from_place] || 0) + 1; });
+  bases = Object.keys(counts);
+  topPlaces = [...bases].sort((a, b) => counts[b] - counts[a]);
+  const set = new Set(topPlaces);
   fares.forEach(r => { set.add(r.from_place); set.add(r.to_place); });
   places = [...set];
   const badge = document.getElementById("pending-count");
@@ -233,14 +249,17 @@ function findFare(from, to){
   if(f) return { fare: f, reversed: true };
   return null;
 }
-function miniVanAddition(oneWay){
-  if(oneWay == null) return null;
-  if(oneWay <= 20) return 5;
-  if(oneWay <= 100) return 10;
-  if(oneWay <= 200) return 15;
-  if(oneWay <= 300) return 20;
-  if(oneWay <= 400) return 25;
+function miniVanAddition(oneWay, base){
+  const rules = rulesByBase[base];
+  if(oneWay == null || !rules || !rules.minivan_brackets) return null;
+  for(const pair of rules.minivan_brackets){
+    if(oneWay <= pair[0]) return pair[1];
+  }
   return null;
+}
+function airportFee(base){
+  const rules = rulesByBase[base];
+  return rules && rules.airport_pickup_fee != null ? Number(rules.airport_pickup_fee) : null;
 }
 function computeQuote(){
   // returns {display, breakdown:[{label, amount}], complex} or null
@@ -253,9 +272,9 @@ function computeQuote(){
   if(sel.trip === "round" && rt != null){
     const lines = [{ label: "Round trip", amount: rt }];
     let total = rt;
-    if(sel.airport){ lines.push({ label: "Airport pickup", amount: 5 }); total += 5; }
+    if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
     if(sel.minivan){
-      const add = miniVanAddition(oneWay);
+      const add = miniVanAddition(oneWay, fare.from_place);
       if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
     }
     return { total, lines, complex: false };
@@ -265,9 +284,9 @@ function computeQuote(){
   }
   const lines = [{ label: "One way", amount: oneWay }];
   let total = oneWay;
-  if(sel.airport){ lines.push({ label: "Airport pickup", amount: 5 }); total += 5; }
+  if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
   if(sel.minivan){
-    const add = miniVanAddition(oneWay);
+    const add = miniVanAddition(oneWay, fare.from_place);
     if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
   }
   return { total, lines, complex: false };
@@ -276,10 +295,10 @@ function optionsApply(){
   const { fare, reversed } = sel.resolved;
   const oneWay = plainPrice(fare.price);
   const hasRT = !!fare.round_trip;
-  const bp = fare.from_place === "Borough Park";
-  const minivan = bp && oneWay != null && miniVanAddition(oneWay) != null;
-  // $5 airport pickup: Borough Park sheet, Airports category, trip starts at the airport side
-  const airport = bp && fare.category === "Airports" && reversed;
+  // Add-ons exist only when the fare's base carries that rule in the data.
+  const minivan = oneWay != null && miniVanAddition(oneWay, fare.from_place) != null;
+  // Airport pickup fee: the base's rule, on Airports fares, when the trip starts at the airport side
+  const airport = airportFee(fare.from_place) != null && fare.category === "Airports" && reversed;
   return { hasRT, minivan, airport, any: hasRT || minivan || airport };
 }
 
@@ -296,8 +315,8 @@ function h(html){ $view.innerHTML = html; }
 function placeListHTML(query, exclude){
   const q = (query || "").trim().toLowerCase();
   const match = p => !q || p.toLowerCase().includes(q);
-  const top = BASES.filter(p => p !== exclude && match(p));
-  const rest = places.filter(p => !BASES.includes(p) && p !== exclude && match(p)).sort();
+  const top = topPlaces.filter(p => p !== exclude && match(p));
+  const rest = places.filter(p => !topPlaces.includes(p) && p !== exclude && match(p)).sort();
   let out = "";
   if(top.length){
     out += '<div class="group-label">Top 4</div><div class="list">' +
@@ -316,13 +335,13 @@ function renderPlacePicker(step){
   view = isFrom ? "step1" : "step2";
   setStep(step);
   const other = isFrom ? null : sel.from;
-  const showFlatbush = !isFrom && sel.from === "Borough Park";
+  const showFlatbush = !isFrom && !!gridFor(sel.from);
   h(
     "<h1>" + (isFrom ? "Where from?" : "Where to?") + "</h1>" +
     (isFrom ? "" : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
     '<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
     (showFlatbush
-      ? '<div class="list"><button class="row" data-place="' + esc(FLATBUSH_NAME) + '">' + esc(FLATBUSH_NAME) + '<span class="tag">Borough Park</span><span class="chev">›</span></button></div>'
+      ? '<div class="list"><button class="row" data-place="' + esc(zoneLabel(sel.from)) + '">' + esc(zoneLabel(sel.from)) + '<span class="tag">' + esc(sel.from) + '</span><span class="chev">›</span></button></div>'
       : "") +
     '<div id="plist">' + placeListHTML("", other) + "</div>" +
     '<button class="quiet-link" id="add-link">Add a price</button>'
@@ -344,7 +363,6 @@ function bindPlaceRows(step){
 }
 function pickPlace(step, place){
   if(step === 1){
-    if(place === FLATBUSH_NAME){ sel.from = FLATBUSH_NAME; renderPlacePicker(2); return; }
     sel.from = place; renderPlacePicker(2);
   } else {
     sel.to = place; afterRoutePicked();
@@ -352,10 +370,11 @@ function pickPlace(step, place){
 }
 
 function afterRoutePicked(){
-  if(sel.from === FLATBUSH_NAME || sel.to === FLATBUSH_NAME){
-    const otherSide = sel.from === FLATBUSH_NAME ? sel.to : sel.from;
-    if(otherSide === "Borough Park"){ renderFlatbush(); return; }
-    renderNotListed("The Flatbush zone fare only runs to and from Borough Park.");
+  if(isZoneLabel(sel.from) || isZoneLabel(sel.to)){
+    const zb = zoneBaseOf(isZoneLabel(sel.from) ? sel.from : sel.to);
+    const otherSide = isZoneLabel(sel.from) ? sel.to : sel.from;
+    if(otherSide === zb){ renderFlatbush(zb); return; }
+    renderNotListed("The zone fare only runs to and from " + zb + ".");
     return;
   }
   const res = findFare(sel.from, sel.to);
@@ -381,8 +400,8 @@ function renderQuote(){
     (o.hasRT ? '<div class="seg" id="seg-trip" style="margin-top:20px">' +
       '<button data-trip="oneway" class="on">One way</button>' +
       '<button data-trip="round">Round trip</button></div>' : "") +
-    (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price))) + "</span></label>" : "") +
-    (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+$5</span></label>' : "") +
+    (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place)) + "</span></label>" : "") +
+    (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-breakdown"></div>' +
     '<div class="note-line">' + (fare.origin === "community" ? "Community price" : "May 2023 sheet") +
       (fare.note ? " · " + esc(fare.note) : "") + "</div>" +
@@ -434,29 +453,27 @@ function refreshQuote(){
   }
 }
 
-function renderFlatbush(){
-  view = "flatbush"; setStep(3, "Flatbush zone fare");
+function renderFlatbush(base){
+  view = "flatbush"; setStep(3, zoneLabel(base));
+  const grid = gridFor(base);
   h(
-    "<h1>Flatbush zone fare</h1>" +
-    '<div class="sub">Borough Park ↔ Flatbush, by street and cross-street.</div>' +
+    "<h1>" + esc(zoneLabel(base)) + "</h1>" +
+    '<div class="sub">' + esc(base) + " zone, by street and cross-street.</div>" +
     '<label class="field">Street / avenue</label><select id="fb-row">' +
-      FLATBUSH_ROWS.map((r,i) => '<option value="' + i + '">' + esc(r[0]) + "</option>").join("") + "</select>" +
+      grid.rows.map(r => "<option>" + esc(r) + "</option>").join("") + "</select>" +
     '<label class="field">Cross-street</label><select id="fb-col">' +
-      FLATBUSH_COLS.map((c,i) => '<option value="' + i + '">' + esc(c) + "</option>").join("") + "</select>" +
+      grid.cols.map(c => "<option>" + esc(c) + "</option>").join("") + "</select>" +
     '<div class="price-big" id="fb-price"></div>' +
-    '<div class="note-line" id="fb-note"></div>' +
+    '<div class="note-line">May 2023 sheet · One way</div>' +
     '<button class="btn" id="copy">Copy quote</button>' +
     '<br><button class="quiet-link" id="back">‹ Start over</button>'
   );
   const upd = () => {
-    const ri = Number(document.getElementById("fb-row").value);
-    const ci = Number(document.getElementById("fb-col").value);
-    const val = FLATBUSH_ROWS[ri][1][ci];
-    document.getElementById("fb-price").textContent = money(val);
-    document.getElementById("fb-note").textContent = val === 0
-      ? "Printed as $0.00 on the May 2023 sheet"
-      : "May 2023 sheet · One way";
-    sel.fbText = "Borough Park ↔ Flatbush (" + FLATBUSH_ROWS[ri][0] + " × " + FLATBUSH_COLS[ci] + "): " + money(val);
+    const r = document.getElementById("fb-row").value;
+    const c = document.getElementById("fb-col").value;
+    const price = grid.price(r, c);
+    document.getElementById("fb-price").textContent = price;
+    sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + price;
   };
   document.getElementById("fb-row").addEventListener("change", upd);
   document.getElementById("fb-col").addEventListener("change", upd);
@@ -482,7 +499,7 @@ function renderNotListed(msg){
 
 /* ---------- Add a price ---------- */
 function categoriesFor(from, to){
-  const base = BASES.includes(from) ? from : (BASES.includes(to) ? to : null);
+  const base = bases.includes(from) ? from : (bases.includes(to) ? to : null);
   const cats = base
     ? [...new Set(fares.filter(r => r.from_place === base).map(r => r.category).filter(Boolean))]
     : [...new Set(fares.map(r => r.category).filter(Boolean))];
@@ -525,7 +542,7 @@ function renderAdd(prefill){
     if(!price.startsWith("$")) price = "$" + price;
     // Store sheet fares base-first: if one side is a base, it becomes from_place.
     let rec = { from_place: from, to_place: to, category: cat, price, round_trip: rt ? (rt.startsWith("$") ? rt : "$" + rt) : null, note: null, origin: "community" };
-    if(BASES.includes(to) && !BASES.includes(from)) rec = { from_place: to, to_place: from, category: cat, price, round_trip: rec.round_trip, note: null, origin: "community" };
+    if(bases.includes(to) && !bases.includes(from)) rec = { from_place: to, to_place: from, category: cat, price, round_trip: rec.round_trip, note: null, origin: "community" };
     try {
       await sb("fares", { method: "POST", headers: { "Prefer": "return=representation" }, body: JSON.stringify(rec) });
     } catch(e) {

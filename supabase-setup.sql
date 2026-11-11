@@ -364,3 +364,95 @@ insert into public.fares (from_place, category, to_place, price, round_trip, not
 ('Monsey','NYC up to','80th Strett','$100.00',NULL,NULL,'sheet'),
 ('Monsey','NYC up to','Lower Eastside / Westside','$150.00',NULL,NULL,'sheet')
 on conflict (from_place, to_place) do nothing;
+
+-- Grid fares and per-base pricing rules, as data (the app hardcodes none of it).
+create table if not exists public.grid_cells (
+  base text not null,
+  row_index int not null,
+  row_label text not null,
+  col_index int not null,
+  col_label text not null,
+  price text not null,
+  primary key (base, row_index, col_index)
+);
+create table if not exists public.base_rules (
+  base text primary key,
+  airport_pickup_fee numeric,
+  minivan_brackets jsonb,
+  grid_label text
+);
+alter table public.grid_cells enable row level security;
+alter table public.base_rules enable row level security;
+create policy "grid read" on public.grid_cells for select using (true);
+create policy "rules read" on public.base_rules for select using (true);
+
+insert into public.grid_cells (base, row_index, row_label, col_index, col_label, price) values
+('Borough Park',0,'McDonald, 2, 3, 4, 5',0,'Church~H','$18.00'),
+('Borough Park',0,'McDonald, 2, 3, 4, 5',1,'I/J/K/L','$19.00'),
+('Borough Park',0,'McDonald, 2, 3, 4, 5',2,'M/N/O','$20.00'),
+('Borough Park',0,'McDonald, 2, 3, 4, 5',3,'P/Q/R','$22.00'),
+('Borough Park',0,'McDonald, 2, 3, 4, 5',4,'K.H.','$24.00'),
+('Borough Park',0,'McDonald, 2, 3, 4, 5',5,'S/T','$25.20'),
+('Borough Park',0,'McDonald, 2, 3, 4, 5',6,'U/V/W','$26.60'),
+('Borough Park',0,'McDonald, 2, 3, 4, 5',7,'X/Y/Z','$28.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',0,'Church~H','$19.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',1,'I/J/K/L','$20.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',2,'M/N/O','$22.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',3,'P/Q/R','$24.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',4,'K.H.','$25.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',5,'S/T','$27.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',6,'U/V/W','$28.00'),
+('Borough Park',1,'O. Pkwy, 7, 8, 9, 10',7,'X/Y/Z','$29.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',0,'Church~H','$20.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',1,'I/J/K/L','$22.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',2,'M/N/O','$24.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',3,'P/Q/R','$25.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',4,'K.H.','$27.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',5,'S/T','$28.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',6,'U/V/W','$29.00'),
+('Borough Park',2,'Coney I., 12, 13, 14',7,'X/Y/Z','$30.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',0,'Church~H','$22.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',1,'I/J/K/L','$24.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',2,'M/N/O','$25.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',3,'P/Q/R','$27.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',4,'K.H.','$28.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',5,'S/T','$29.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',6,'U/V/W','$30.00'),
+('Borough Park',3,'15, 16, 17, 18, 19',7,'X/Y/Z','$32.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',0,'Church~H','$24.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',1,'I/J/K/L','$25.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',2,'M/N/O','$27.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',3,'P/Q/R','$28.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',4,'K.H.','$29.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',5,'S/T','$30.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',6,'U/V/W','$32.00'),
+('Borough Park',4,'Ocean, 21, 22, 23, 24',7,'X/Y/Z','$34.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',0,'Church~H','$25.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',1,'I/J/K/L','$27.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',2,'M/N/O','$28.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',3,'P/Q/R','$29.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',4,'K.H.','$30.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',5,'S/T','$32.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',6,'U/V/W','$34.00'),
+('Borough Park',5,'Bdfrd, 26, 27, 28, 29',7,'X/Y/Z','$35.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',0,'Church~H','$27.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',1,'I/J/K/L','$28.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',2,'M/N/O','$29.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',3,'P/Q/R','$30.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',4,'K.H.','$32.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',5,'S/T','$34.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',6,'U/V/W','$35.00'),
+('Borough Park',6,'Nostrnd, 31, 32, 33',7,'X/Y/Z','$36.00'),
+('Borough Park',7,'34, 35, Flatbush av.',0,'Church~H','$28.00'),
+('Borough Park',7,'34, 35, Flatbush av.',1,'I/J/K/L','$29.00'),
+('Borough Park',7,'34, 35, Flatbush av.',2,'M/N/O','$30.00'),
+('Borough Park',7,'34, 35, Flatbush av.',3,'P/Q/R','$32.00'),
+('Borough Park',7,'34, 35, Flatbush av.',4,'K.H.','$34.00'),
+('Borough Park',7,'34, 35, Flatbush av.',5,'S/T','$35.00'),
+('Borough Park',7,'34, 35, Flatbush av.',6,'U/V/W','$36.00'),
+('Borough Park',7,'34, 35, Flatbush av.',7,'X/Y/Z','$0.00')
+on conflict (base, row_index, col_index) do nothing;
+
+insert into public.base_rules (base, airport_pickup_fee, minivan_brackets, grid_label) values
+('Borough Park', 5, '[[20,5],[100,10],[200,15],[300,20],[400,25]]'::jsonb, 'Flatbush zone fare')
+on conflict (base) do nothing;
