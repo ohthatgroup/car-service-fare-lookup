@@ -162,6 +162,7 @@
   .stepper{ display:flex; align-items:center; gap:16px; margin:4px 0 12px; }
   .stepper button{ width:44px; height:44px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:20px; line-height:1; cursor:pointer; flex:none; }
   .stepper .step-val{ font-size:17px; min-width:72px; text-align:center; }
+  #x-wait-amt, #x-wait-unit, .xa-name, .xa-amt{ margin-bottom:12px; }
   .breakdown{ max-width:340px; margin:18px auto 0; font-size:15px; }
   .breakdown .line{ display:flex; justify-content:space-between; padding:5px 0; color:var(--muted); }
   .breakdown .line span:last-child{ color:var(--text); }
@@ -442,10 +443,8 @@ function openCustomizeDrawer(onChange){
     } else {
       const hrs = Math.max(1, parseFloat(w.hours) || 1);
       waitHtml =
-        (w.unit === "hour" ? '<label class="field">Hours</label><div class="stepper"><button id="x-wait-minus" aria-label="Fewer hours">−</button><span class="step-val" id="x-wait-hrs-val">' + hrs + (hrs === 1 ? " hr" : " hrs") + '</span><button id="x-wait-plus" aria-label="More hours">+</button></div>' : "") +
-        '<label class="field">Amount</label>' +
-        '<input type="text" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '">' +
-        '<label class="field">Type</label>' +
+        (w.unit === "hour" ? '<div class="stepper"><button id="x-wait-minus" aria-label="Fewer hours">−</button><span class="step-val" id="x-wait-hrs-val">' + hrs + (hrs === 1 ? " hr" : " hrs") + '</span><button id="x-wait-plus" aria-label="More hours">+</button></div>' : "") +
+        '<input type="text" id="x-wait-amt" inputmode="decimal" placeholder="Amount" value="' + esc(w.amount) + '">' +
         '<select id="x-wait-unit"><option value="hour"' + (w.unit === "hour" ? " selected" : "") + '>per hour</option><option value="once"' + (w.unit === "once" ? " selected" : "") + '>add-on</option></select>' +
         (waitSet() ? '<button class="quiet-link" id="x-wait-remove">Remove wait</button>' : "");
     }
@@ -459,10 +458,8 @@ function openCustomizeDrawer(onChange){
       if(openAddon !== i) return "";
       return '<div class="xa-card"><div class="xa-head"><span class="xa-title">Add-on ' + (i + 1) + '</span>' +
         '<button class="x-del" data-i="' + i + '" aria-label="Remove">✕</button></div>' +
-        '<label class="field">Name</label>' +
         '<input type="text" class="xa-name" data-i="' + i + '" placeholder="Name (e.g. Toll)" value="' + esc(a.name || "") + '">' +
-        '<label class="field">Amount</label>' +
-        '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="$" value="' + esc(a.amount || "") + '">' +
+        '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="Amount" value="' + esc(a.amount || "") + '">' +
         '<button class="quiet-link" id="x-card-done">Done</button></div>';
     }).filter(Boolean).join("");
     return '<div class="group-label" style="margin-top:2px">Price</div>' +
