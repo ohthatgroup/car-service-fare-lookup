@@ -58,6 +58,12 @@
   .inline-link{ color:var(--accent); text-decoration:none; }
   .drawer-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
   .drawer-actions.top{ margin-top:4px; }
+  .drawer-section{ margin-top:22px; border-top:1px solid var(--border); padding-top:4px; }
+  .drawer-section .group-label{ margin:12px 2px 8px; }
+  #modal .list.prose p{ margin:0; padding:13px 16px; border-bottom:1px solid var(--border); }
+  #modal .list.prose p:last-child{ border-bottom:0; }
+  .row.link-row{ text-decoration:none; }
+  .row .row-sub{ display:block; font-size:13px; color:var(--muted); margin-top:2px; }
   .drawer-actions .btn{ margin-top:0; }
   .os-line{ text-align:center; color:var(--muted); font-size:14px; margin:16px 0 0; }
   #nav-pending{ display:none; }
@@ -204,14 +210,28 @@
       <button class="btn" id="d-board">Board</button>
       <button class="btn secondary" id="d-addprice">Add price</button>
     </div>
-    <div class="group-label" style="margin-top:18px">How voting works</div>
-    <p>Anyone can add a missing price — it goes live right away. Changing a price starts as a proposal on the Board.</p>
-    <p>Tap ▲ Up or ▼ Down to vote on a proposal. A down vote cancels an up vote, and tapping your vote again undoes it.</p>
-    <p>When a proposal reaches a net score of 10, the new price applies automatically.</p>
-    <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
-    <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
-    <p><a class="inline-link" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a></p>
-    <p class="os-line">This project is open source. <a class="inline-link" href="https://github.com/ohthatgroup/car-service-fare-lookup" target="_blank" rel="noopener">View on GitHub</a></p>
+    <div class="drawer-section">
+      <div class="group-label">How voting works</div>
+      <div class="list prose">
+        <p>Anyone can add a missing price — it goes live right away. Changing a price starts as a proposal on the Board.</p>
+        <p>Tap ▲ Up or ▼ Down to vote on a proposal. A down vote cancels an up vote, and tapping your vote again undoes it.</p>
+        <p>When a proposal reaches a net score of 10, the new price applies automatically.</p>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="group-label">About these prices</div>
+      <div class="list prose">
+        <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
+        <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="group-label">Links</div>
+      <div class="list">
+        <a class="row link-row" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener"><span>Download PDF<span class="row-sub">Original May 2023 price sheets</span></span><span class="chev">›</span></a>
+        <a class="row link-row" href="https://github.com/ohthatgroup/car-service-fare-lookup" target="_blank" rel="noopener"><span>View on GitHub<span class="row-sub">This project is open source</span></span><span class="chev">›</span></a>
+      </div>
+    </div>
     <div class="drawer-src">May 2023 sheet · Community updates since</div>
     <div class="hire-line"><a class="inline-link" href="https://wa.me/13476613902?text=Can%20you%20build%20me%20something%3F" target="_blank" rel="noopener">Hire Shimmy</a></div>
     </div>
