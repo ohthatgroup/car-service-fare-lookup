@@ -1,2 +1,12 @@
 [build]
   publish = "."
+
+[[redirects]]
+  from = "/q"
+  to = "/.netlify/functions/quote"
+  status = 200
+
+[[redirects]]
+  from = "/ogimg"
+  to = "/.netlify/functions/ogimg"
+  status = 200

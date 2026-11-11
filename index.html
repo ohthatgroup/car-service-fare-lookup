@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fare Lookup — Car Service Prices</title>
 <meta name="description" content="Community car service price list. Pick a route, get the price. Add prices, vote on changes.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Car Service Fare Lookup">
+<meta property="og:description" content="Community car service price list. Pick a route, get the price.">
+<meta property="og:image" content="https://stupendous-pastelito-af88a7.netlify.app/ogimg?a=Fare%20Lookup">
 <style>
   :root{
     --bg:#f5f5f7; --surface:#ffffff; --text:#1d1d1f; --muted:#6e6e73;
@@ -390,6 +394,29 @@ function quoteText(priceStr){
     (sel.trip === "round" ? " (round trip)" : " (one way)");
 }
 
+function shareUrl(amount){
+  const p = new URLSearchParams();
+  if(view === "flatbush" && sel.fb){
+    p.set("gf", sel.fb.base); p.set("gr", sel.fb.row); p.set("gc", sel.fb.col); p.set("a", sel.fb.price);
+  } else {
+    p.set("f", sel.from); p.set("t", sel.to); p.set("a", amount || "");
+    if(sel.trip === "round") p.set("trip", "round");
+    if(sel.minivan) p.set("mv", "1");
+    if(sel.airport) p.set("ap", "1");
+  }
+  return location.origin + "/q?" + p.toString();
+}
+async function shareQuote(btn, text, amount){
+  const url = shareUrl(amount);
+  if(navigator.share){
+    try { await navigator.share({ title: "Car Service Fare", text: text, url: url }); } catch(e){}
+    return;
+  }
+  try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
+  catch(e){ btn.textContent = url; }
+  setTimeout(() => btn.textContent = "Share quote", 1600);
+}
+
 function renderQuote(){
   view = "quote"; setStep(3);
   const { fare } = sel.resolved;
@@ -407,7 +434,7 @@ function renderQuote(){
     '<div class="note-line">' + (fare.origin === "community" ? "Community price" : "May 2023 sheet") +
       (fare.note ? " · " + esc(fare.note) : "") + "</div>" +
     '<div id="q-suggest"></div>' +
-    '<button class="btn" id="copy">Copy quote</button>' +
+    '<button class="btn" id="share">Share quote</button>' +
     '<button class="quiet-link" id="again">‹ Start over</button>'
   );
   const segBtns = $view.querySelectorAll("#seg-trip button");
@@ -416,16 +443,17 @@ function renderQuote(){
     segBtns.forEach(x => x.classList.toggle("on", x === b));
     refreshQuote();
   }));
+  segBtns.forEach(x => x.classList.toggle("on", x.dataset.trip === sel.trip));
   const mv = document.getElementById("opt-minivan");
   if(mv) mv.addEventListener("change", () => { sel.minivan = mv.checked; refreshQuote(); });
   const ap = document.getElementById("opt-airport");
   if(ap) ap.addEventListener("change", () => { sel.airport = ap.checked; refreshQuote(); });
-  document.getElementById("copy").addEventListener("click", async (e) => {
+  if(mv) mv.checked = !!sel.minivan;
+  if(ap) ap.checked = !!sel.airport;
+  document.getElementById("share").addEventListener("click", (e) => {
     const q = computeQuote();
     const priceStr = q.complex ? q.printed : money(q.total);
-    try { await navigator.clipboard.writeText(quoteText(priceStr)); e.target.textContent = "✓ Copied"; }
-    catch(err){ e.target.textContent = quoteText(priceStr); }
-    setTimeout(() => e.target.textContent = "Copy quote", 1600);
+    shareQuote(e.target, quoteText(priceStr), priceStr);
   });
   document.getElementById("again").addEventListener("click", () => renderPlacePicker(1));
   refreshQuote();
@@ -466,7 +494,7 @@ function renderFlatbush(base){
       grid.cols.map(c => "<option>" + esc(c) + "</option>").join("") + "</select>" +
     '<div class="price-big" id="fb-price"></div>' +
     '<div class="note-line">May 2023 sheet · One way</div>' +
-    '<button class="btn" id="copy">Copy quote</button>' +
+    '<button class="btn" id="share">Share quote</button>' +
     '<br><button class="quiet-link" id="back">‹ Start over</button>'
   );
   const upd = () => {
@@ -475,13 +503,13 @@ function renderFlatbush(base){
     const price = grid.price(r, c);
     document.getElementById("fb-price").textContent = price;
     sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + price;
+    sel.fb = { base: base, row: r, col: c, price: price };
   };
   document.getElementById("fb-row").addEventListener("change", upd);
   document.getElementById("fb-col").addEventListener("change", upd);
   upd();
-  document.getElementById("copy").addEventListener("click", async (e) => {
-    try { await navigator.clipboard.writeText(sel.fbText); e.target.textContent = "✓ Copied"; } catch(err){}
-    setTimeout(() => e.target.textContent = "Copy quote", 1600);
+  document.getElementById("share").addEventListener("click", (e) => {
+    shareQuote(e.target, sel.fbText, sel.fb ? sel.fb.price : "");
   });
   document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
 }
@@ -648,7 +676,22 @@ async function init(){
   h('<div class="empty">Loading prices…</div>');
   try {
     await loadData();
-    renderPlacePicker(1);
+    const q = new URLSearchParams(location.search);
+    if(q.get("gf") && gridFor(q.get("gf"))){
+      renderFlatbush(q.get("gf"));
+      const fr = document.getElementById("fb-row"), fc = document.getElementById("fb-col");
+      if(q.get("gr")) fr.value = q.get("gr");
+      if(q.get("gc")) fc.value = q.get("gc");
+      fr.dispatchEvent(new Event("change"));
+    } else if(q.get("f") && q.get("t")){
+      const res = findFare(q.get("f"), q.get("t"));
+      if(res){
+        sel.from = q.get("f"); sel.to = q.get("t"); sel.resolved = res;
+        sel.trip = (q.get("trip") === "round" && res.fare.round_trip) ? "round" : "oneway";
+        sel.minivan = q.get("mv") === "1"; sel.airport = q.get("ap") === "1";
+        renderQuote();
+      } else renderPlacePicker(1);
+    } else renderPlacePicker(1);
   } catch(e){
     h('<div class="error">Couldn\'t load prices.</div><button class="btn" id="retry">Try again</button>');
     document.getElementById("retry").addEventListener("click", init);
