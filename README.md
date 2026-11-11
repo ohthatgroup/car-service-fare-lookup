@@ -10,8 +10,11 @@ get the price.
   from different people before it applies to everyone. Until then the current
   price stays in effect.
 
-Seeded with 277 fares from printed price sheets dated May 22, 2023
-(Borough Park, Monroe, Monsey, Lakewood + the Borough Park Flatbush zone grid).
+Seeded with 263 place-to-place fares from printed price sheets dated
+May 22, 2023 (Borough Park, Monroe, Monsey, Lakewood + the Borough Park
+Flatbush zone grid). Only places are routes — the sheets' pricing rules
+(mini-van addition brackets, hourly rates, basic stops) live in the app's
+logic and Details text, not in the list.
 
 ## How it runs (all free tiers)
 
@@ -26,7 +29,7 @@ Seeded with 277 fares from printed price sheets dated May 22, 2023
 
 1. Create a Supabase project, open its SQL Editor, and run
    `supabase-setup.sql` once (creates the tables, rules, vote function, and
-   seeds the 277 fares).
+   seeds the 263 place fares).
 2. Copy the project URL and anon key from Supabase (Settings → API) into
    `config.js`.
 3. Deploy this folder/repo to Netlify (no build command; publish directory

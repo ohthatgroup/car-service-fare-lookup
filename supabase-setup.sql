@@ -95,17 +95,16 @@ grant execute on function public.cast_vote(bigint, text) to anon, authenticated;
 -- different places (the cemetery at $105 and the hospital at $60), so they
 -- are stored as "Beth Israel (Cemetery)" and "Beth Israel (Hospital)";
 -- Monroe's "Nyack" is printed at the same $80 in two sections, stored once.
+-- Only places are stored as routes (263): the sheets' rule rows — mini-van
+-- addition brackets, hourly rates, basic stops/deliveries, and the airport
+-- pickup note — are pricing rules, not places, and live in the app's logic
+-- and Details text instead.
 insert into public.fares (from_place, category, to_place, price, round_trip, note, origin) values
-('Borough Park','Airports','Airport pickups — add $5.00','',NULL,'Applies to airport pickups','sheet'),
 ('Borough Park','Airports','Islip','$135.00','$200.00',NULL,'sheet'),
 ('Borough Park','Airports','JFK','$85.00','$130.00',NULL,'sheet'),
 ('Borough Park','Airports','LaGuardia','$85.00','$130.00',NULL,'sheet'),
 ('Borough Park','Airports','Newark','$85.00','$130.00',NULL,'sheet'),
 ('Borough Park','Airports','Teterboro','$125.00','$190.00',NULL,'sheet'),
-('Borough Park','Basic Stops & Deliveries','Basic Delivery','$20.00',NULL,NULL,'sheet'),
-('Borough Park','Basic Stops & Deliveries','Delivery stop','$5.00',NULL,NULL,'sheet'),
-('Borough Park','Basic Stops & Deliveries','Local Stop On The Way','$5.00',NULL,NULL,'sheet'),
-('Borough Park','Basic Stops & Deliveries','Local Stop Out Of The Way','$6, $7, $8',NULL,'As printed','sheet'),
 ('Borough Park','Brooklyn','1st Ave. & 69 Strt.','$28.00','$42.00',NULL,'sheet'),
 ('Borough Park','Brooklyn','40 8th Ave.','$30.00','$45.00',NULL,'sheet'),
 ('Borough Park','Brooklyn','6740 4th Ave.','$28.00','$42.00',NULL,'sheet'),
@@ -166,9 +165,6 @@ insert into public.fares (from_place, category, to_place, price, round_trip, not
 ('Borough Park','Hospitals','St. Vincent','$60.00','$90.00',NULL,'sheet'),
 ('Borough Park','Hospitals','Staten Island','$65.00','$100.00',NULL,'sheet'),
 ('Borough Park','Hospitals','Westchester Medical','$160.00','$240.00',NULL,'sheet'),
-('Borough Park','Hourly rate (minimum 30 min.)','Brooklyn Delivery — Car / Mini Van','$50.00',NULL,'Mini Van $60.00','sheet'),
-('Borough Park','Hourly rate (minimum 30 min.)','Brooklyn — Car / Mini Van','$45.00',NULL,'Mini Van $55.00','sheet'),
-('Borough Park','Hourly rate (minimum 30 min.)','Long Distance, minimum 4 hours, round trip only — Car / Mini Van','$55.00',NULL,'Mini Van $65.00','sheet'),
 ('Borough Park','Long Distance','Bayonne','$75.00','$115.00',NULL,'sheet'),
 ('Borough Park','Long Distance','Elizabeth','$85.00','$130.00',NULL,'sheet'),
 ('Borough Park','Long Distance','Engelwood','$115.00','$175.00',NULL,'sheet'),
@@ -202,11 +198,6 @@ insert into public.fares (from_place, category, to_place, price, round_trip, not
 ('Borough Park','Manhattan','Riverdale/Bronx','$105.00','$160.00',NULL,'sheet'),
 ('Borough Park','Manhattan','Wall Street area','$55.00','$83.00',NULL,'sheet'),
 ('Borough Park','Manhattan','Washngtn Hights','$95.00','$145.00',NULL,'sheet'),
-('Borough Park','Mini Van ADDITION (by one-way fare)','$100-$200','$15.00',NULL,NULL,'sheet'),
-('Borough Park','Mini Van ADDITION (by one-way fare)','$200-$300','$20.00',NULL,NULL,'sheet'),
-('Borough Park','Mini Van ADDITION (by one-way fare)','$21-$100','$10.00',NULL,NULL,'sheet'),
-('Borough Park','Mini Van ADDITION (by one-way fare)','$300-$400','$25.00',NULL,NULL,'sheet'),
-('Borough Park','Mini Van ADDITION (by one-way fare)','Up to $20','$5.00',NULL,NULL,'sheet'),
 ('Lakewood','Airports','John F. Kennedy (JFK)','$240.00',NULL,NULL,'sheet'),
 ('Lakewood','Airports','LaGuardia (LGA)','$240.00',NULL,NULL,'sheet'),
 ('Lakewood','Airports','Newark (EWR)','$135.00',NULL,NULL,'sheet'),
