@@ -39,7 +39,70 @@ function miniVanAddition(oneWay, rules){
 }
 
 /* Returns { route, amount, appParams } for a short code, or null. */
+
+function trimNum(n){ return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100); }
+function extrasOf(row){
+  let add = 0; const parts = [];
+  const wa = parseFloat(row.wait_amount);
+  if(wa && wa > 0){
+    if(row.wait_unit === "once"){ add += wa; parts.push("WAIT +$" + trimNum(wa)); }
+    else {
+      const hrs = Math.max(1, parseFloat(row.wait_hours) || 1);
+      add += wa * hrs; parts.push("WAIT " + trimNum(hrs) + " HR $" + trimNum(wa * hrs));
+    }
+  }
+  (row.addons || []).forEach(a => {
+    const amt = parseFloat(a.amount);
+    if(a.name && amt > 0){ add += amt; parts.push(String(a.name).toUpperCase() + " +$" + trimNum(amt)); }
+  });
+  return { add, parts };
+}
+async function resolveShare(code){
+  const rows = await db("shares?code=eq." + encodeURIComponent(code) + "&select=*");
+  const row = rows && rows[0];
+  if(!row) return null;
+  const ex = extrasOf(row);
+  const extras = ex.parts.join(" · ");
+  if(row.grid){
+    const cells = await db("grid_cells?base=eq." + encodeURIComponent(row.grid.base) +
+      "&row_index=eq." + row.grid.row + "&col_index=eq." + row.grid.col + "&select=price");
+    const cell = cells && cells[0];
+    const p = cell ? plainPrice(cell.price) : null;
+    return { route: row.grid.base + " zone fare",
+      amount: p != null ? money(p + ex.add) : (cell ? cell.price : ""), extras,
+      appParams: { sh: row.code } };
+  }
+  if(row.fare_id){
+    const fares = await db("fares?select=id,from_place,category,to_place,price,round_trip&id=eq." + row.fare_id);
+    const fare = fares && fares[0];
+    if(!fare) return null;
+    const rulesRows = await db("base_rules?select=airport_pickup_fee,minivan_brackets&base=eq." + encodeURIComponent(fare.from_place));
+    const rules = rulesRows && rulesRows[0];
+    const oneWay = plainPrice(fare.price);
+    const round = row.trip === "round" && !!fare.round_trip;
+    const rtVal = fare.round_trip ? plainPrice(fare.round_trip) : null;
+    let total = null, printed = fare.price;
+    if(round && rtVal != null){ total = rtVal; printed = fare.round_trip; }
+    else if(!round && oneWay != null){ total = oneWay; }
+    else if(round){ printed = fare.round_trip; }
+    if(total != null){
+      total += ex.add;
+      if(row.airport && rules && rules.airport_pickup_fee != null) total += Number(rules.airport_pickup_fee);
+      if(row.minivan){
+        const add = miniVanAddition(oneWay, rules);
+        if(add != null) total += add;
+      }
+    }
+    return { route: fare.from_place + " → " + fare.to_place,
+      amount: total != null ? money(total) : printed, extras,
+      appParams: { sh: row.code } };
+  }
+  return null;
+}
+
 async function resolveCode(code){
+  const shm = code.match(/^q([a-z0-9]{4,})$/i);
+  if(shm){ try { return await resolveShare(shm[1]); } catch(e){ return null; } }
   const grid = code.match(/^g(\d+)-(\d+)-(\d+)$/);
   if(grid){
     const cells = await db("grid_cells?select=base,row_index,row_label,col_index,col_label,price&order=base.asc,row_index.asc,col_index.asc");
@@ -94,11 +157,11 @@ module.exports = async (req, res) => {
   const host = req.headers.host || "fare-lookup.vercel.app";
   const origin = "https://" + host;
 
-  let route = "", amount = "", appParams = null;
+  let route = "", amount = "", appParams = null, extrasTxt = "";
   if(q.code){
     try {
       const res2 = await resolveCode(String(q.code));
-      if(res2){ route = res2.route; amount = String(res2.amount || ""); appParams = res2.appParams; }
+      if(res2){ route = res2.route; amount = String(res2.amount || ""); appParams = res2.appParams; extrasTxt = res2.extras || ""; }
     } catch(e){ /* fall through to a generic page */ }
   }
   if(!appParams){
@@ -110,7 +173,7 @@ module.exports = async (req, res) => {
 
   const title = (route + (amount ? " — " + amount : "")).trim() || "Car Service Fare Lookup";
   const ogImg = origin + "/ogimg?a=" + encodeURIComponent(amount || "Fare Lookup") +
-    "&r=" + encodeURIComponent(route);
+    "&r=" + encodeURIComponent(route) + (extrasTxt ? "&x=" + encodeURIComponent(extrasTxt) : "");
   const appUrl = origin + "/?" + new URLSearchParams(appParams).toString();
 
   const html = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +

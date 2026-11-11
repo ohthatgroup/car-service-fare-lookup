@@ -108,6 +108,20 @@ module.exports = async (req, res) => {
   const glyphH = 7 * scale;
   drawText(px, amount, W / 2, Math.round(315 - glyphH / 2) + (route ? 18 : 0), scale, black, true);
 
+
+  const xtra = String(q.x || "").slice(0, 110);
+  if(xtra){
+    const xs = 4;
+    const xw = (st) => st.length * 6 * xs - xs;
+    const words = xtra.split(" ");
+    const xlines = [""];
+    for(const wd of words){
+      const cand = xlines[xlines.length - 1] ? xlines[xlines.length - 1] + " " + wd : wd;
+      if(xw(cand) > 1060 && xlines[xlines.length - 1]){ if(xlines.length < 2) xlines.push(wd); }
+      else xlines[xlines.length - 1] = cand;
+    }
+    xlines.forEach((ln, i) => { if(ln) drawText(px, ln, W / 2, 448 + i * 36, xs, gray, false); });
+  }
   drawText(px, "Car Service Fare Lookup", W / 2, H - 84, 4, gray, false);
 
   const png = makePng(px);

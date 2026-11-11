@@ -461,3 +461,22 @@ on conflict (base, row_index, col_index) do nothing;
 insert into public.base_rules (base, airport_pickup_fee, minivan_brackets, grid_label) values
 ('Borough Park', 5, '[[20,5],[100,10],[200,15],[300,20],[400,25]]'::jsonb, 'Flatbush zone fare')
 on conflict (base) do nothing;
+
+-- Shared quotes with extras (wait / custom add-ons); a share link stores the
+-- whole quote under a short code so the preview image can show the extras.
+create table if not exists public.shares (
+  code text primary key,
+  fare_id bigint references public.fares(id) on delete cascade,
+  grid jsonb,
+  trip text,
+  minivan boolean not null default false,
+  airport boolean not null default false,
+  wait_amount numeric,
+  wait_unit text,
+  wait_hours numeric,
+  addons jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+alter table public.shares enable row level security;
+create policy "shares read" on public.shares for select using (true);
+create policy "shares add" on public.shares for insert with check (true);

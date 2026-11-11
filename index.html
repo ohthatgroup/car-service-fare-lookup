@@ -113,6 +113,13 @@
   .toggle-row input{ width:22px; height:22px; accent-color:var(--accent); }
   .price-big{ font-size:52px; font-weight:700; letter-spacing:-.03em; text-align:center; margin:26px 0 2px; }
   .route-line{ text-align:center; font-size:17px; color:var(--muted); }
+  .extra-row{ display:flex; align-items:center; gap:8px; margin:8px 0; }
+  .extra-row .x-name{ flex:1; font-size:15.5px; }
+  .extra-row input[type="text"]{ padding:10px 12px; font-size:16px; }
+  .extra-row .x-amt{ width:88px; flex:none; }
+  .extra-row .x-unit{ width:112px; flex:none; padding:10px 8px; font-size:15px; }
+  .extra-row .x-hrs{ width:58px; flex:none; }
+  .extra-row .x-del{ flex:none; border:0; background:var(--chip); color:var(--muted); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:13px; }
   .breakdown{ max-width:340px; margin:18px auto 0; font-size:15px; }
   .breakdown .line{ display:flex; justify-content:space-between; padding:5px 0; color:var(--muted); }
   .breakdown .line.total{ color:var(--text); font-weight:600; border-top:1px solid var(--border); margin-top:5px; padding-top:9px; }
@@ -298,6 +305,75 @@ function airportFee(base){
   const rules = rulesByBase[base];
   return rules && rules.airport_pickup_fee != null ? Number(rules.airport_pickup_fee) : null;
 }
+function extrasLines(){
+  const lines = [];
+  const w = sel.wait || {};
+  const wa = parseFloat(w.amount);
+  if(wa && wa > 0){
+    if(w.unit === "once") lines.push({ label: "Wait", amount: wa });
+    else {
+      const hrs = Math.max(1, parseFloat(w.hours) || 1);
+      lines.push({ label: "Wait (" + hrs + " hr × " + money(wa) + "/hr)", amount: wa * hrs });
+    }
+  }
+  (sel.addons || []).forEach(a => {
+    const amt = parseFloat(a.amount);
+    if(a.name && a.name.trim() && amt && amt > 0) lines.push({ label: a.name.trim(), amount: amt });
+  });
+  return lines;
+}
+function withExtras(total, lines){
+  for(const l of extrasLines()){ lines.push(l); total += l.amount; }
+  const out = { total: total, lines: lines, complex: false };
+  return out;
+}
+function breakdownHtml(lines, total){
+  return '<div class="breakdown">' + lines.map(l =>
+    '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") +
+    '<div class="line total"><span>Total</span><span>' + money(total) + "</span></div></div>";
+}
+function renderExtras(mountId, onChange){
+  const mount = document.getElementById(mountId);
+  if(!mount) return;
+  const w = sel.wait || (sel.wait = { amount: "", unit: "hour", hours: 1 });
+  if(!sel.addons) sel.addons = [];
+  const rows = sel.addons.map((a, i) =>
+    '<div class="extra-row"><input type="text" class="xa-name" data-i="' + i + '" placeholder="Custom add-on (e.g. Toll)" value="' + esc(a.name || "") + '">' +
+    '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="$" value="' + esc(a.amount || "") + '">' +
+    '<button class="x-del" data-i="' + i + '" aria-label="Remove">✕</button></div>').join("");
+  mount.innerHTML =
+    '<div class="group-label">Extras</div>' +
+    '<div class="extra-row"><span class="x-name">Wait</span>' +
+    '<input type="text" class="x-amt" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '">' +
+    '<select class="x-unit" id="x-wait-unit"><option value="hour"' + (w.unit === "hour" ? " selected" : "") + '>per hour</option><option value="once"' + (w.unit === "once" ? " selected" : "") + '>add-on</option></select>' +
+    (w.unit === "hour" ? '<input type="text" class="x-hrs" id="x-wait-hrs" inputmode="numeric" value="' + esc(w.hours || 1) + '"><span class="votes">hrs</span>' : "") +
+    "</div>" + rows +
+    '<button class="quiet-link" id="x-add">+ Custom add-on</button>';
+  document.getElementById("x-wait-amt").addEventListener("input", e => { w.amount = e.target.value; onChange(); });
+  document.getElementById("x-wait-unit").addEventListener("change", e => { w.unit = e.target.value; renderExtras(mountId, onChange); onChange(); });
+  const hrs = document.getElementById("x-wait-hrs");
+  if(hrs) hrs.addEventListener("input", e => { w.hours = e.target.value; onChange(); });
+  mount.querySelectorAll(".xa-name").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].name = e.target.value; onChange(); }));
+  mount.querySelectorAll(".xa-amt").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].amount = e.target.value; onChange(); }));
+  mount.querySelectorAll(".x-del").forEach(b => b.addEventListener("click", e => { sel.addons.splice(Number(e.target.dataset.i), 1); renderExtras(mountId, onChange); onChange(); }));
+  document.getElementById("x-add").addEventListener("click", () => { sel.addons.push({ name: "", amount: "" }); renderExtras(mountId, onChange); });
+}
+function extrasPayload(){
+  const w = sel.wait || {};
+  const wa = parseFloat(w.amount);
+  const addons = (sel.addons || []).filter(a => a.name && a.name.trim() && parseFloat(a.amount) > 0)
+    .map(a => ({ name: a.name.trim(), amount: parseFloat(a.amount) }));
+  const hasWait = !!(wa && wa > 0);
+  if(!hasWait && !addons.length) return null;
+  return { wait_amount: hasWait ? wa : null, wait_unit: hasWait ? (w.unit || "hour") : null,
+    wait_hours: hasWait && (w.unit || "hour") !== "once" ? Math.max(1, parseFloat(w.hours) || 1) : null,
+    addons };
+}
+function makeShareCode(){
+  const abc = "abcdefghjkmnpqrstuvwxyz23456789";
+  let out = ""; for(let i = 0; i < 6; i++) out += abc[Math.floor(Math.random() * abc.length)];
+  return out;
+}
 function computeQuote(){
   // returns {display, breakdown:[{label, amount}], complex} or null
   const { fare, reversed } = sel.resolved;
@@ -314,7 +390,7 @@ function computeQuote(){
       const add = miniVanAddition(oneWay, fare.from_place);
       if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
     }
-    return { total, lines, complex: false };
+    return withExtras(total, lines);
   }
   if(oneWay == null){
     return { total: null, lines: [], complex: true, printed: fare.price };
@@ -326,7 +402,7 @@ function computeQuote(){
     const add = miniVanAddition(oneWay, fare.from_place);
     if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
   }
-  return { total, lines, complex: false };
+  return withExtras(total, lines);
 }
 function optionsApply(){
   const { fare, reversed } = sel.resolved;
@@ -380,6 +456,7 @@ function placeListHTML(query, exclude){
 
 function renderPlacePicker(step){
   const isFrom = step === 1;
+  if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; }
   view = isFrom ? "step1" : "step2";
   setStep(step);
   const other = isFrom ? null : sel.from;
@@ -452,7 +529,26 @@ function shareUrl(){
   return location.origin + "/s/" + code;
 }
 async function shareQuote(btn){
-  const url = shareUrl();
+  let url = null;
+  const ex = extrasPayload();
+  if(ex){
+    const row = { code: makeShareCode(), addons: ex.addons, wait_amount: ex.wait_amount,
+      wait_unit: ex.wait_unit, wait_hours: ex.wait_hours };
+    if(view === "flatbush" && sel.fb){
+      row.grid = { base: sel.fb.base, row: sel.fb.rowIdx, col: sel.fb.colIdx };
+    } else if(sel.resolved){
+      row.fare_id = sel.resolved.fare.id;
+      row.trip = sel.trip === "round" ? "round" : null;
+      row.minivan = !!sel.minivan; row.airport = !!sel.airport;
+    }
+    if(row.grid || row.fare_id){
+      try {
+        await sb("shares", { method: "POST", body: JSON.stringify(row) });
+        url = location.origin + "/s/q" + row.code;
+      } catch(e){ url = null; }
+    }
+  }
+  if(!url) url = shareUrl();
   if(navigator.share){
     try { await navigator.share({ url: url }); } catch(e){}
     return;
@@ -475,6 +571,7 @@ function renderQuote(){
       '<button data-trip="round">Round trip</button></div>' : "") +
     (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
+    '<div id="q-extras"></div>' +
     '<div id="q-breakdown"></div>' +
     '<div class="note-line">' + (fare.origin === "community" ? "Community price" : "May 2023 sheet") +
       (fare.note ? " · " + esc(fare.note) : "") + "</div>" +
@@ -501,6 +598,7 @@ function renderQuote(){
     shareQuote(e.target, quoteText(priceStr), priceStr);
   });
   document.getElementById("again").addEventListener("click", () => renderPlacePicker(1));
+  renderExtras("q-extras", refreshQuote);
   refreshQuote();
 }
 
@@ -511,11 +609,7 @@ function refreshQuote(){
   document.getElementById("q-price").textContent = priceStr;
   document.getElementById("q-sub").textContent = q.complex ? "" : (sel.trip === "round" ? "Round trip" : "One way");
   const bd = document.getElementById("q-breakdown");
-  if(!q.complex && q.lines.length > 1){
-    bd.innerHTML = '<div class="breakdown">' + q.lines.map(l =>
-      '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") +
-      '<div class="line total"><span>Total</span><span>' + money(q.total) + "</span></div></div>";
-  } else bd.innerHTML = "";
+  bd.innerHTML = (!q.complex && q.lines.length > 1) ? breakdownHtml(q.lines, q.total) : "";
   const open = proposals.find(p => p.fare_id === fare.id);
   const sg = document.getElementById("q-suggest");
   if(open){
@@ -538,6 +632,8 @@ function renderFlatbush(base){
     '<label class="field">Cross-street</label><select id="fb-col">' +
       grid.cols.map(c => "<option>" + esc(c) + "</option>").join("") + "</select>" +
     '<div class="price-big" id="fb-price"></div>' +
+    '<div id="fb-extras"></div>' +
+    '<div id="fb-breakdown"></div>' +
     '<div class="note-line">May 2023 sheet · One way</div>' +
     '<button class="btn" id="share">Share quote</button>' +
     '<br><button class="quiet-link" id="back">‹ Start over</button>'
@@ -546,12 +642,20 @@ function renderFlatbush(base){
     const r = document.getElementById("fb-row").value;
     const c = document.getElementById("fb-col").value;
     const price = grid.price(r, c);
-    document.getElementById("fb-price").textContent = price;
-    sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + price;
+    const baseNum = plainPrice(price);
+    const exLines = extrasLines();
+    const exSum = exLines.reduce((sm, l) => sm + l.amount, 0);
+    const showTotal = baseNum != null && exSum > 0;
+    const shown = showTotal ? money(baseNum + exSum) : price;
+    document.getElementById("fb-price").textContent = shown;
+    document.getElementById("fb-breakdown").innerHTML = showTotal
+      ? breakdownHtml([{ label: "Zone fare", amount: baseNum }].concat(exLines), baseNum + exSum) : "";
+    sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + shown;
     sel.fb = { base: base, row: r, col: c, price: price, rowIdx: grid.rows.indexOf(r), colIdx: grid.cols.indexOf(c) };
   };
   document.getElementById("fb-row").addEventListener("change", upd);
   document.getElementById("fb-col").addEventListener("change", upd);
+  renderExtras("fb-extras", upd);
   upd();
   document.getElementById("share").addEventListener("click", (e) => {
     shareQuote(e.target, sel.fbText, sel.fb ? sel.fb.price : "");
@@ -740,7 +844,30 @@ async function init(){
   try {
     await loadData();
     const q = new URLSearchParams(location.search);
-    if(q.get("gf") && gridFor(q.get("gf"))){
+    const shRow = q.get("sh") ? await sb("shares?code=eq." + encodeURIComponent(q.get("sh")) + "&select=*").catch(() => null) : null;
+    const shared = shRow && shRow[0];
+    if(shared){
+      sel.wait = { amount: shared.wait_amount != null ? String(shared.wait_amount) : "", unit: shared.wait_unit || "hour", hours: shared.wait_hours || 1 };
+      sel.addons = (shared.addons || []).map(a => ({ name: a.name, amount: String(a.amount) }));
+      if(shared.grid && gridFor(shared.grid.base)){
+        inFlow = true;
+        renderFlatbush(shared.grid.base);
+        const fr2 = document.getElementById("fb-row"), fc2 = document.getElementById("fb-col");
+        if(fr2.options[shared.grid.row]) fr2.selectedIndex = shared.grid.row;
+        if(fc2.options[shared.grid.col]) fc2.selectedIndex = shared.grid.col;
+        fr2.dispatchEvent(new Event("change"));
+      } else {
+        const sf = shared.fare_id ? data.fares.find(f => f.id === shared.fare_id) : null;
+        if(sf){
+          inFlow = true;
+          sel.from = sf.from_place; sel.to = sf.to_place;
+          sel.resolved = { fare: sf, reversed: false };
+          sel.trip = shared.trip === "round" ? "round" : "oneway";
+          sel.minivan = !!shared.minivan; sel.airport = !!shared.airport;
+          renderQuote();
+        } else renderPlacePicker(1);
+      }
+    } else if(q.get("gf") && gridFor(q.get("gf"))){
       inFlow = true;
       renderFlatbush(q.get("gf"));
       const fr = document.getElementById("fb-row"), fc = document.getElementById("fb-col");
