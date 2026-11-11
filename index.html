@@ -43,40 +43,36 @@
   #steprow .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
   #steprow .dot.done{ background:var(--accent); cursor:pointer; }
   #steprow .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
-  #steprow .step-label{ font-size:14px; font-weight:500; color:var(--muted); }
   #details-bar{
-    flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    flex:none; display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:7px 12px;
     padding:10px 16px calc(10px + env(safe-area-inset-bottom));
     border-top:1px solid var(--border);
     background:color-mix(in srgb, var(--bg) 82%, transparent);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
   }
-  #details-bar .src{ font-size:12.5px; color:var(--muted); line-height:1.35; min-width:0; }
-  #details-bar .foot-actions{ display:flex; gap:8px; flex:none; }
+  #details-bar .src{ grid-column:1 / -1; grid-row:2; text-align:center; font-size:12.5px; color:var(--muted); }
+  #details-bar .foot-actions{ display:contents; }
   .foot-btn{
-    display:inline-block; border:1px solid var(--border); background:var(--surface); color:var(--text);
-    font-size:14px; font-weight:500; padding:8px 13px; border-radius:980px; cursor:pointer;
-    text-decoration:none; white-space:nowrap; font-family:inherit;
+    background:none; border:0; padding:4px 2px; font-family:inherit;
+    color:var(--accent); font-size:14.5px; cursor:pointer; text-decoration:none; white-space:nowrap;
   }
-  .foot-btn:active{ background:var(--chip); }
-  #details-btn{ background:var(--accent); border-color:transparent; color:var(--accent-text); }
-  #details-btn:active{ background:var(--accent); filter:brightness(1.12); }
-  .screen-head{ display:flex; align-items:center; gap:12px; margin:6px 0 14px; }
-  .screen-head h1{ margin:0; }
-  .icon-back{
-    flex:none; width:36px; height:36px; border-radius:50%; border:0; background:var(--chip);
-    color:var(--text); font-size:21px; line-height:1; cursor:pointer; display:grid; place-items:center; padding:0 0 3px;
-  }
-  .icon-back:active{ filter:brightness(.94); }
+  a.foot-btn{ justify-self:start; }
+  #details-btn{ justify-self:end; }
+  .foot-btn:active{ opacity:.55; }
   nav.on-board #nav-pending{ display:block; }
   nav.on-board .badge{ display:none !important; }
-  #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
+  #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; padding:0; }
   #modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.42); }
   #modal .sheet{
     position:relative; background:var(--surface); color:var(--text);
-    border-radius:22px; max-width:440px; width:100%; padding:20px 20px 14px;
-    box-shadow:0 18px 50px rgba(0,0,0,.28);
+    border-radius:22px 22px 0 0; max-width:560px; width:100%;
+    padding:10px 20px calc(16px + env(safe-area-inset-bottom));
+    max-height:84dvh; overflow-y:auto;
+    box-shadow:0 -12px 44px rgba(0,0,0,.25);
+    animation:drawer-up .24s cubic-bezier(.32,.72,.28,1);
   }
+  #modal .grab{ width:38px; height:5px; border-radius:3px; background:var(--border); margin:2px auto 12px; }
+  @keyframes drawer-up{ from{ transform:translateY(46px); opacity:.5; } to{ transform:translateY(0); opacity:1; } }
   #modal .sheet-head{ display:flex; align-items:center; justify-content:space-between; font-weight:600; font-size:17px; margin-bottom:6px; }
   #modal .sheet-head button{ background:none; border:0; color:var(--muted); font-size:17px; cursor:pointer; padding:4px 6px; }
   #modal .sheet p{ color:var(--muted); font-size:14.5px; line-height:1.55; margin:8px 0; }
@@ -174,8 +170,8 @@
 </head>
 <body>
 <nav id="topnav">
-  <button class="link" id="nav-back">‹ Start over</button>
-  <span class="title">Fare Lookup</span>
+  <button class="link" id="nav-back">Home</button>
+  <span class="title" id="nav-title">Fare Lookup</span>
   <span class="spacer"></span>
   <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
 </nav>
@@ -183,7 +179,6 @@
   <span class="steps" id="nav-steps">
     <button class="dot" data-dot="1" aria-label="Step 1"></button><button class="dot" data-dot="2" aria-label="Step 2"></button><button class="dot" data-dot="3" aria-label="Step 3"></button>
   </span>
-  <span class="step-label" id="step-label">Where from?</span>
 </div>
 <div id="scroll">
   <div class="col">
@@ -200,6 +195,7 @@
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
+    <div class="grab"></div>
     <div class="sheet-head"><span>Details</span><button id="modal-close" aria-label="Close">✕</button></div>
     <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
     <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
@@ -449,7 +445,8 @@ function setStep(n, label){
     d.classList.toggle("done", dn < n);
     d.classList.toggle("current", dn === n);
   });
-  document.getElementById("step-label").textContent = label || STEP_NAMES[n] || "";
+  document.getElementById("nav-title").textContent =
+    (view === "step1" && !label) ? "Fare Lookup" : (label || STEP_NAMES[n] || "Fare Lookup");
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
@@ -686,7 +683,7 @@ function renderFlatbush(base){
 }
 
 function renderNotListed(msg){
-  view = "notlisted"; setStep(2);
+  view = "notlisted"; setStep(2, "Not listed");
   h(
     "<h1>Not listed</h1>" +
     '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
@@ -707,7 +704,6 @@ function renderAdd(prefill){
   view = "add"; setStep(2, "Add a price");
   const dl = '<datalist id="places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
   h(
-    '<div class="screen-head"><button class="icon-back" id="back" aria-label="Back">‹</button><h1>Add a price</h1></div>' +
     '<div class="sub">Goes live right away for everyone.</div>' + dl +
     '<label class="field">From</label><input type="text" id="f-from" list="places-dl" value="' + esc(prefill.from || "") + '" placeholder="Where from?">' +
     '<label class="field">To</label><input type="text" id="f-to" list="places-dl" value="' + esc(prefill.to || "") + '" placeholder="Where to?">' +
@@ -725,9 +721,6 @@ function renderAdd(prefill){
   fillCats();
   document.getElementById("f-from").addEventListener("change", fillCats);
   document.getElementById("f-to").addEventListener("change", fillCats);
-  document.getElementById("back").addEventListener("click", () => {
-    if(addReturn === "board"){ addReturn = null; renderPending(); } else renderPlacePicker(1);
-  });
   document.getElementById("f-save").addEventListener("click", async () => {
     const from = document.getElementById("f-from").value.trim();
     const to = document.getElementById("f-to").value.trim();
@@ -761,14 +754,12 @@ function renderSuggest(){
   view = "suggest"; setStep(3, "Propose a change");
   const { fare } = sel.resolved;
   h(
-    '<div class="screen-head"><button class="icon-back" id="back" aria-label="Back">‹</button><h1>Propose a price change</h1></div>' +
     '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your proposal applies when its net score reaches " + VOTES_NEEDED + " votes.</div>" +
     '<label class="field">New one-way price</label><input type="text" id="s-price" placeholder="$90">' +
     '<label class="field">New round trip price (optional)</label><input type="text" id="s-rt" placeholder="">' +
     '<div class="error hidden" id="s-err"></div>' +
     '<button class="btn" id="s-save">Post proposal</button>'
   );
-  document.getElementById("back").addEventListener("click", renderQuote);
   document.getElementById("s-save").addEventListener("click", async () => {
     let price = document.getElementById("s-price").value.trim();
     const rt = document.getElementById("s-rt").value.trim();
@@ -795,8 +786,7 @@ function renderPending(){
   view = "pending"; setStep(0, "Board");
   const mine = myVotes();
   const sorted = [...proposals].sort((a, b) => b.votes - a.votes);
-  h('<div class="screen-head"><button class="icon-back" id="back" aria-label="Back">‹</button><h1>Board</h1></div>' +
-    '<div class="group-label">Open votes</div>' +
+  h(    '<div class="group-label">Open votes</div>' +
     (sorted.length ? sorted.map(p => {
       const f = p.fare || {};
       const my = mine[p.id] || 0;
@@ -814,7 +804,6 @@ function renderPending(){
         "</div></div>";
     }).join("") : '<div class="empty">No price changes are waiting on votes.</div>')
   );
-  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
   $view.querySelectorAll("[data-vote-up]").forEach(b => {
     b.addEventListener("click", () => castVote(Number(b.dataset.voteUp), 1));
   });
