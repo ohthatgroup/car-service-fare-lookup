@@ -10,3 +10,8 @@
   from = "/ogimg"
   to = "/.netlify/functions/ogimg"
   status = 200
+
+[[redirects]]
+  from = "/s/*"
+  to = "/.netlify/functions/quote"
+  status = 200

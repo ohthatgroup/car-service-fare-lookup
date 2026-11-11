@@ -394,22 +394,23 @@ function quoteText(priceStr){
     (sel.trip === "round" ? " (round trip)" : " (one way)");
 }
 
-function shareUrl(amount){
-  const p = new URLSearchParams();
+function shareUrl(){
   if(view === "flatbush" && sel.fb){
-    p.set("gf", sel.fb.base); p.set("gr", sel.fb.row); p.set("gc", sel.fb.col); p.set("a", sel.fb.price);
-  } else {
-    p.set("f", sel.from); p.set("t", sel.to); p.set("a", amount || "");
-    if(sel.trip === "round") p.set("trip", "round");
-    if(sel.minivan) p.set("mv", "1");
-    if(sel.airport) p.set("ap", "1");
+    const gridBases = [...new Set(gridCells.map(c => c.base))].sort();
+    const bi = gridBases.indexOf(sel.fb.base);
+    return location.origin + "/s/g" + bi + "-" + sel.fb.rowIdx + "-" + sel.fb.colIdx;
   }
-  return location.origin + "/q?" + p.toString();
+  const { fare } = sel.resolved;
+  let code = String(fare.id);
+  if(sel.trip === "round") code += "r";
+  if(sel.minivan) code += "m";
+  if(sel.airport) code += "p";
+  return location.origin + "/s/" + code;
 }
-async function shareQuote(btn, text, amount){
-  const url = shareUrl(amount);
+async function shareQuote(btn){
+  const url = shareUrl();
   if(navigator.share){
-    try { await navigator.share({ title: "Car Service Fare", text: text, url: url }); } catch(e){}
+    try { await navigator.share({ url: url }); } catch(e){}
     return;
   }
   try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
@@ -503,7 +504,7 @@ function renderFlatbush(base){
     const price = grid.price(r, c);
     document.getElementById("fb-price").textContent = price;
     sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + price;
-    sel.fb = { base: base, row: r, col: c, price: price };
+    sel.fb = { base: base, row: r, col: c, price: price, rowIdx: grid.rows.indexOf(r), colIdx: grid.cols.indexOf(c) };
   };
   document.getElementById("fb-row").addEventListener("change", upd);
   document.getElementById("fb-col").addEventListener("change", upd);
