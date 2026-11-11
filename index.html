@@ -41,7 +41,8 @@
   nav .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
   nav .dot.done{ background:var(--accent); cursor:pointer; }
   nav .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
-  nav .step-name{ color:var(--accent); font-weight:600; font-size:15.5px; white-space:nowrap; }
+  nav .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
+  nav .dot.cur{ background:var(--muted); }
   #nav-logo{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:17px; letter-spacing:-.02em; white-space:nowrap; }
   #nav-logo svg{ display:block; flex:none; }
   nav.in-flow #nav-logo{ display:none; }
@@ -511,7 +512,7 @@ function setStep(n, label){
   const onSteps = n >= 1 && n <= 3 && view !== "pending";
   const curName = label || STEP_NAMES[n] || "";
   document.getElementById("nav-steps").innerHTML = [1, 2, 3].map(i => {
-    if(onSteps && i === n) return '<span class="step-name">' + esc(curName) + "</span>";
+    if(onSteps && i === n) return '<span class="dot cur"></span><span class="step-name">' + esc(curName) + "</span>";
     return '<button class="dot' + (i < n ? " done" : "") + '" data-dot="' + i + '" aria-label="Step ' + i + '"></button>';
   }).join("");
   const $t = document.getElementById("nav-title");
