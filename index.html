@@ -36,13 +36,10 @@
   nav .title{ font-weight:600; font-size:17px; letter-spacing:-.01em; }
   nav #nav-back{ display:none; }
   nav.in-flow #nav-back{ display:block; }
-  nav.in-flow #nav-pending{ display:none; }
-  nav.in-flow .title{ margin-left:auto; }
-  #steprow{ flex:none; display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 16px 6px; }
-  #steprow .steps{ display:flex; align-items:center; gap:7px; }
-  #steprow .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
-  #steprow .dot.done{ background:var(--accent); cursor:pointer; }
-  #steprow .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  nav .steps{ display:flex; align-items:center; gap:7px; }
+  nav .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
+  nav .dot.done{ background:var(--accent); cursor:pointer; }
+  nav .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
   #fab{
     position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:40;
     width:56px; height:56px; border-radius:50%; border:0; cursor:pointer;
@@ -128,7 +125,15 @@
   .toggle-row input{ width:22px; height:22px; accent-color:var(--accent); }
   .price-big{ font-size:52px; font-weight:700; letter-spacing:-.03em; text-align:center; margin:26px 0 2px; }
   .route-line{ text-align:center; font-size:17px; color:var(--muted); }
+  .extra-btns{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+  .extra-btn{
+    border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit;
+    font-size:15.5px; font-weight:500; padding:13px 10px; border-radius:14px; cursor:pointer;
+  }
+  .extra-btn:active{ background:var(--chip); }
+  .extra-btn .x-plus{ color:var(--accent); font-weight:600; }
   .extra-row{ display:flex; align-items:center; gap:8px; margin:8px 0; }
+  .extra-row .xa-name{ flex:1; min-width:0; }
   .extra-row .x-name{ flex:1; font-size:15.5px; }
   .extra-row input[type="text"]{ padding:10px 12px; font-size:16px; }
   .extra-row .x-amt{ width:88px; flex:none; }
@@ -170,16 +175,14 @@
 </head>
 <body>
 <nav id="topnav">
-  <button class="link" id="nav-back">‹ Home</button>
+  <button class="link" id="nav-back">‹ Start over</button>
+  <span class="steps" id="nav-steps">
+    <button class="dot" data-dot="1" aria-label="Step 1"></button><button class="dot" data-dot="2" aria-label="Step 2"></button><button class="dot" data-dot="3" aria-label="Step 3"></button>
+  </span>
   <span class="title" id="nav-title">Fare Lookup</span>
   <span class="spacer"></span>
   <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
 </nav>
-<div id="steprow">
-  <span class="steps" id="nav-steps">
-    <button class="dot" data-dot="1" aria-label="Step 1"></button><button class="dot" data-dot="2" aria-label="Step 2"></button><button class="dot" data-dot="3" aria-label="Step 3"></button>
-  </span>
-</div>
 <div id="scroll">
   <div class="col">
     <div id="view"></div>
@@ -351,31 +354,79 @@ function breakdownHtml(lines, total){
     '<div class="line"><span>' + esc(l.label) + "</span><span>" + money(l.amount) + "</span></div>").join("") +
     '<div class="line total"><span>Total</span><span>' + money(total) + "</span></div></div>";
 }
-function renderExtras(mountId, onChange){
-  const mount = document.getElementById(mountId);
-  if(!mount) return;
+function extraBtnsHtml(){
+  const w = sel.wait || {};
+  const wa = parseFloat(w.amount);
+  const waitSet = !!(wa && wa > 0);
+  const hrs = parseFloat(w.hours) || 1;
+  const waitLabel = waitSet
+    ? "Wait · " + money(wa) + (w.unit === "once" ? "" : "/hr" + (hrs > 1 ? " × " + hrs : ""))
+    : "Add wait";
+  const adds = (sel.addons || []).filter(a => a.name && a.name.trim() && parseFloat(a.amount) > 0);
+  const addSum = adds.reduce((sm, a) => sm + parseFloat(a.amount), 0);
+  const addLabel = adds.length ? "Extra · " + money(addSum) : "Add extra";
+  return '<div class="extra-btns">' +
+    '<button class="extra-btn" id="x-wait-btn">' + (waitSet ? "" : '<span class="x-plus">+</span> ') + esc(waitLabel) + "</button>" +
+    '<button class="extra-btn" id="x-extra-btn">' + (adds.length ? "" : '<span class="x-plus">+</span> ') + esc(addLabel) + "</button></div>";
+}
+function wireExtraBtns(mountId, onChange){
+  const m = document.getElementById(mountId);
+  if(!m) return;
+  m.innerHTML = extraBtnsHtml();
+  m.querySelector("#x-wait-btn").addEventListener("click", () => openWaitDrawer(onChange));
+  m.querySelector("#x-extra-btn").addEventListener("click", () => openExtrasDrawer(onChange));
+}
+function openWaitDrawer(onChange){
   const w = sel.wait || (sel.wait = { amount: "", unit: "hour", hours: 1 });
-  if(!sel.addons) sel.addons = [];
-  const rows = sel.addons.map((a, i) =>
-    '<div class="extra-row"><input type="text" class="xa-name" data-i="' + i + '" placeholder="Custom add-on (e.g. Toll)" value="' + esc(a.name || "") + '">' +
-    '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="$" value="' + esc(a.amount || "") + '">' +
-    '<button class="x-del" data-i="' + i + '" aria-label="Remove">✕</button></div>').join("");
-  mount.innerHTML =
-    '<div class="group-label">Extras</div>' +
-    '<div class="extra-row"><span class="x-name">Wait</span>' +
-    '<input type="text" class="x-amt" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '">' +
+  const body = () =>
+    '<div class="sub">Waiting time, charged on top of the fare.</div>' +
+    '<label class="field">Amount</label>' +
+    '<div class="extra-row">' +
+    '<input type="text" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '" style="flex:1;min-width:0">' +
     '<select class="x-unit" id="x-wait-unit"><option value="hour"' + (w.unit === "hour" ? " selected" : "") + '>per hour</option><option value="once"' + (w.unit === "once" ? " selected" : "") + '>add-on</option></select>' +
     (w.unit === "hour" ? '<input type="text" class="x-hrs" id="x-wait-hrs" inputmode="numeric" value="' + esc(w.hours || 1) + '"><span class="votes">hrs</span>' : "") +
-    "</div>" + rows +
-    '<button class="quiet-link" id="x-add">+ Custom add-on</button>';
-  document.getElementById("x-wait-amt").addEventListener("input", e => { w.amount = e.target.value; onChange(); });
-  document.getElementById("x-wait-unit").addEventListener("change", e => { w.unit = e.target.value; renderExtras(mountId, onChange); onChange(); });
-  const hrs = document.getElementById("x-wait-hrs");
-  if(hrs) hrs.addEventListener("input", e => { w.hours = e.target.value; onChange(); });
-  mount.querySelectorAll(".xa-name").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].name = e.target.value; onChange(); }));
-  mount.querySelectorAll(".xa-amt").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].amount = e.target.value; onChange(); }));
-  mount.querySelectorAll(".x-del").forEach(b => b.addEventListener("click", e => { sel.addons.splice(Number(e.target.dataset.i), 1); renderExtras(mountId, onChange); onChange(); }));
-  document.getElementById("x-add").addEventListener("click", () => { sel.addons.push({ name: "", amount: "" }); renderExtras(mountId, onChange); });
+    "</div>" +
+    '<button class="btn" id="x-done">Done</button>';
+  openDrawer("Add wait", body());
+  const wire = () => {
+    document.getElementById("x-wait-amt").addEventListener("input", e => { w.amount = e.target.value; onChange(); });
+    document.getElementById("x-wait-unit").addEventListener("change", e => {
+      w.unit = e.target.value;
+      document.getElementById("sheet-body").innerHTML = body(); wire(); onChange();
+    });
+    const hrs = document.getElementById("x-wait-hrs");
+    if(hrs) hrs.addEventListener("input", e => { w.hours = e.target.value; onChange(); });
+    document.getElementById("x-done").addEventListener("click", closeDrawer);
+  };
+  wire();
+}
+function openExtrasDrawer(onChange){
+  if(!sel.addons) sel.addons = [];
+  const body = () => {
+    const rows = sel.addons.map((a, i) =>
+      '<div class="extra-row"><input type="text" class="xa-name" data-i="' + i + '" placeholder="Name (e.g. Toll)" value="' + esc(a.name || "") + '">' +
+      '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="$" value="' + esc(a.amount || "") + '">' +
+      '<button class="x-del" data-i="' + i + '" aria-label="Remove">✕</button></div>').join("");
+    return '<div class="sub">Custom charges on top of the fare — tolls, extra stops, anything else.</div>' + rows +
+      '<button class="quiet-link" id="x-add">+ Custom add-on</button>' +
+      '<button class="btn" id="x-done">Done</button>';
+  };
+  openDrawer("Add extra", body());
+  const wire = () => {
+    const root = document.getElementById("sheet-body");
+    root.querySelectorAll(".xa-name").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].name = e.target.value; onChange(); }));
+    root.querySelectorAll(".xa-amt").forEach(inp => inp.addEventListener("input", e => { sel.addons[Number(e.target.dataset.i)].amount = e.target.value; onChange(); }));
+    root.querySelectorAll(".x-del").forEach(b => b.addEventListener("click", e => {
+      sel.addons.splice(Number(e.target.dataset.i), 1);
+      document.getElementById("sheet-body").innerHTML = body(); wire(); onChange();
+    }));
+    document.getElementById("x-add").addEventListener("click", () => {
+      sel.addons.push({ name: "", amount: "" });
+      document.getElementById("sheet-body").innerHTML = body(); wire();
+    });
+    document.getElementById("x-done").addEventListener("click", closeDrawer);
+  };
+  wire();
 }
 function extrasPayload(){
   const w = sel.wait || {};
@@ -449,7 +500,7 @@ function setStep(n, label){
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
-  document.getElementById("steprow").style.display = view === "pending" ? "none" : "";
+  document.getElementById("nav-steps").style.display = view === "pending" ? "none" : "";
   $scroll.scrollTop = 0;
 }
 function goToStep(n){
@@ -485,7 +536,6 @@ function renderPlacePicker(step){
   const other = isFrom ? null : sel.from;
   const showFlatbush = !isFrom && !!gridFor(sel.from);
   h(
-    "<h1>" + (isFrom ? "Where from?" : "Where to?") + "</h1>" +
     (isFrom ? "" : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
     '<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
     (showFlatbush
@@ -594,7 +644,7 @@ function renderQuote(){
       '<button data-trip="round">Round trip</button></div>' : "") +
     (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
-    '<div id="q-extras"></div>' +
+    '<div id="q-extra-btns"></div>' +
     '<div id="q-breakdown"></div>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
@@ -619,12 +669,12 @@ function renderQuote(){
     const priceStr = q.complex ? q.printed : money(q.total);
     shareQuote(e.target, quoteText(priceStr), priceStr);
   });
-  renderExtras("q-extras", refreshQuote);
   refreshQuote();
 }
 
 function refreshQuote(){
   const { fare } = sel.resolved;
+  wireExtraBtns("q-extra-btns", refreshQuote);
   const q = computeQuote();
   const priceStr = q.complex ? q.printed : money(q.total);
   document.getElementById("q-price").textContent = priceStr;
@@ -646,14 +696,13 @@ function renderFlatbush(base){
   view = "flatbush"; setStep(3, zoneLabel(base));
   const grid = gridFor(base);
   h(
-    "<h1>" + esc(zoneLabel(base)) + "</h1>" +
     '<div class="sub">' + esc(base) + " zone, by street and cross-street.</div>" +
     '<label class="field">Street / avenue</label><select id="fb-row">' +
       grid.rows.map(r => "<option>" + esc(r) + "</option>").join("") + "</select>" +
     '<label class="field">Cross-street</label><select id="fb-col">' +
       grid.cols.map(c => "<option>" + esc(c) + "</option>").join("") + "</select>" +
     '<div class="price-big" id="fb-price"></div>' +
-    '<div id="fb-extras"></div>' +
+    '<div id="fb-extra-btns"></div>' +
     '<div id="fb-breakdown"></div>' +
     '<div class="note-line">One way</div>' +
     '<button class="btn" id="share">Share quote</button>'
@@ -670,12 +719,12 @@ function renderFlatbush(base){
     document.getElementById("fb-price").textContent = shown;
     document.getElementById("fb-breakdown").innerHTML = showTotal
       ? breakdownHtml([{ label: "Zone fare", amount: baseNum }].concat(exLines), baseNum + exSum) : "";
+    wireExtraBtns("fb-extra-btns", upd);
     sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + shown;
     sel.fb = { base: base, row: r, col: c, price: price, rowIdx: grid.rows.indexOf(r), colIdx: grid.cols.indexOf(c) };
   };
   document.getElementById("fb-row").addEventListener("change", upd);
   document.getElementById("fb-col").addEventListener("change", upd);
-  renderExtras("fb-extras", upd);
   upd();
   document.getElementById("share").addEventListener("click", (e) => {
     shareQuote(e.target, sel.fbText, sel.fb ? sel.fb.price : "");
@@ -685,7 +734,6 @@ function renderFlatbush(base){
 function renderNotListed(msg){
   view = "notlisted"; setStep(2, "Not listed");
   h(
-    "<h1>Not listed</h1>" +
     '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
     '<button class="btn" id="add">Add this price</button>'
   );
