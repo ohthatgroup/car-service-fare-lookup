@@ -156,7 +156,7 @@ const FLATBUSH_ROWS = [
   ["Ocean, 21, 22, 23, 24", [24,25,27,28,29,30,32,34]],
   ["Bdfrd, 26, 27, 28, 29", [25,27,28,29,30,32,34,35]],
   ["Nostrnd, 31, 32, 33",   [27,28,29,30,32,34,35,36]],
-  ["34, 35, Flatbush av.",  [28,29,30,32,34,35,36,0]]  // last cell reads $0.00 on the scan — unverified
+  ["34, 35, Flatbush av.",  [28,29,30,32,34,35,36,0]]  // last cell prints $0.00 on the sheet itself (checked on the scan) — shown as printed
 ];
 const FLATBUSH_NAME = "Flatbush zone fare";
 
@@ -386,8 +386,8 @@ function renderQuote(){
     '<div id="q-breakdown"></div>' +
     '<div class="note-line">' + (fare.origin === "community" ? "Community price" : "May 2023 sheet") +
       (fare.note ? " · " + esc(fare.note) : "") + "</div>" +
-    '<button class="btn" id="copy">Copy quote</button>' +
     '<div id="q-suggest"></div>' +
+    '<button class="btn" id="copy">Copy quote</button>' +
     '<button class="quiet-link" id="again">‹ Start over</button>'
   );
   const segBtns = $view.querySelectorAll("#seg-trip button");
@@ -429,7 +429,7 @@ function refreshQuote(){
     sg.innerHTML = '<div class="note-line">A change to this price is pending — ' + open.votes + " of " + VOTES_NEEDED + ' votes.</div><button class="btn secondary" id="to-pending">See pending changes</button>';
     document.getElementById("to-pending").addEventListener("click", renderPending);
   } else {
-    sg.innerHTML = '<button class="quiet-link" id="suggest">Suggest a different price</button>';
+    sg.innerHTML = '<button class="btn secondary" id="suggest" style="margin-top:14px">Propose a price change</button>';
     document.getElementById("suggest").addEventListener("click", renderSuggest);
   }
 }
@@ -452,11 +452,11 @@ function renderFlatbush(){
     const ri = Number(document.getElementById("fb-row").value);
     const ci = Number(document.getElementById("fb-col").value);
     const val = FLATBUSH_ROWS[ri][1][ci];
-    document.getElementById("fb-price").textContent = val === 0 ? "—" : money(val);
+    document.getElementById("fb-price").textContent = money(val);
     document.getElementById("fb-note").textContent = val === 0
-      ? "This cell is unreadable on the sheet — unverified."
+      ? "Printed as $0.00 on the May 2023 sheet"
       : "May 2023 sheet · One way";
-    sel.fbText = "Borough Park ↔ Flatbush (" + FLATBUSH_ROWS[ri][0] + " × " + FLATBUSH_COLS[ci] + "): " + (val === 0 ? "unverified" : money(val));
+    sel.fbText = "Borough Park ↔ Flatbush (" + FLATBUSH_ROWS[ri][0] + " × " + FLATBUSH_COLS[ci] + "): " + money(val);
   };
   document.getElementById("fb-row").addEventListener("change", upd);
   document.getElementById("fb-col").addEventListener("change", upd);
@@ -542,15 +542,15 @@ function renderAdd(prefill){
 
 /* ---------- Suggest a change ---------- */
 function renderSuggest(){
-  view = "suggest"; setStep(3, "Suggest a change");
+  view = "suggest"; setStep(3, "Propose a change");
   const { fare } = sel.resolved;
   h(
-    "<h1>Suggest a new price</h1>" +
-    '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your suggestion applies when it reaches " + VOTES_NEEDED + " votes.</div>" +
+    "<h1>Propose a price change</h1>" +
+    '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your proposal applies when it reaches " + VOTES_NEEDED + " votes.</div>" +
     '<label class="field">New one-way price</label><input type="text" id="s-price" placeholder="$90">' +
     '<label class="field">New round trip price (optional)</label><input type="text" id="s-rt" placeholder="">' +
     '<div class="error hidden" id="s-err"></div>' +
-    '<button class="btn" id="s-save">Post suggestion</button>' +
+    '<button class="btn" id="s-save">Post proposal</button>' +
     '<button class="quiet-link" id="back">‹ Back to price</button>'
   );
   document.getElementById("back").addEventListener("click", renderQuote);
