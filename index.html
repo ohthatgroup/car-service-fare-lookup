@@ -38,24 +38,43 @@
   nav.in-flow #nav-back{ display:block; }
   nav.in-flow #nav-pending{ display:none; }
   nav.in-flow .title{ margin-left:auto; }
-  #steprow{ flex:none; display:flex; align-items:center; gap:10px; padding:8px 16px 4px; }
+  #steprow{ flex:none; display:flex; align-items:center; justify-content:center; gap:10px; padding:10px 16px 6px; }
   #steprow .steps{ display:flex; align-items:center; gap:7px; }
-  #steprow .dot{ width:9px; height:9px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; }
+  #steprow .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
   #steprow .dot.done{ background:var(--accent); cursor:pointer; }
   #steprow .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
-  #steprow .step-label{ font-size:13.5px; color:var(--muted); }
+  #steprow .step-label{ font-size:14px; font-weight:500; color:var(--muted); }
   #details-bar{
-    flex:none; text-align:center; padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
     border-top:1px solid var(--border);
     background:color-mix(in srgb, var(--bg) 82%, transparent);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
   }
-  #details-bar button{ background:none; border:0; color:var(--accent); font-size:15px; cursor:pointer; padding:4px 10px; }
+  #details-bar .src{ font-size:12.5px; color:var(--muted); line-height:1.35; min-width:0; }
+  #details-bar .foot-actions{ display:flex; gap:8px; flex:none; }
+  .foot-btn{
+    display:inline-block; border:1px solid var(--border); background:var(--surface); color:var(--text);
+    font-size:14px; font-weight:500; padding:8px 13px; border-radius:980px; cursor:pointer;
+    text-decoration:none; white-space:nowrap; font-family:inherit;
+  }
+  .foot-btn:active{ background:var(--chip); }
+  #details-btn{ background:var(--accent); border-color:transparent; color:var(--accent-text); }
+  #details-btn:active{ background:var(--accent); filter:brightness(1.12); }
+  .screen-head{ display:flex; align-items:center; gap:12px; margin:6px 0 14px; }
+  .screen-head h1{ margin:0; }
+  .icon-back{
+    flex:none; width:36px; height:36px; border-radius:50%; border:0; background:var(--chip);
+    color:var(--text); font-size:21px; line-height:1; cursor:pointer; display:grid; place-items:center; padding:0 0 3px;
+  }
+  .icon-back:active{ filter:brightness(.94); }
+  nav.on-board #nav-pending{ display:block; }
+  nav.on-board .badge{ display:none !important; }
   #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:20px; }
   #modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.42); }
   #modal .sheet{
     position:relative; background:var(--surface); color:var(--text);
-    border-radius:18px; max-width:440px; width:100%; padding:20px 20px 14px;
+    border-radius:22px; max-width:440px; width:100%; padding:20px 20px 14px;
     box-shadow:0 18px 50px rgba(0,0,0,.28);
   }
   #modal .sheet-head{ display:flex; align-items:center; justify-content:space-between; font-weight:600; font-size:17px; margin-bottom:6px; }
@@ -63,7 +82,7 @@
   #modal .sheet p{ color:var(--muted); font-size:14.5px; line-height:1.55; margin:8px 0; }
   nav .spacer{ flex:1; }
   nav button.link{
-    background:none; border:0; color:var(--accent); font-size:15px; padding:6px 2px; cursor:pointer;
+    background:none; border:0; color:var(--accent); font-size:15px; padding:8px 10px; margin:-8px -4px; border-radius:10px; cursor:pointer;
   }
   nav .badge{
     display:inline-block; min-width:18px; text-align:center; padding:0 5px;
@@ -140,7 +159,7 @@
   label.field{ display:block; font-size:14px; color:var(--muted); margin:16px 2px 6px; }
   .empty{ text-align:center; color:var(--muted); padding:28px 10px; font-size:16px; }
   .error{ color:var(--danger); text-align:center; padding:14px; font-size:15px; }
-  footer{ text-align:center; color:var(--muted); font-size:12.5px; padding:22px 0 6px; }
+
   .pill-row{ display:flex; margin:2px 0 12px; }
   .pill{
     display:inline-flex; align-items:center; gap:8px; padding:8px 8px 8px 14px;
@@ -158,7 +177,7 @@
   <button class="link" id="nav-back">‹ Start over</button>
   <span class="title">Fare Lookup</span>
   <span class="spacer"></span>
-  <button class="link" id="nav-pending">Board<span class="badge hidden" id="pending-count">0</span></button>
+  <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
 </nav>
 <div id="steprow">
   <span class="steps" id="nav-steps">
@@ -169,10 +188,15 @@
 <div id="scroll">
   <div class="col">
     <div id="view"></div>
-    <footer>May 2023 sheet · Community updates since</footer>
   </div>
 </div>
-<div id="details-bar"><button id="details-btn">Details</button></div>
+<div id="details-bar">
+  <span class="src">May 2023 sheet · Community updates since</span>
+  <span class="foot-actions">
+    <a class="foot-btn" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a>
+    <button class="foot-btn" id="details-btn">Details</button>
+  </span>
+</div>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
@@ -427,6 +451,8 @@ function setStep(n, label){
   });
   document.getElementById("step-label").textContent = label || STEP_NAMES[n] || "";
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
+  document.getElementById("topnav").classList.toggle("on-board", view === "pending");
+  document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
   $scroll.scrollTop = 0;
 }
 function goToStep(n){
@@ -573,11 +599,10 @@ function renderQuote(){
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-extras"></div>' +
     '<div id="q-breakdown"></div>' +
-    '<div class="note-line">' + (fare.origin === "community" ? "Community price" : "May 2023 sheet") +
-      (fare.note ? " · " + esc(fare.note) : "") + "</div>" +
+    ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
+      [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
     '<div id="q-suggest"></div>' +
-    '<button class="btn" id="share">Share quote</button>' +
-    '<button class="quiet-link" id="again">‹ Start over</button>'
+    '<button class="btn" id="share">Share quote</button>'
   );
   const segBtns = $view.querySelectorAll("#seg-trip button");
   segBtns.forEach(b => b.addEventListener("click", () => {
@@ -597,7 +622,6 @@ function renderQuote(){
     const priceStr = q.complex ? q.printed : money(q.total);
     shareQuote(e.target, quoteText(priceStr), priceStr);
   });
-  document.getElementById("again").addEventListener("click", () => renderPlacePicker(1));
   renderExtras("q-extras", refreshQuote);
   refreshQuote();
 }
@@ -634,9 +658,8 @@ function renderFlatbush(base){
     '<div class="price-big" id="fb-price"></div>' +
     '<div id="fb-extras"></div>' +
     '<div id="fb-breakdown"></div>' +
-    '<div class="note-line">May 2023 sheet · One way</div>' +
-    '<button class="btn" id="share">Share quote</button>' +
-    '<br><button class="quiet-link" id="back">‹ Start over</button>'
+    '<div class="note-line">One way</div>' +
+    '<button class="btn" id="share">Share quote</button>'
   );
   const upd = () => {
     const r = document.getElementById("fb-row").value;
@@ -660,7 +683,6 @@ function renderFlatbush(base){
   document.getElementById("share").addEventListener("click", (e) => {
     shareQuote(e.target, sel.fbText, sel.fb ? sel.fb.price : "");
   });
-  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
 }
 
 function renderNotListed(msg){
@@ -668,11 +690,9 @@ function renderNotListed(msg){
   h(
     "<h1>Not listed</h1>" +
     '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
-    '<button class="btn" id="add">Add this price</button>' +
-    '<button class="quiet-link" id="back">‹ Start over</button>'
+    '<button class="btn" id="add">Add this price</button>'
   );
   document.getElementById("add").addEventListener("click", () => renderAdd({ from: sel.from, to: sel.to }));
-  document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
 }
 
 /* ---------- Add a price ---------- */
@@ -687,7 +707,7 @@ function renderAdd(prefill){
   view = "add"; setStep(2, "Add a price");
   const dl = '<datalist id="places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
   h(
-    "<h1>Add a price</h1>" +
+    '<div class="screen-head"><button class="icon-back" id="back" aria-label="Back">‹</button><h1>Add a price</h1></div>' +
     '<div class="sub">Goes live right away for everyone.</div>' + dl +
     '<label class="field">From</label><input type="text" id="f-from" list="places-dl" value="' + esc(prefill.from || "") + '" placeholder="Where from?">' +
     '<label class="field">To</label><input type="text" id="f-to" list="places-dl" value="' + esc(prefill.to || "") + '" placeholder="Where to?">' +
@@ -695,8 +715,7 @@ function renderAdd(prefill){
     '<label class="field">One-way price</label><input type="text" id="f-price" placeholder="$85">' +
     '<label class="field">Round trip price (optional)</label><input type="text" id="f-rt" placeholder="$130">' +
     '<div class="error hidden" id="f-err"></div>' +
-    '<button class="btn" id="f-save">Add price</button>' +
-    '<button class="quiet-link" id="back">‹ Back</button>'
+    '<button class="btn" id="f-save">Add price</button>'
   );
   const catSel = document.getElementById("f-cat");
   const fillCats = () => {
@@ -742,13 +761,12 @@ function renderSuggest(){
   view = "suggest"; setStep(3, "Propose a change");
   const { fare } = sel.resolved;
   h(
-    "<h1>Propose a price change</h1>" +
+    '<div class="screen-head"><button class="icon-back" id="back" aria-label="Back">‹</button><h1>Propose a price change</h1></div>' +
     '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your proposal applies when its net score reaches " + VOTES_NEEDED + " votes.</div>" +
     '<label class="field">New one-way price</label><input type="text" id="s-price" placeholder="$90">' +
     '<label class="field">New round trip price (optional)</label><input type="text" id="s-rt" placeholder="">' +
     '<div class="error hidden" id="s-err"></div>' +
-    '<button class="btn" id="s-save">Post proposal</button>' +
-    '<button class="quiet-link" id="back">‹ Back to price</button>'
+    '<button class="btn" id="s-save">Post proposal</button>'
   );
   document.getElementById("back").addEventListener("click", renderQuote);
   document.getElementById("s-save").addEventListener("click", async () => {
@@ -777,8 +795,7 @@ function renderPending(){
   view = "pending"; setStep(0, "Board");
   const mine = myVotes();
   const sorted = [...proposals].sort((a, b) => b.votes - a.votes);
-  h("<h1>Board</h1>" +
-    '<button class="btn" id="board-add">Add a price</button>' +
+  h('<div class="screen-head"><button class="icon-back" id="back" aria-label="Back">‹</button><h1>Board</h1></div>' +
     '<div class="group-label">Open votes</div>' +
     (sorted.length ? sorted.map(p => {
       const f = p.fare || {};
@@ -795,10 +812,8 @@ function renderPending(){
           '<button class="vbtn' + (my === -1 ? " on" : "") + '" data-vote-down="' + p.id + '">▼ Down</button>' +
           (my !== 0 ? '<span class="votes">Tap your vote again to undo</span>' : "") +
         "</div></div>";
-    }).join("") : '<div class="empty">No price changes are waiting on votes.</div>') +
-    '<button class="quiet-link" id="back">‹ Back</button>'
+    }).join("") : '<div class="empty">No price changes are waiting on votes.</div>')
   );
-  document.getElementById("board-add").addEventListener("click", () => { addReturn = "board"; renderAdd({}); });
   document.getElementById("back").addEventListener("click", () => renderPlacePicker(1));
   $view.querySelectorAll("[data-vote-up]").forEach(b => {
     b.addEventListener("click", () => castVote(Number(b.dataset.voteUp), 1));
@@ -822,7 +837,10 @@ async function castVote(id, dir){
 }
 
 /* ---------- init ---------- */
-document.getElementById("nav-pending").addEventListener("click", renderPending);
+document.getElementById("nav-pending").addEventListener("click", () => {
+  if(view === "pending"){ addReturn = "board"; renderAdd({}); }
+  else renderPending();
+});
 document.getElementById("nav-back").addEventListener("click", () => {
   inFlow = false; sel = {}; renderPlacePicker(1);
 });
