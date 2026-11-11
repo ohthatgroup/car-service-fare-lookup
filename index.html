@@ -180,6 +180,7 @@ let proposals = [];      // open proposals
 let places = [];         // all pickable places
 let sel = {};            // current wizard selection
 let view = "step1";      // step1|step2|options|result|flatbush|add|suggest|pending
+const VOTES_NEEDED = 10; // votes required for a proposed price change to apply
 
 const $view = document.getElementById("view");
 const $scroll = document.getElementById("scroll");
