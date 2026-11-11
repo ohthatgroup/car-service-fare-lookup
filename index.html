@@ -188,7 +188,7 @@
     <div id="view"></div>
   </div>
 </div>
-<button id="fab" aria-label="Add ride">+</button>
+<button id="fab" aria-label="Details">+</button>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
@@ -201,6 +201,9 @@
     <p>Anyone can add a missing price — it goes live right away. Changing a price starts as a proposal on the Board.</p>
     <p>Tap ▲ Up or ▼ Down to vote on a proposal. A down vote cancels an up vote, and tapping your vote again undoes it.</p>
     <p>When a proposal reaches a net score of 10, the new price applies automatically.</p>
+    <a class="btn secondary hire-btn" href="https://wa.me/13476613902?text=Can%20you%20build%20me%20something%3F" target="_blank" rel="noopener">Hire Shimmy</a>
+    <a class="btn secondary hire-btn" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a>
+    <div class="drawer-src">May 2023 sheet · Community updates since</div>
     </div>
   </div>
 </div>
@@ -758,12 +761,6 @@ function openDrawer(title, bodyHtml){
 }
 function closeDrawer(){ $modal.classList.add("hidden"); }
 function openDetails(){ openDrawer("Details", DETAILS_HTML); }
-function drawerFootHtml(){
-  return '<div class="drawer-foot"><div class="drawer-links">' +
-    '<button id="d-details">Details</button>' +
-    '<a href="' + PDF_LINK + '" target="_blank" rel="noopener">Download PDF</a></div>' +
-    '<div class="drawer-src">May 2023 sheet · Community updates since</div></div>';
-}
 function openAddDrawer(prefill){
   prefill = prefill || {};
   const dl = '<datalist id="places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
@@ -775,9 +772,7 @@ function openAddDrawer(prefill){
     '<label class="field">One-way price</label><input type="text" id="f-price" placeholder="$85">' +
     '<label class="field">Round trip price (optional)</label><input type="text" id="f-rt" placeholder="$130">' +
     '<div class="error hidden" id="f-err"></div>' +
-    '<button class="btn" id="f-save">Add price</button>' +
-    '<a class="btn secondary hire-btn" href="' + WA_LINK + '" target="_blank" rel="noopener">Hire Shimmy</a>' +
-    drawerFootHtml());
+    '<button class="btn" id="f-save">Add price</button>');
   const catSel = document.getElementById("f-cat");
   const fillCats = () => {
     const f = document.getElementById("f-from").value.trim(), t = document.getElementById("f-to").value.trim();
@@ -786,7 +781,6 @@ function openAddDrawer(prefill){
   fillCats();
   document.getElementById("f-from").addEventListener("change", fillCats);
   document.getElementById("f-to").addEventListener("change", fillCats);
-  document.getElementById("d-details").addEventListener("click", openDetails);
   document.getElementById("f-save").addEventListener("click", async () => {
     const from = document.getElementById("f-from").value.trim();
     const to = document.getElementById("f-to").value.trim();
@@ -902,7 +896,7 @@ document.querySelectorAll("#nav-steps .dot").forEach(d => {
 });
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
-document.getElementById("fab").addEventListener("click", () => openAddDrawer({}));
+document.getElementById("fab").addEventListener("click", openDetails);
 document.getElementById("modal-close").addEventListener("click", () => $modal.classList.add("hidden"));
 document.getElementById("modal-backdrop").addEventListener("click", () => $modal.classList.add("hidden"));
 
