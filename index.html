@@ -150,6 +150,14 @@
   .extra-row .x-unit{ width:112px; flex:none; padding:10px 8px; font-size:15px; }
   .extra-row .x-hrs{ width:58px; flex:none; }
   .extra-row .x-del{ flex:none; border:0; background:var(--chip); color:var(--muted); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:13px; }
+  .xa-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin:12px 0; }
+  .xa-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+  .xa-title{ font-size:14px; font-weight:600; color:var(--muted); }
+  .xa-card .x-del{ border:0; background:var(--chip); color:var(--muted); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:13px; flex:none; }
+  .xa-card label.field{ margin:12px 2px 6px; }
+  .xa-card label.field:first-of-type{ margin-top:8px; }
+  .x-hrs-row{ display:flex; align-items:center; gap:8px; }
+  .x-hrs-row input[type="text"]{ width:76px; flex:none; }
   .breakdown{ max-width:340px; margin:18px auto 0; font-size:15px; }
   .breakdown .line{ display:flex; justify-content:space-between; padding:5px 0; color:var(--muted); }
   .breakdown .line.total{ color:var(--text); font-weight:600; border-top:1px solid var(--border); margin-top:5px; padding-top:9px; }
@@ -230,6 +238,15 @@
       <div class="list">
         <a class="row link-row" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener"><span>Download PDF<span class="row-sub">Original May 2023 price sheets</span></span><span class="chev">›</span></a>
         <a class="row link-row" href="https://github.com/ohthatgroup/car-service-fare-lookup" target="_blank" rel="noopener"><span>View on GitHub<span class="row-sub">This project is open source</span></span><span class="chev">›</span></a>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="group-label">About this app</div>
+      <div class="list prose">
+        <p>Built free to use for the community by Shimmy Landau, who likes to solve problems by building things — using LLMs and a bit of creativity.</p>
+      </div>
+      <div class="list" style="margin-top:10px">
+        <a class="row link-row" href="https://wa.me/13476613902" target="_blank" rel="noopener"><span>Message Shimmy</span><span class="chev">›</span></a>
       </div>
     </div>
     <div class="drawer-src">May 2023 sheet · Community updates since</div>
@@ -413,12 +430,11 @@ function openWaitDrawer(onChange){
   const w = sel.wait || (sel.wait = { amount: "", unit: "hour", hours: 1 });
   const body = () =>
     '<div class="sub">Waiting time, charged on top of the fare.</div>' +
+    (w.unit === "hour" ? '<label class="field">Hours</label><div class="x-hrs-row"><input type="text" id="x-wait-hrs" inputmode="numeric" maxlength="2" value="' + esc(w.hours || 1) + '"><span class="votes">hrs</span></div>' : "") +
     '<label class="field">Amount</label>' +
-    '<div class="extra-row">' +
-    '<input type="text" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '" style="flex:1;min-width:0">' +
-    '<select class="x-unit" id="x-wait-unit"><option value="hour"' + (w.unit === "hour" ? " selected" : "") + '>per hour</option><option value="once"' + (w.unit === "once" ? " selected" : "") + '>add-on</option></select>' +
-    (w.unit === "hour" ? '<input type="text" class="x-hrs" id="x-wait-hrs" inputmode="numeric" value="' + esc(w.hours || 1) + '"><span class="votes">hrs</span>' : "") +
-    "</div>" +
+    '<input type="text" id="x-wait-amt" inputmode="decimal" placeholder="$" value="' + esc(w.amount) + '">' +
+    '<label class="field">Type</label>' +
+    '<select id="x-wait-unit"><option value="hour"' + (w.unit === "hour" ? " selected" : "") + '>per hour</option><option value="once"' + (w.unit === "once" ? " selected" : "") + '>add-on</option></select>' +
     '<button class="btn" id="x-done">Done</button>';
   openDrawer("Add wait", body());
   const wire = () => {
@@ -437,9 +453,12 @@ function openExtrasDrawer(onChange){
   if(!sel.addons) sel.addons = [];
   const body = () => {
     const rows = sel.addons.map((a, i) =>
-      '<div class="extra-row"><input type="text" class="xa-name" data-i="' + i + '" placeholder="Name (e.g. Toll)" value="' + esc(a.name || "") + '">' +
-      '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="$" value="' + esc(a.amount || "") + '">' +
-      '<button class="x-del" data-i="' + i + '" aria-label="Remove">✕</button></div>').join("");
+      '<div class="xa-card"><div class="xa-head"><span class="xa-title">Add-on ' + (i + 1) + '</span>' +
+      '<button class="x-del" data-i="' + i + '" aria-label="Remove">✕</button></div>' +
+      '<label class="field">Name</label>' +
+      '<input type="text" class="xa-name" data-i="' + i + '" placeholder="Name (e.g. Toll)" value="' + esc(a.name || "") + '">' +
+      '<label class="field">Amount</label>' +
+      '<input type="text" class="xa-amt" data-i="' + i + '" inputmode="decimal" placeholder="$" value="' + esc(a.amount || "") + '"></div>').join("");
     return '<div class="sub">Custom charges on top of the fare — tolls, extra stops, anything else.</div>' + rows +
       '<button class="quiet-link" id="x-add">+ Custom add-on</button>' +
       '<button class="btn" id="x-done">Done</button>';
@@ -689,7 +708,8 @@ function renderQuote(){
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
     '<div id="q-suggest"></div>' +
-    '<button class="btn" id="share">Share quote</button>'
+    '<button class="btn" id="share">Share quote</button>' +
+    '<button class="btn secondary" id="new-rate">Start new rate</button>'
   );
   const segBtns = $view.querySelectorAll("#seg-trip button");
   segBtns.forEach(b => b.addEventListener("click", () => {
@@ -709,6 +729,7 @@ function renderQuote(){
     const priceStr = q.complex ? q.printed : money(q.total);
     shareQuote(e.target, quoteText(priceStr), priceStr);
   });
+  document.getElementById("new-rate").addEventListener("click", () => { inFlow = false; sel = {}; renderPlacePicker(1); });
   refreshQuote();
 }
 
@@ -745,7 +766,8 @@ function renderFlatbush(base){
     '<div id="fb-extra-btns"></div>' +
     '<div id="fb-breakdown"></div>' +
     '<div class="note-line">One way</div>' +
-    '<button class="btn" id="share">Share quote</button>'
+    '<button class="btn" id="share">Share quote</button>' +
+    '<button class="btn secondary" id="new-rate">Start new rate</button>'
   );
   const upd = () => {
     const r = document.getElementById("fb-row").value;
@@ -769,6 +791,7 @@ function renderFlatbush(base){
   document.getElementById("share").addEventListener("click", (e) => {
     shareQuote(e.target, sel.fbText, sel.fb ? sel.fb.price : "");
   });
+  document.getElementById("new-rate").addEventListener("click", () => { inFlow = false; sel = {}; renderPlacePicker(1); });
 }
 
 function renderNotListed(msg){

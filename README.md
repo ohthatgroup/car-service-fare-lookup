@@ -12,6 +12,9 @@ Flatbush zone grid). Only places are routes — the sheets' pricing rules
 (mini-van addition brackets, the airport pickup fee, the zone grid) live in
 the database as data and drive the app's logic.
 
+Built free to use for the community by Shimmy Landau, who likes to solve
+problems by building things — using LLMs and a bit of creativity.
+
 ## What it does
 
 - **Quote wizard** — From → To → price, one step at a time. The price updates
@@ -30,8 +33,8 @@ the database as data and drive the app's logic.
   score reaches **10**, the new price applies automatically. Until then the
   current price stays in effect.
 - **The + button** — opens a drawer with the sheet notes, how voting works,
-  a download link for the original May 2023 price-sheets PDF, and the
-  open-source link below.
+  a download link for the original May 2023 price-sheets PDF, the
+  open-source link below, and an About section with a link to message Shimmy.
 
 ## How it runs (all free tiers)
 
