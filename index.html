@@ -61,6 +61,10 @@
   }
   .drawer-src{ text-align:center; color:var(--muted); font-size:12.5px; margin-top:10px; }
   .hire-btn{ display:block; text-align:center; text-decoration:none; margin-top:14px; }
+  .inline-link{ color:var(--accent); text-decoration:none; }
+  .drawer-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+  .drawer-actions .btn{ margin-top:0; }
+  .os-line{ text-align:center; color:var(--muted); font-size:14px; margin:16px 0 0; }
   nav.on-board #nav-pending{ display:block; }
   nav.on-board .badge{ display:none !important; }
   #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; padding:0; }
@@ -203,12 +207,17 @@
     <div id="sheet-body">
     <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
     <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
+    <p><a class="inline-link" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a></p>
     <div class="group-label" style="margin-top:18px">How voting works</div>
     <p>Anyone can add a missing price — it goes live right away. Changing a price starts as a proposal on the Board.</p>
     <p>Tap ▲ Up or ▼ Down to vote on a proposal. A down vote cancels an up vote, and tapping your vote again undoes it.</p>
     <p>When a proposal reaches a net score of 10, the new price applies automatically.</p>
+    <div class="drawer-actions">
+      <button class="btn" id="d-board">Go to board</button>
+      <button class="btn secondary" id="d-addprice">Add price</button>
+    </div>
     <a class="btn secondary hire-btn" href="https://wa.me/13476613902?text=Can%20you%20build%20me%20something%3F" target="_blank" rel="noopener">Hire Shimmy</a>
-    <a class="btn secondary hire-btn" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a>
+    <p class="os-line">This project is open source. <a class="inline-link" href="https://github.com/ohthatgroup/car-service-fare-lookup" target="_blank" rel="noopener">View on GitHub</a></p>
     <div class="drawer-src">May 2023 sheet · Community updates since</div>
     </div>
   </div>
@@ -769,7 +778,11 @@ function openDrawer(title, bodyHtml){
   $modal.classList.remove("hidden");
 }
 function closeDrawer(){ $modal.classList.add("hidden"); }
-function openDetails(){ openDrawer("Details", DETAILS_HTML); }
+function openDetails(){
+  openDrawer("Details", DETAILS_HTML);
+  document.getElementById("d-board").addEventListener("click", () => { closeDrawer(); renderPending(); });
+  document.getElementById("d-addprice").addEventListener("click", () => openAddDrawer({}));
+}
 function openAddDrawer(prefill){
   prefill = prefill || {};
   const dl = '<datalist id="places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
