@@ -40,6 +40,7 @@
   nav .dot{ width:10px; height:10px; border-radius:50%; border:0; padding:0; background:var(--border); cursor:default; transition:background .2s; }
   nav .dot.done{ background:var(--accent); cursor:pointer; }
   nav .dot.current{ background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  nav .step-name{ color:var(--accent); font-weight:600; font-size:15.5px; white-space:nowrap; }
   #fab{
     position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:40;
     width:56px; height:56px; border-radius:50%; border:0; cursor:pointer;
@@ -493,13 +494,15 @@ const STEP_NAMES = { 1: "Where from?", 2: "Where to?", 3: "Price" };
 let currentStep = 1;
 function setStep(n, label){
   currentStep = n;
-  document.querySelectorAll("#nav-steps .dot").forEach(d => {
-    const dn = Number(d.dataset.dot);
-    d.classList.toggle("done", dn < n);
-    d.classList.toggle("current", dn === n);
-  });
-  document.getElementById("nav-title").textContent =
-    (view === "step1" && !label) ? "Fare Lookup" : (label || STEP_NAMES[n] || "Fare Lookup");
+  const onSteps = n >= 1 && n <= 3 && view !== "pending";
+  const curName = label || STEP_NAMES[n] || "";
+  document.getElementById("nav-steps").innerHTML = [1, 2, 3].map(i => {
+    if(onSteps && i === n) return '<span class="step-name">' + esc(curName) + "</span>";
+    return '<button class="dot' + (i < n ? " done" : "") + '" data-dot="' + i + '" aria-label="Step ' + i + '"></button>';
+  }).join("");
+  const $t = document.getElementById("nav-title");
+  $t.style.display = onSteps ? "none" : "";
+  $t.textContent = view === "pending" ? "Board" : (label || "Fare Lookup");
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
@@ -891,8 +894,9 @@ document.getElementById("nav-pending").addEventListener("click", () => {
 document.getElementById("nav-back").addEventListener("click", () => {
   inFlow = false; sel = {}; renderPlacePicker(1);
 });
-document.querySelectorAll("#nav-steps .dot").forEach(d => {
-  d.addEventListener("click", () => goToStep(Number(d.dataset.dot)));
+document.getElementById("nav-steps").addEventListener("click", e => {
+  const d = e.target.closest("[data-dot]");
+  if(d) goToStep(Number(d.dataset.dot));
 });
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
