@@ -57,8 +57,11 @@
   .hire-line{ text-align:center; margin-top:14px; font-size:14px; }
   .inline-link{ color:var(--accent); text-decoration:none; }
   .drawer-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+  .drawer-actions.top{ margin-top:4px; }
   .drawer-actions .btn{ margin-top:0; }
   .os-line{ text-align:center; color:var(--muted); font-size:14px; margin:16px 0 0; }
+  #nav-pending{ display:none; }
+  nav.on-board #nav-pending{ display:block; }
   nav.on-board .badge{ display:none !important; }
   #modal{ position:fixed; inset:0; z-index:50; display:flex; align-items:flex-end; justify-content:center; padding:0; }
   #modal .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.42); }
@@ -178,11 +181,11 @@
 <nav id="topnav">
   <button class="link" id="nav-back">‹ Start over</button>
   <span id="nav-logo"><span>Fare</span><span class="wm-b">Lookup</span></span></span>
+  <span class="title" id="nav-title">Fare Lookup</span>
+  <span class="spacer"></span>
   <span class="steps" id="nav-steps">
     <button class="dot" data-dot="1" aria-label="Step 1"></button><button class="dot" data-dot="2" aria-label="Step 2"></button><button class="dot" data-dot="3" aria-label="Step 3"></button>
   </span>
-  <span class="title" id="nav-title">Fare Lookup</span>
-  <span class="spacer"></span>
   <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
 </nav>
 <div id="scroll">
@@ -197,17 +200,17 @@
     <div class="grab"></div>
     <div class="sheet-head"><span id="sheet-title">Details</span><button id="modal-close" aria-label="Close">✕</button></div>
     <div id="sheet-body">
-    <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
-    <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
-    <p><a class="inline-link" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a></p>
+    <div class="drawer-actions top">
+      <button class="btn" id="d-board">Board</button>
+      <button class="btn secondary" id="d-addprice">Add price</button>
+    </div>
     <div class="group-label" style="margin-top:18px">How voting works</div>
     <p>Anyone can add a missing price — it goes live right away. Changing a price starts as a proposal on the Board.</p>
     <p>Tap ▲ Up or ▼ Down to vote on a proposal. A down vote cancels an up vote, and tapping your vote again undoes it.</p>
     <p>When a proposal reaches a net score of 10, the new price applies automatically.</p>
-    <div class="drawer-actions">
-      <button class="btn" id="d-board">Go to board</button>
-      <button class="btn secondary" id="d-addprice">Add price</button>
-    </div>
+    <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
+    <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
+    <p><a class="inline-link" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener">Download PDF</a></p>
     <p class="os-line">This project is open source. <a class="inline-link" href="https://github.com/ohthatgroup/car-service-fare-lookup" target="_blank" rel="noopener">View on GitHub</a></p>
     <div class="drawer-src">May 2023 sheet · Community updates since</div>
     <div class="hire-line"><a class="inline-link" href="https://wa.me/13476613902?text=Can%20you%20build%20me%20something%3F" target="_blank" rel="noopener">Hire Shimmy</a></div>
