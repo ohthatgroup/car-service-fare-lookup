@@ -235,14 +235,17 @@
     <div class="drawer-section">
       <div class="group-label">About these prices</div>
       <div class="list prose">
-        <p>Prices are from the May 2023 sheets. Some fares were printed differently on different sheets; the base sheet's price is the one used here.</p>
+        <p>Prices are from the 2026 sheets. Tolls are included. Prices apply 7:00am–11:00pm; 11:00pm–3:00am adds 10% per hour. Waiting is $45 per hour after the first 5 minutes free.</p>
         <p>Trip options — round trip, mini van, airport pickup — appear only when that route's own sheet offers them.</p>
       </div>
     </div>
     <div class="drawer-section">
       <div class="group-label">Links</div>
       <div class="list">
-        <a class="row link-row" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener"><span>Download PDF<span class="row-sub">Original May 2023 price sheets</span></span><span class="chev">›</span></a>
+        <a class="row link-row" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener"><span>Download PDF<span class="row-sub">May 2023 price sheets — out of date</span></span><span class="chev">›</span></a>
+      </div>
+      <div class="list prose" style="margin-top:10px">
+        <p>The PDF is out of date. We're looking for a volunteer to provide the updated one — <a href="https://wa.me/13476613902">message Shimmy</a> if you have it.</p>
       </div>
     </div>
     <div class="drawer-section">
@@ -369,11 +372,11 @@ function findFare(from, to){
   if(f) return { fare: f, reversed: true };
   return null;
 }
-function miniVanAddition(oneWay, base){
+function miniVanAddition(oneWay, base, trip){
   const rules = rulesByBase[base];
   if(oneWay == null || !rules || !rules.minivan_brackets) return null;
   for(const pair of rules.minivan_brackets){
-    if(oneWay <= pair[0]) return pair[1];
+    if(oneWay <= pair[0]) return (trip === "round" && pair.length > 2) ? pair[2] : pair[1];
   }
   return null;
 }
@@ -556,7 +559,7 @@ function computeQuote(){
     let total = custom != null ? custom : rt;
     if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
     if(sel.minivan){
-      const add = miniVanAddition(oneWay, fare.from_place);
+      const add = miniVanAddition(oneWay, fare.from_place, sel.trip);
       if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
     }
     return withExtras(total, lines);
@@ -570,7 +573,7 @@ function computeQuote(){
   let total = custom != null ? custom : oneWay;
   if(sel.airport){ const fee = airportFee(fare.from_place); lines.push({ label: "Airport pickup", amount: fee }); total += fee; }
   if(sel.minivan){
-    const add = miniVanAddition(custom != null ? custom : oneWay, fare.from_place);
+    const add = miniVanAddition(custom != null ? custom : oneWay, fare.from_place, sel.trip);
     if(add != null){ lines.push({ label: "Mini van", amount: add }); total += add; }
   }
   return withExtras(total, lines);
@@ -580,7 +583,7 @@ function optionsApply(){
   const oneWay = plainPrice(fare.price);
   const hasRT = !!fare.round_trip;
   // Add-ons exist only when the fare's base carries that rule in the data.
-  const minivan = oneWay != null && miniVanAddition(oneWay, fare.from_place) != null;
+  const minivan = oneWay != null && miniVanAddition(oneWay, fare.from_place, sel.trip) != null;
   // Airport pickup fee: the base's rule, on Airports fares, when the trip starts at the airport side
   const airport = airportFee(fare.from_place) != null && fare.category === "Airports" && reversed;
   return { hasRT, minivan, airport, any: hasRT || minivan || airport };
@@ -591,7 +594,7 @@ function summaryLine(withOptions){
   if(withOptions){
     const { fare } = sel.resolved;
     const o = optionsApply();
-    if(sel.minivan && o.minivan) parts.push("Mini van +" + money(miniVanAddition(plainPrice(fare.price), fare.from_place)));
+    if(sel.minivan && o.minivan) parts.push("Mini van +" + money(miniVanAddition(plainPrice(fare.price), fare.from_place, sel.trip)));
     if(sel.airport && o.airport) parts.push("Airport pickup +" + money(airportFee(fare.from_place)));
   }
   const w = sel.wait || {};
@@ -776,7 +779,7 @@ function renderQuote(){
     '<div class="seg" id="seg-trip" role="group" aria-label="Trip type" style="margin-top:20px' + (o.hasRT ? "" : ";visibility:hidden") + '">' +
       '<button data-trip="oneway" class="on" aria-pressed="true">One way</button>' +
       '<button data-trip="round" aria-pressed="false">Round trip</button></div>' +
-    (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place)) + "</span></label>" : "") +
+    (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place, sel.trip)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-breakdown"></div>' +
     '<button class="btn secondary" id="customize">Customize price</button>' +
