@@ -37,25 +37,26 @@
   nav .title{ font-weight:600; font-size:17px; letter-spacing:-.01em; }
   nav #nav-back{ display:none; }
   nav.in-flow #nav-back{ display:block; }
-  /* header subhead (v4.2): step row only — the mode toggle is gone,
-     the bottom bar switches modes now */
-  #subhead{
-    flex:none; padding:10px 16px 12px;
-    background:color-mix(in srgb, var(--bg) 82%, transparent);
-    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-    border-bottom:1px solid var(--border); z-index:5;
-  }
-  #step-row{ display:flex; align-items:center; gap:7px; max-width:600px; margin:2px auto 0; }
+  /* step row (v4.3): lives IN the nav row, to the right of the
+     logo/back link — one header row, not two. Compact dots so the
+     row fits a phone: 40×32px tap targets (was 44×44 in the
+     subhead), 10px circles, 14px step name. The row takes the free
+     space (flex:1) and the name ellipsizes before the dots shrink. */
+  #step-row{ display:flex; align-items:center; gap:6px; flex:1 1 auto; min-width:0; margin:0; }
   /* Dots are plain solid circles painted with ::after. The old
      background-clip:content-box + padding trick never painted at all
      (border-box collapses the content box to 0), so the dots were
      invisible in both themes while still present in the DOM. */
-  #step-row .dot{ display:inline-flex; align-items:center; justify-content:center; flex:none; width:44px; height:44px; margin:0 -14px; padding:0; border:0; background:transparent; cursor:default; }
-  #step-row .dot::after{ content:""; display:block; width:12px; height:12px; border-radius:50%; background:var(--muted); opacity:.45; }
+  #step-row .dot{ display:inline-flex; align-items:center; justify-content:center; flex:none; width:40px; height:32px; margin:0 -13px; padding:0; border:0; background:transparent; cursor:default; }
+  #step-row .dot::after{ content:""; display:block; width:10px; height:10px; border-radius:50%; background:var(--muted); opacity:.45; }
   #step-row .dot.done{ cursor:pointer; }
   #step-row .dot.done::after{ background:var(--text); opacity:1; }
-  #step-row .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
+  #step-row .step-name{ color:var(--muted); font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #step-row .dot.cur::after{ background:var(--muted); opacity:1; }
+  /* v4.3: the comparison card opens the fare-sheet quote for the
+     route — it is a tappable card, with a chevron. */
+  .cmp-card{ position:relative; cursor:pointer; text-align:left; padding-right:34px; }
+  .cmp-chev{ position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:22px; font-weight:400; }
   #nav-logo{ display:flex; align-items:baseline; font-weight:800; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
   #nav-logo .wm-b{ color:var(--accent); }
   nav.in-flow #nav-logo{ display:none; }
@@ -253,12 +254,10 @@
   <button class="link" id="nav-back">‹ Start over</button>
   <span id="nav-logo"><span>Fare</span><span class="wm-b">Lookup</span></span></span>
   <span class="title" id="nav-title">Fare Lookup</span>
-  <span class="spacer"></span>
+  <div id="step-row"></div>
+  <span class="spacer" id="nav-spacer"></span>
   <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
 </nav>
-<div id="subhead">
-  <div id="step-row"></div>
-</div>
 <div id="scroll">
   <div class="col">
     <div id="view"></div>
@@ -692,23 +691,24 @@ function popScreen(){
   prev.render();
   return true;
 }
-/* ---------- header: step row only (v4.2) ----------
-   The nav shows the FareLookup wordmark on step 1 of both modes; the
-   subhead under it holds one step row (dots + current step name)
-   shared by both modes. The wizard's steps are From → To → Price;
-   the calculator's are Route → Trip → Return (only when To is empty)
-   → Waiting & costs. Completed dots are tappable to jump back in both
-   modes. The whole subhead hides on loop-bar screens (quote,
-   flatbush, calc-result) and on screens with no step (Account,
-   History, trip detail, Rates, Board) — so nothing stands between a
-   driver and a fare. Mode switching lives in the bottom bar, not
-   the header. */
+/* ---------- header: step row in the nav row (v4.3) ----------
+   The nav is one row: [wordmark or back link] [dots + current step
+   name] [Board/Add]. The step row sits to the right of the logo/back
+   link, in the nav itself — the subhead row is gone. Both modes'
+   headers match. The wizard's steps are From → To → Price; the
+   calculator's are Route → Trip → Return (only when To is a
+   fare-sheet place) → Waiting & costs. Completed dots are tappable
+   to jump back in both modes. The step row hides on loop-bar screens
+   (quote, flatbush, calc-result) and on screens with no step
+   (Account, History, trip detail, Rates, Board) — the spacer takes
+   its place there so the Board button stays right-aligned. Mode
+   switching lives in the bottom bar, not the header. */
 const WIZARD_STEP_NAMES = ["From", "To", "Price"];
 const LOOP_VIEWS = ["quote", "flatbush", "calc-result"];
 let lastNotListedMsg = "";
 function renderHeader(){
-  const sub = document.getElementById("subhead");
   const row = document.getElementById("step-row");
+  const spacer = document.getElementById("nav-spacer");
   let items = null, cur = -1, curName = "";
   if(view === "step1" || view === "step2" || view === "notlisted"){
     items = WIZARD_STEP_NAMES.map((n, i) => ({ label: n, step: i + 1 }));
@@ -723,10 +723,10 @@ function renderHeader(){
   if(!items || cur < 0 || LOOP_VIEWS.includes(view)){
     row.innerHTML = "";
     row.style.display = "none";
-    sub.style.display = "none";
+    spacer.style.display = "";
     return;
   }
-  sub.style.display = "";
+  spacer.style.display = "none";
   row.style.display = "";
   row.innerHTML = items.map((it, i) => {
     if(i === cur) return '<span class="dot cur"></span><span class="step-name">' + esc(curName) + "</span>";
@@ -743,6 +743,7 @@ function renderHeader(){
    History, Board, Rates): there the tap leaves that screen for the
    mode. */
 function goMode(next){
+  quoteFromCalc = false;
   const onFaresMain = view === "step1" || view === "step2" || view === "notlisted";
   const onCalcMain = view === "calc";
   if((next === "fares" && onFaresMain) || (next === "calc" && onCalcMain)) return;
@@ -810,9 +811,13 @@ function setStep(n, label){
   /* The result's back names the form step that produced the fare —
      never the fare sheet. */
   const calcResultBack = view === "calc-result" && calcResultStep != null ? CALC_STEP_NAMES[calcResultStep] : null;
+  /* A quote opened from the comparison card returns to the calculator
+     layer it came from — its back names that layer, not the wizard. */
+  const quoteBack = view === "quote" && quoteFromCalc ? quoteFromCalcBack : null;
   const backTxt = view === "pending" ? "Start over"
     : calcPrev != null ? CALC_STEP_NAMES[calcPrev]
     : calcResultBack != null ? calcResultBack
+    : quoteBack != null ? quoteBack
     : isCalcView ? "Back"
     : (view === "notlisted" || n === 3) ? "Where to?"
     : n === 2 ? "Where from?"
@@ -852,11 +857,14 @@ function goBackFromCalc(){
 }
 function h(html){ $view.innerHTML = html; }
 
-function placeListHTML(query, exclude){
+function placeListHTML(query, exclude, extra){
   const q = (query || "").trim().toLowerCase();
   const match = p => !q || p.toLowerCase().includes(q);
   const top = topPlaces.filter(p => p !== exclude && match(p));
   const rest = places.filter(p => !topPlaces.includes(p) && p !== exclude && match(p)).sort();
+  /* v4.3: previously used names from saved trips, after the fare-sheet
+     places — calculator pickers only (the wizard passes no extra). */
+  const hist = (extra || []).filter(p => p !== exclude && match(p));
   let out = "";
   if(top.length){
     out += '<div class="group-label">Top 4</div><div class="list">' +
@@ -866,7 +874,11 @@ function placeListHTML(query, exclude){
     out += '<div class="group-label">All places</div><div class="list">' +
       rest.map(p => '<button class="row" data-place="' + esc(p) + '">' + esc(p) + '<span class="chev">›</span></button>').join("") + "</div>";
   }
-  if(!top.length && !rest.length) out = '<div class="empty">No places match.</div>';
+  if(hist.length){
+    out += '<div class="group-label">From your trips</div><div class="list">' +
+      hist.map(p => '<button class="row" data-place="' + esc(p) + '">' + esc(p) + '<span class="chev">›</span></button>').join("") + "</div>";
+  }
+  if(!top.length && !rest.length && !hist.length) out = '<div class="empty">No places match.</div>';
   return out;
 }
 
@@ -920,6 +932,7 @@ function afterRoutePicked(){
   }
   const res = findFare(sel.from, sel.to);
   if(!res){ renderNotListed(""); return; }
+  quoteFromCalc = false;
   sel.resolved = res;
   sel.trip = "oneway"; sel.minivan = false; sel.airport = false; sel.customPrice = null;
   renderQuote();
@@ -1016,7 +1029,7 @@ function renderQuote(){
     const priceStr = q.complex ? q.printed : money(q.total);
     shareQuote(e.target, quoteText(priceStr), priceStr);
   });
-  document.getElementById("new-rate").addEventListener("click", () => { inFlow = false; sel = {}; renderPlacePicker(1); });
+  document.getElementById("new-rate").addEventListener("click", () => { quoteFromCalc = false; inFlow = false; sel = {}; renderPlacePicker(1); });
   document.getElementById("customize").addEventListener("click", () => openCustomizeDrawer(refreshQuote));
   document.getElementById("takehome").addEventListener("click", openCalcFromQuote);
   refreshQuote();
@@ -1159,7 +1172,7 @@ function openAddDrawer(prefill){
     closeDrawer();
     sel.from = from; sel.to = to;
     const res = findFare(from, to);
-    if(res){ sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; sel.customPrice = null; inFlow = true; renderQuote(); }
+    if(res){ quoteFromCalc = false; sel.resolved = res; sel.trip = "oneway"; sel.minivan = false; sel.airport = false; sel.customPrice = null; inFlow = true; renderQuote(); }
     else renderPlacePicker(1);
   });
 }
@@ -1497,9 +1510,27 @@ function bindTimeField(prefix, set){
    mode, To set = no return leg, To empty = the return step applies.
    The return-leg origin (drop-off one-way, origin round-trip) is
    unchanged — with the hub drawer gone it has no code consumer left;
-   the return miles are simply entered from wherever the trip ends. */
+   the return miles are simply entered from wherever the trip ends.
+   v4.3: only a FARE-SHEET place counts as ending at a hub — a custom
+   name from a saved trip is a list entry only, never a hub. */
 function calcEndsAtHub(t){
-  return !!t.to;
+  return !!t.to && places.includes(t.to);
+}
+/* v4.3: names used in saved trips, newest first — for the From/To pick
+   lists only. Derived from the same store History reads (calcTripsArr);
+   no separate list is kept. Fare-sheet names are excluded (they are
+   already in the list above); a custom name here is a list entry ONLY
+   — it never becomes a hub (see calcEndsAtHub). */
+function calcHistoryPlaces(){
+  const seen = new Set();
+  const out = [];
+  for(let i = calcTripsArr.length - 1; i >= 0; i--){
+    const t = calcTripsArr[i];
+    [t.from, t.to].forEach(n => {
+      if(n && !seen.has(n) && !places.includes(n)){ seen.add(n); out.push(n); }
+    });
+  }
+  return out;
 }
 function calcFare(t, cfg){
   const r = calcRates(cfg);
@@ -1599,8 +1630,9 @@ function calcBuildTrip(r, actuals){
 }
 /* ---------- trip calculator: multi-step form (v3) ---------- */
 /* One topic per screen, wizard-style. Step 1 choices decide the later
-   steps: the Return step appears only when To is empty (the trip does
-   not end at a hub). Step numbers are canonical (1 Route, 2 Trip,
+   steps: the Return step appears only when To is not a fare-sheet
+   place (v4.3: a custom To is not a hub, so the return leg still
+   applies). Step numbers are canonical (1 Route, 2 Trip,
    3 Return, 4 Waiting & costs); the header step row shows only the
    steps in the current path (v4: one unified row for both modes).
    Back is the nav back link; Next is the button at the bottom of
@@ -1612,7 +1644,7 @@ let calcStep = 1;
    calculator result screen. The result's nav back returns there,
    named — never to the fare sheet. Null until a fare is shown. */
 let calcResultStep = null;
-function calcStepList(){ return calc.to ? [1, 2, 4] : [1, 2, 3, 4]; }
+function calcStepList(){ return calcEndsAtHub(calc) ? [1, 2, 4] : [1, 2, 3, 4]; }
 function calcNextStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return (i >= 0 && i < l.length - 1) ? l[i + 1] : null; }
 function calcPrevStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return i > 0 ? l[i - 1] : null; }
 function calcGoStep(n){ calcStep = n; renderCalc(); }
@@ -1644,8 +1676,7 @@ function calcHtml(){
         '<button class="row" id="c-to"><span>' + (calc.to ? esc(calc.to) : '<span style="color:var(--muted)">Optional — only if this is a hub trip and you want the standard price</span>') + '</span><span class="chev">›</span></button>' +
       '</div>' +
       ((calc.from || calc.to) ? '<button class="quiet-link" id="c-clear-route">Clear route</button>' : "") +
-      '<button class="btn" id="c-next">Next</button>' +
-      '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-month">My month</button> · <button class="quiet-link" id="c-rates">Rates</button></div>';
+      '<button class="btn" id="c-next">Next</button>';
   } else if(calcStep === 2){
     out += '<div class="stepper"><button id="c-miles-minus" aria-label="Fewer miles">−</button>' +
         '<input id="c-miles" inputmode="decimal" placeholder="Trip miles" value="' + esc(calc.miles) + '">' +
@@ -1713,7 +1744,7 @@ function calcResultHtml(r, listFare, opts){
         ? "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — covers your $40 target"
         : "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — " + money(40 - listPerHour) + " under your $40 target";
     }
-    cmp = '<div class="card"><div class="route">List price ' + money(listFare) + " · Suggested " + money(r.suggestedFare) + "</div>" +
+    cmp = '<div class="card cmp-card" id="c-cmp-card" role="button" tabindex="0"><span class="cmp-chev">›</span><div class="route">List price ' + money(listFare) + " · Suggested " + money(r.suggestedFare) + "</div>" +
       (cmpLine ? '<div class="change">' + esc(cmpLine) + "</div>" : "") + "</div>";
   }
   const eff = r.effectivePerHour;
@@ -1759,6 +1790,8 @@ function renderCalcResult(){
 function wireCalcResult(){
   const box = document.getElementById("calc-result");
   box.addEventListener("click", (e) => {
+    const cmpCard = e.target.closest("#c-cmp-card");
+    if(cmpCard){ openQuoteFromCalc(calc.from, calc.to, calc.mode, () => renderCalcResult()); return; }
     const show = e.target.closest("#c-fare-show");
     if(show){
       show.classList.add("hidden");
@@ -1831,10 +1864,11 @@ function wireCalcResult(){
    miles is a stepper, Actual time is a time selector. */
 function calcActualsFieldsHtml(prefill){
   /* v4.2: From/To name the trip. The datalist offers the fare-sheet
-     places (same list the wizard/calculator pickers draw from); typing
-     a name not in the list keeps it as a custom name. Blank From/To
-     keeps the "Manual trip" fallback in History. */
-  const placeOpts = places.map(p => '<option value="' + esc(p) + '">').join("");
+     places (same list the wizard/calculator pickers draw from) plus
+     names from saved trips (v4.3); typing a name not in the list keeps
+     it as a custom name. Blank From/To keeps the "Manual trip"
+     fallback in History. */
+  const placeOpts = places.concat(calcHistoryPlaces()).map(p => '<option value="' + esc(p) + '">').join("");
   return '<input type="text" id="c-act-from" list="c-act-places" placeholder="From" value="' + esc(prefill.from || "") + '">' +
     '<input type="text" id="c-act-to" list="c-act-places" placeholder="To" style="margin-top:12px" value="' + esc(prefill.to || "") + '">' +
     '<datalist id="c-act-places">' + placeOpts + '</datalist>' +
@@ -1909,10 +1943,6 @@ function wireCalc(){
   if(next) next.addEventListener("click", () => { const n = calcNextStep(); if(n != null) calcGoStep(n); });
   const seeFare = document.getElementById("c-see-fare");
   if(seeFare) seeFare.addEventListener("click", () => pushScreen("calc-result", () => renderCalc(), renderCalcResult));
-  const month = document.getElementById("c-month");
-  if(month) month.addEventListener("click", () => { screenStack = []; renderCalcHistory("calc"); });
-  const rates = document.getElementById("c-rates");
-  if(rates) rates.addEventListener("click", () => { backTarget = "calc"; screenStack = []; renderAccount(); pushScreen("account-rates", () => renderAccount(), renderAccountRates); });
   bindTimeField("c-wait", v => { calc.waitHours = v; });
   updateCalcForm();
 }
@@ -1929,10 +1959,10 @@ function renderCalcPicker(which){
   view = "calc-pick"; setStep(0, which === "from" ? "Where from?" : "Where to?");
   const other = which === "to" ? calc.from : null;
   h('<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
-    '<div id="plist">' + placeListHTML("", other) + "</div>");
+    '<div id="plist">' + placeListHTML("", other, calcHistoryPlaces()) + "</div>");
   const input = document.getElementById("q");
   input.addEventListener("input", () => {
-    document.getElementById("plist").innerHTML = placeListHTML(input.value, other);
+    document.getElementById("plist").innerHTML = placeListHTML(input.value, other, calcHistoryPlaces());
     bindCalcPickRows(which);
   });
   bindCalcPickRows(which);
@@ -1947,10 +1977,33 @@ function bindCalcPickRows(which){
     });
   });
 }
+/* v4.3: the comparison card opens the fare-sheet quote for that route.
+   The quote opens at the list fare — that is the point — and Share
+   produces the fare-sheet /s/<id> link. The quote is a layer over the
+   calculator (result or trip detail); its back returns there, never to
+   the wizard. quoteFromCalc is set only here and cleared at every other
+   entry into the quote (afterRoutePicked, the add-price submit, goMode,
+   the share deep-link) and on every exit from it (New rate, My
+   take-home, the nav back itself). */
+let quoteFromCalc = false;
+let quoteFromCalcBack = "My fare";
+function openQuoteFromCalc(from, to, mode, backRender, backLabel){
+  const res = findFare(from, to);
+  if(!res) return;
+  sel.from = from; sel.to = to;
+  sel.resolved = res;
+  sel.trip = mode === "round" ? "round" : "oneway";
+  sel.minivan = false; sel.airport = false; sel.customPrice = null;
+  sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = [];
+  quoteFromCalc = true;
+  quoteFromCalcBack = backLabel || "My fare";
+  pushScreen("quote", backRender, renderQuote);
+}
 /* Prefill the calculator from a quote: route, mode, list fare, wait hours
    and toll/parking add-ons carried over. Flat (once) wait has no hours,
    so it is not carried. */
 function openCalcFromQuote(){
+  quoteFromCalc = false;
   backTarget = "quote";
   calcReset();
   calc.from = sel.from; calc.to = sel.to;
@@ -2041,11 +2094,10 @@ function calcMonthWidgetHtml(){
       '<div class="change">Revenue ' + money(agg.revenue) + " − expenses " + money(agg.expenses) + "</div></div></div>";
 }
 /* v4: the trips list is its own screen, reached from the Account
-   History row (or the calculator's "My month" link). The month
-   summary lives on the Account screen as the Month widget; this
-   screen shows the saved trips for the selected month, newest first.
-   The pending-save form (actuals) still sits at the top while a
-   trip is being saved. */
+   History row only. The month summary lives on the Account screen as
+   the Month widget; this screen shows the saved trips for the
+   selected month, newest first. The pending-save form (actuals) still
+   sits at the top while a trip is being saved. */
 function renderCalcHistory(from){
   view = "calc-history"; setStep(0, "History");
   if(from) backTarget = from;
@@ -2124,6 +2176,8 @@ function renderCalcTrip(t){
     calcResultHtml(r, listFare, { editable: false, mode: calc.mode, from: calc.from, to: calc.to }) +
     '<button class="btn" id="c-trip-reopen" style="margin-top:18px">Reopen in calculator</button>' +
     '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-trip-delete">Delete trip</button></div>');
+  const cmp = document.getElementById("c-cmp-card");
+  if(cmp) cmp.addEventListener("click", () => openQuoteFromCalc(calc.from, calc.to, calc.mode, () => renderCalcTrip(saved), "Trip"));
   const reopen = document.getElementById("c-trip-reopen");
   if(reopen) reopen.addEventListener("click", () => {
     /* calc already holds this trip's inputs (the estimates) from above. */
@@ -2268,7 +2322,15 @@ document.getElementById("nav-back").addEventListener("click", () => {
     return;
   }
   if(isCalcViewName(view)){ goBackFromCalc(); return; }
-  if(view === "quote" || view === "flatbush" || view === "notlisted"){ renderPlacePicker(2); }
+  if(view === "quote"){
+    /* v4.3: a quote opened from the comparison card returns to the
+       calculator layer it came from (result or trip detail) — never
+       to the wizard. If the stack is somehow empty, fall through to
+       the wizard back below. */
+    if(quoteFromCalc){ quoteFromCalc = false; if(popScreen()) return; }
+    renderPlacePicker(2);
+  }
+  else if(view === "flatbush" || view === "notlisted"){ renderPlacePicker(2); }
   else { inFlow = false; sel = {}; renderPlacePicker(1); }
 });
 /* v4.2: the bottom bar switches modes (Fare sheet / Calculator /
@@ -2328,6 +2390,7 @@ async function init(){
         const sf = shared.fare_id ? fares.find(f => f.id === shared.fare_id) : null;
         if(sf){
           inFlow = true;
+          quoteFromCalc = false;
           sel.from = sf.from_place; sel.to = sf.to_place;
           sel.resolved = { fare: sf, reversed: false };
           sel.trip = shared.trip === "round" ? "round" : "oneway";
