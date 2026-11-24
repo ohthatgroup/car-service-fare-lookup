@@ -37,17 +37,15 @@
   nav .title{ font-weight:600; font-size:17px; letter-spacing:-.01em; }
   nav #nav-back{ display:none; }
   nav.in-flow #nav-back{ display:block; }
-  #nav-gear{ background:none; border:0; color:var(--text); padding:8px; margin:-8px -4px; border-radius:10px; cursor:pointer; flex:none; }
-  #nav-gear svg{ width:22px; height:22px; display:block; }
-  /* header subhead (v4): mode toggle + unified step row, one row each */
+  /* header subhead (v4.2): step row only — the mode toggle is gone,
+     the bottom bar switches modes now */
   #subhead{
     flex:none; padding:10px 16px 12px;
     background:color-mix(in srgb, var(--bg) 82%, transparent);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     border-bottom:1px solid var(--border); z-index:5;
   }
-  #subhead .seg{ max-width:600px; margin:0 auto; }
-  #step-row{ display:flex; align-items:center; gap:7px; max-width:600px; margin:12px auto 0; }
+  #step-row{ display:flex; align-items:center; gap:7px; max-width:600px; margin:2px auto 0; }
   /* Dots are plain solid circles painted with ::after. The old
      background-clip:content-box + padding trick never painted at all
      (border-box collapses the content box to 0), so the dots were
@@ -134,9 +132,9 @@
     position:fixed; left:0; right:0; bottom:0; z-index:20;
     background:var(--bg); border-top:1px solid var(--border);
     padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    display:flex; gap:10px; /* v4.2: Share + New rate side by side, never stacked */
   }
-  .loop-bar .btn{ margin-top:0; min-height:52px; }
-  .loop-bar .btn + .btn{ margin-top:10px; }
+  .loop-bar .btn{ margin-top:0; min-height:52px; flex:1; min-width:0; }
   .loop-bar #share{ font-weight:600; }
   .propose-link{ display:block; margin:20px auto 0; background:none; border:0; color:var(--muted); font-size:14px; padding:12px 8px; cursor:pointer; text-align:center; }
   .seg{ display:flex; background:var(--chip); border-radius:12px; padding:2px; gap:2px; }
@@ -218,6 +216,25 @@
     border:0; background:var(--surface); color:var(--muted); width:22px; height:22px;
     border-radius:50%; font-size:13px; line-height:1; cursor:pointer; padding:0;
   }
+  /* floating glass menu (v4.2, restored from v3): bottom-center pill,
+     three sections, icons only. Hides wherever the loop bar shows. */
+  #menu-pill{
+    position:fixed; left:16px; right:16px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:30;
+    display:flex; gap:2px; padding:5px;
+    background:color-mix(in srgb, var(--surface) 68%, transparent);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--border); border-radius:980px;
+    box-shadow:0 8px 28px rgba(0,0,0,.18);
+  }
+  @media (min-width:560px){
+    #menu-pill{ left:50%; right:auto; transform:translateX(-50%); width:min(220px, calc(100vw - 120px)); }
+  }
+  #menu-pill button{
+    flex:1; border:0; background:transparent; color:var(--text);
+    padding:10px 4px; border-radius:980px; cursor:pointer; white-space:nowrap;
+  }
+  #menu-pill button svg{ width:22px; height:22px; display:block; margin:0 auto; }
+  #menu-pill button.on{ background:var(--surface); color:var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.12); }
   /* calculator */
   .set-row{ display:flex; align-items:center; gap:10px; padding:12px 2px; border-bottom:1px solid var(--border); font-size:16px; }
   .set-row:last-child{ border-bottom:0; }
@@ -238,19 +255,19 @@
   <span class="title" id="nav-title">Fare Lookup</span>
   <span class="spacer"></span>
   <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
-  <button id="nav-gear" aria-label="Account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </nav>
 <div id="subhead">
-  <div class="seg" id="mode-toggle" role="group" aria-label="Mode">
-    <button data-mode="fares" class="on" aria-pressed="true">Fare rate</button>
-    <button data-mode="calc" aria-pressed="false">Calculator</button>
-  </div>
   <div id="step-row"></div>
 </div>
 <div id="scroll">
   <div class="col">
     <div id="view"></div>
   </div>
+</div>
+<div id="menu-pill" role="navigation" aria-label="Menu">
+  <button data-menu="fares" aria-label="Fare sheet"></button>
+  <button data-menu="calc" aria-label="Calculator"></button>
+  <button data-menu="account" aria-label="Account"></button>
 </div>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
@@ -675,29 +692,22 @@ function popScreen(){
   prev.render();
   return true;
 }
-/* ---------- header: mode toggle + unified step row (v4) ----------
-   The header carries both tools at the same level: a segmented
-   control (Fare rate | Calculator) and, directly under it, one step
-   row (dots + current step name) shared by both modes. The wizard's
-   steps are From → To → Price; the calculator's are Route → Trip →
-   Return (only when To is empty) → Waiting & costs. Completed dots
-   are tappable to jump back in both modes. The whole subhead hides
-   on loop-bar screens (quote, flatbush, calc-result) — the same
-   screens where the bottom menu used to hide — so nothing stands
-   between a driver and a fare. The step row hides on screens with
-   no step (Account, My Month, trip detail, Rates, Board). */
+/* ---------- header: step row only (v4.2) ----------
+   The nav shows the FareLookup wordmark on step 1 of both modes; the
+   subhead under it holds one step row (dots + current step name)
+   shared by both modes. The wizard's steps are From → To → Price;
+   the calculator's are Route → Trip → Return (only when To is empty)
+   → Waiting & costs. Completed dots are tappable to jump back in both
+   modes. The whole subhead hides on loop-bar screens (quote,
+   flatbush, calc-result) and on screens with no step (Account,
+   History, trip detail, Rates, Board) — so nothing stands between a
+   driver and a fare. Mode switching lives in the bottom bar, not
+   the header. */
 const WIZARD_STEP_NAMES = ["From", "To", "Price"];
 const LOOP_VIEWS = ["quote", "flatbush", "calc-result"];
-let mode = "fares"; // last mode entered: "fares" | "calc"
 let lastNotListedMsg = "";
 function renderHeader(){
   const sub = document.getElementById("subhead");
-  sub.style.display = LOOP_VIEWS.includes(view) ? "none" : "";
-  document.getElementById("mode-toggle").querySelectorAll("[data-mode]").forEach(b => {
-    const on = b.dataset.mode === mode;
-    b.classList.toggle("on", on);
-    b.setAttribute("aria-pressed", on ? "true" : "false");
-  });
   const row = document.getElementById("step-row");
   let items = null, cur = -1, curName = "";
   if(view === "step1" || view === "step2" || view === "notlisted"){
@@ -710,11 +720,13 @@ function renderHeader(){
     cur = l.indexOf(calcStep);
     curName = CALC_STEP_NAMES[calcStep];
   }
-  if(!items || cur < 0){
+  if(!items || cur < 0 || LOOP_VIEWS.includes(view)){
     row.innerHTML = "";
     row.style.display = "none";
+    sub.style.display = "none";
     return;
   }
+  sub.style.display = "";
   row.style.display = "";
   row.innerHTML = items.map((it, i) => {
     if(i === cur) return '<span class="dot cur"></span><span class="step-name">' + esc(curName) + "</span>";
@@ -722,20 +734,19 @@ function renderHeader(){
     return '<span class="dot"></span>';
   }).join("");
 }
-/* Mode switch (v4): the header toggle is root navigation. Entering
-   the calculator resets its form fresh (same rule as the v3 pill).
-   The wizard keeps its in-progress state when you switch away and
-   back — tapping Fare rate restores the wizard where it was (quote,
-   Flatbush grid, step 2, or step 1); it never wipes sel. Tapping the
-   mode you are already on is a no-op, except from a side screen
-   (Account, My Month, Board, Rates): there the tap leaves that
-   screen for the mode. */
+/* Mode switch (v4.2): the bottom bar is root navigation. Entering
+   the calculator resets its form fresh. The wizard keeps its
+   in-progress state when you switch away and back — tapping Fare
+   sheet restores the wizard where it was (quote, Flatbush grid,
+   step 2, or step 1); it never wipes sel. Tapping the mode you are
+   already on is a no-op, except from a side screen (Account,
+   History, Board, Rates): there the tap leaves that screen for the
+   mode. */
 function goMode(next){
   const onFaresMain = view === "step1" || view === "step2" || view === "notlisted";
   const onCalcMain = view === "calc";
   if((next === "fares" && onFaresMain) || (next === "calc" && onCalcMain)) return;
   screenStack = [];
-  mode = next;
   if(next === "calc"){
     if(!isCalcViewName(view)) backTarget = view;
     calcReset(); calcStep = 1;
@@ -756,31 +767,66 @@ function goMode(next){
   if(sel.from){ inFlow = true; renderPlacePicker(2); return; }
   inFlow = false; sel = {}; renderPlacePicker(1);
 }
+/* Icon menu (v4.2, restored from v3): icons only, inline SVG in
+   currentColor. The bottom bar is the only way between modes — the
+   calculator is a top-level screen, never reached by a back link. */
+const MENU_ICONS = {
+  fares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
+  calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7.5h8M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/></svg>',
+  account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+};
+function updateMenu(){
+  const pill = document.getElementById("menu-pill");
+  if(!pill) return;
+  // The icon bar hides wherever the loop bar shows.
+  const loopViews = ["quote", "flatbush", "calc-result"];
+  pill.style.display = loopViews.includes(view) ? "none" : "";
+  const section = view === "account" || view.indexOf("account-") === 0 ? "account"
+    : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "fares";
+  pill.querySelectorAll("[data-menu]").forEach(b => b.classList.toggle("on", b.dataset.menu === section));
+}
+function goMenu(section){
+  if(section === "fares" || section === "calc"){ goMode(section); return; }
+  if(section === "account"){
+    if(!isCalcViewName(view)) backTarget = view;
+    renderAccount(); return;
+  }
+}
 let currentStep = 1;
 function setStep(n, label){
   currentStep = n;
-  // mode follows the screen family; Account leaves it unchanged.
-  if(view === "step1" || view === "step2" || view === "quote" || view === "flatbush" || view === "notlisted" || view === "pending") mode = "fares";
-  else if(view === "calc" || view === "calc-result" || view === "calc-history" || view === "calc-trip" || view === "calc-pick" || view === "account-rates") mode = "calc";
   const isCalcView = isCalcViewName(view);
   const $t = document.getElementById("nav-title");
   // The nav title shows on screens with no step row; the step row
   // carries the name on the wizard and calculator forms.
-  const showTitle = view === "pending" || (isCalcView && view !== "calc" && view !== "calc-pick");
+  /* The result screen has no form step behind it when it was reached
+     without one in this session — then the wordmark shows instead of
+     a back link, matching the wizard's From step. */
+  const noCalcResultBack = view === "calc-result" && calcResultStep == null;
+  const showTitle = (view === "pending" || (isCalcView && view !== "calc" && view !== "calc-pick")) && !noCalcResultBack;
   $t.style.display = showTitle ? "" : "none";
   $t.textContent = view === "pending" ? "Board" : (label || "Fare Lookup");
   const calcPrev = isCalcView && view === "calc" ? calcPrevStep() : null;
+  /* The result's back names the form step that produced the fare —
+     never the fare sheet. */
+  const calcResultBack = view === "calc-result" && calcResultStep != null ? CALC_STEP_NAMES[calcResultStep] : null;
   const backTxt = view === "pending" ? "Start over"
     : calcPrev != null ? CALC_STEP_NAMES[calcPrev]
+    : calcResultBack != null ? calcResultBack
     : isCalcView ? "Back"
     : (view === "notlisted" || n === 3) ? "Where to?"
     : n === 2 ? "Where from?"
     : "Start over";
   document.getElementById("nav-back").textContent = "‹ " + backTxt;
-  document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
+  // No back link on the calculator's Route step — the wordmark shows
+  // there instead, matching the wizard's From step. The calculator is
+  // a top-level screen; the bottom bar is the way between modes.
+  const onCalcHome = view === "calc" && calcStep === 1;
+  document.getElementById("topnav").classList.toggle("in-flow", (inFlow || view !== "step1") && !onCalcHome && !noCalcResultBack);
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
   renderHeader();
+  updateMenu();
   $scroll.scrollTop = 0;
 }
 function goToStep(n){
@@ -789,7 +835,7 @@ function goToStep(n){
   else if(n === 2 && sel.from) renderPlacePicker(2);
 }
 
-/* ---------- header mode switch (v4): see goMode above ---------- */
+/* ---------- bottom-bar mode switch (v4.2): see goMode/goMenu above ---------- */
 let backTarget = "step1"; // view the nav back link returns to from calc/settings views
 function goBackFromCalc(){
   if(popScreen()) return;
@@ -1517,6 +1563,7 @@ function calcReset(){
   calc = { mode: "oneway", from: null, to: null, miles: "", hours: "", waitHours: 0,
     tolls: "", parking: "", returnMiles: "", returnHours: "", returnTolls: "", adjustedFare: null };
   calcStep = 1;
+  calcResultStep = null;
 }
 function calcListFare(){
   if(!calc.from || !calc.to) return null;
@@ -1543,6 +1590,10 @@ function calcBuildTrip(r, actuals){
     if(actuals.amount != null){ trip.actualAmount = actuals.amount; trip.fareCharged = actuals.amount; }
     if(actuals.miles != null) trip.actualMiles = actuals.miles;
     if(actuals.time != null) trip.actualTime = actuals.time;
+    /* v4.2: the name typed/picked in the save form wins over the
+       calculator's From/To; blank means no name ("Manual trip"). */
+    if("from" in actuals) trip.from = actuals.from;
+    if("to" in actuals) trip.to = actuals.to;
   }
   return trip;
 }
@@ -1557,6 +1608,10 @@ function calcBuildTrip(r, actuals){
    gated on miles > 0 and hours > 0, as before. */
 const CALC_STEP_NAMES = { 1: "Route", 2: "Trip", 3: "Return", 4: "Waiting & costs" };
 let calcStep = 1;
+/* v4.2 follow-up: the form step that produced the fare on the
+   calculator result screen. The result's nav back returns there,
+   named — never to the fare sheet. Null until a fare is shown. */
+let calcResultStep = null;
 function calcStepList(){ return calc.to ? [1, 2, 4] : [1, 2, 3, 4]; }
 function calcNextStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return (i >= 0 && i < l.length - 1) ? l[i + 1] : null; }
 function calcPrevStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return i > 0 ? l[i - 1] : null; }
@@ -1687,6 +1742,12 @@ function calcResultHtml(r, listFare, opts){
 function renderCalcResult(){
   const r0 = calcFare(calc, calcCfg);
   if(!(r0.miles > 0 && r0.hours > 0)){ renderCalc(); return; }
+  /* Record the form step that produced this fare. calcStep is
+     unchanged while the result is on screen, so re-renders (fare
+     edit, Cancel fallback) keep the same step. pushScreen already set
+     view to "calc-result" before calling this, so view can't tell a
+     fresh entry from a re-render — and doesn't need to. */
+  calcResultStep = calcStep;
   view = "calc-result"; setStep(0, "My fare");
   const listFare = calcListFare();
   h('<div id="calc-result">' + calcResultHtml(r0, listFare, { editable: true, mode: calc.mode, from: calc.from, to: calc.to }) + "</div>" +
@@ -1769,7 +1830,15 @@ function wireCalcResult(){
    decision ever changes. v4: same control rule as the form — Actual
    miles is a stepper, Actual time is a time selector. */
 function calcActualsFieldsHtml(prefill){
-  return '<input type="text" id="c-act-amount" inputmode="decimal" placeholder="Actual amount ($)" value="' + esc(prefill.amount) + '">' +
+  /* v4.2: From/To name the trip. The datalist offers the fare-sheet
+     places (same list the wizard/calculator pickers draw from); typing
+     a name not in the list keeps it as a custom name. Blank From/To
+     keeps the "Manual trip" fallback in History. */
+  const placeOpts = places.map(p => '<option value="' + esc(p) + '">').join("");
+  return '<input type="text" id="c-act-from" list="c-act-places" placeholder="From" value="' + esc(prefill.from || "") + '">' +
+    '<input type="text" id="c-act-to" list="c-act-places" placeholder="To" style="margin-top:12px" value="' + esc(prefill.to || "") + '">' +
+    '<datalist id="c-act-places">' + placeOpts + '</datalist>' +
+    '<input type="text" id="c-act-amount" inputmode="decimal" placeholder="Actual amount ($)" style="margin-top:12px" value="' + esc(prefill.amount) + '">' +
     '<div class="stepper" style="margin-top:12px"><button id="c-act-miles-minus" aria-label="Fewer miles">−</button>' +
       '<input id="c-act-miles" inputmode="decimal" placeholder="Actual miles" value="' + esc(prefill.miles) + '">' +
       '<button id="c-act-miles-plus" aria-label="More miles">+</button></div>' +
@@ -1787,7 +1856,13 @@ function calcSaveActuals(){
   if(hEl && mEl && hEl.value !== ""){
     time = round2((parseInt(hEl.value, 10) || 0) + (parseInt(mEl.value, 10) || 0) / 60);
   }
-  return { amount: num("c-act-amount"), miles: num("c-act-miles"), time: time };
+  const str = (id) => {
+    const el = document.getElementById(id);
+    const v = el ? el.value.trim() : "";
+    return v || null;
+  };
+  return { amount: num("c-act-amount"), miles: num("c-act-miles"), time: time,
+    from: str("c-act-from"), to: str("c-act-to") };
 }
 /* The pending-save form, shown at the top of the History screen while
    calcPendingSave holds the result being saved. */
@@ -1796,7 +1871,7 @@ function calcPendingSaveHtml(){
   const routeLine = (calc.from && calc.to) ? esc(calc.from) + " → " + esc(calc.to) + " · " : "";
   return '<div class="card"><div class="route">Save this trip</div>' +
     '<div class="change">' + routeLine + (calc.mode === "round" ? "Round trip" : "One way") + " · suggested " + money(r.suggestedFare) + "</div>" +
-    calcActualsFieldsHtml({ amount: r.fare, miles: r.miles, time: round2(r.hours + r.waitHours) }) +
+    calcActualsFieldsHtml({ amount: r.fare, miles: r.miles, time: round2(r.hours + r.waitHours), from: calc.from, to: calc.to }) +
     '<button class="btn" id="c-act-save">Save trip</button>' +
     '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-act-cancel">Cancel</button></div></div>';
 }
@@ -2000,7 +2075,14 @@ function renderCalcHistory(from){
     renderCalcHistory();
   });
   const actCancel = document.getElementById("c-act-cancel");
-  if(actCancel) actCancel.addEventListener("click", () => { calcPendingSave = null; renderCalcHistory(); });
+  /* v4.2: Cancel goes back to the fare just calculated, not to History.
+     The save flow was pushed with renderCalcResult as its back render,
+     so popScreen re-renders the result with the fare intact; the direct
+     render is the fallback if the stack is empty. */
+  if(actCancel) actCancel.addEventListener("click", () => {
+    calcPendingSave = null;
+    if(!popScreen()) renderCalcResult();
+  });
   $view.querySelectorAll(".trip-x").forEach(b => b.addEventListener("click", (e) => {
     e.stopPropagation();
     calcRemoveTrip(b.dataset.trip);
@@ -2180,12 +2262,18 @@ document.getElementById("nav-pending").addEventListener("click", () => {
 });
 document.getElementById("nav-back").addEventListener("click", () => {
   if(view === "calc" && calcStep > 1){ const p = calcPrevStep(); if(p != null) calcGoStep(p); return; }
+  if(view === "calc-result"){
+    // Back returns to the form step that produced the fare — never the fare sheet.
+    if(calcResultStep != null && !popScreen()) calcGoStep(calcResultStep);
+    return;
+  }
   if(isCalcViewName(view)){ goBackFromCalc(); return; }
   if(view === "quote" || view === "flatbush" || view === "notlisted"){ renderPlacePicker(2); }
   else { inFlow = false; sel = {}; renderPlacePicker(1); }
 });
-/* v4: the unified step row lives in the header; completed dots jump
-   back in both modes (wizard: goToStep, calculator: calcGoStep). */
+/* v4.2: the bottom bar switches modes (Fare sheet / Calculator /
+   Account); completed dots jump back in both modes (wizard: goToStep,
+   calculator: calcGoStep). */
 document.getElementById("step-row").addEventListener("click", e => {
   const d = e.target.closest("[data-ustep]");
   if(!d) return;
@@ -2196,12 +2284,9 @@ document.getElementById("step-row").addEventListener("click", e => {
     calcGoStep(n);
   }
 });
-document.getElementById("mode-toggle").querySelectorAll("[data-mode]").forEach(b => {
-  b.addEventListener("click", () => goMode(b.dataset.mode));
-});
-document.getElementById("nav-gear").addEventListener("click", () => {
-  if(!isCalcViewName(view)) backTarget = view;
-  renderAccount();
+document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b => {
+  b.innerHTML = MENU_ICONS[b.dataset.menu] || "";
+  b.addEventListener("click", () => goMenu(b.dataset.menu));
 });
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;

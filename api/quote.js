@@ -3,9 +3,11 @@
    Short form: /s/<fareId>[r][m][p]  (r=round trip, m=mini van, p=airport pickup)
                /s/g<baseIdx>-<rowIdx>-<colIdx>  for zone-grid quotes.
                /s/c<code>  for calculator fares — amount-only: the landing
-               page shows the amount and the route, never rates or
-               take-home. The app link opens the fare sheet home, so a
-               recipient never lands inside the driver's calculator.
+               page SHOWS the amount big and the route, never rates or
+               take-home, with an "Open FareLookup" button to the app home.
+               (v4.2: the instant redirect to the fare sheet is gone — the
+               recipient never saw the fare. The Open Graph tags are
+               unchanged, so the WhatsApp preview still shows the amount.)
    The fare is resolved from the database here, so the link stays tiny and
    the preview image shows the real amount. Legacy /q?f=..&t=..&a=.. links
    keep working. Either way the page carries the Open Graph tags and sends
@@ -117,7 +119,7 @@ async function resolveCode(code){
       if(row && row.calc_fare != null){
         return { route: row.calc_route || "Calculator fare",
           amount: money(Number(row.calc_fare)),
-          appParams: {} };
+          appParams: {}, isCalc: true };
       }
     } catch(e){ return null; }
     return null;
@@ -178,11 +180,11 @@ module.exports = async (req, res) => {
   const host = req.headers.host || "fare-lookup.vercel.app";
   const origin = "https://" + host;
 
-  let route = "", amount = "", appParams = null, extrasTxt = "";
+  let route = "", amount = "", appParams = null, extrasTxt = "", isCalc = false;
   if(q.code){
     try {
       const res2 = await resolveCode(String(q.code));
-      if(res2){ route = res2.route; amount = String(res2.amount || ""); appParams = res2.appParams; extrasTxt = res2.extras || ""; }
+      if(res2){ route = res2.route; amount = String(res2.amount || ""); appParams = res2.appParams; extrasTxt = res2.extras || ""; isCalc = !!res2.isCalc; }
     } catch(e){ /* fall through to a generic page */ }
   }
   if(!appParams){
@@ -196,6 +198,29 @@ module.exports = async (req, res) => {
   const ogImg = origin + "/ogimg?a=" + encodeURIComponent(amount || "Fare Lookup") +
     "&r=" + encodeURIComponent(route) + (extrasTxt ? "&x=" + encodeURIComponent(extrasTxt) : "");
   const appUrl = origin + "/?" + new URLSearchParams(appParams).toString();
+
+  /* Calculator shares land ON the fare: amount big, route under it, one
+     button to the app home. No redirect, no rates, no take-home. */
+  if(isCalc){
+    const calcHtml = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
+      "<title>" + esc(title) + "</title>" +
+      "<meta property=\"og:type\" content=\"website\">" +
+      "<meta property=\"og:title\" content=\"" + esc(title) + "\">" +
+      "<meta property=\"og:description\" content=\"Car service fare — tap to open the live quote.\">" +
+      "<meta property=\"og:image\" content=\"" + esc(ogImg) + "\">" +
+      "<meta property=\"og:image:width\" content=\"1200\">" +
+      "<meta property=\"og:image:height\" content=\"630\">" +
+      "<meta name=\"twitter:card\" content=\"summary_large_image\">" +
+      "</head><body style=\"font-family:-apple-system,sans-serif;text-align:center;padding:48px 20px;color:#111\">" +
+      "<div style=\"font-size:17px;color:#666\">" + esc(route) + "</div>" +
+      "<div style=\"font-size:64px;font-weight:800;letter-spacing:-.03em;margin:12px 0 28px\">" + esc(amount) + "</div>" +
+      "<a href=\"https://farelookup.vercel.app/\" style=\"display:inline-block;background:#0071e3;color:#fff;text-decoration:none;font-size:17px;font-weight:600;padding:14px 28px;border-radius:12px\">Open FareLookup</a>" +
+      "</body></html>";
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.status(200).send(calcHtml);
+    return;
+  }
 
   const html = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
     "<title>" + esc(title) + "</title>" +
