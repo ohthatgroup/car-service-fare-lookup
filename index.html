@@ -194,6 +194,33 @@
     border:0; background:var(--surface); color:var(--muted); width:22px; height:22px;
     border-radius:50%; font-size:13px; line-height:1; cursor:pointer; padding:0;
   }
+  /* floating glass menu: bottom-center pill, three sections */
+  #menu-pill{
+    position:fixed; left:16px; right:92px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:30;
+    display:flex; gap:2px; padding:5px;
+    background:color-mix(in srgb, var(--surface) 68%, transparent);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--border); border-radius:980px;
+    box-shadow:0 8px 28px rgba(0,0,0,.18);
+  }
+  @media (min-width:560px){
+    #menu-pill{ left:50%; right:auto; transform:translateX(-50%); width:min(340px, calc(100vw - 120px)); }
+  }
+  #menu-pill button{
+    flex:1; border:0; background:transparent; color:var(--text); font-size:14px; font-weight:500;
+    padding:10px 4px; border-radius:980px; cursor:pointer; white-space:nowrap;
+  }
+  #menu-pill button.on{ background:var(--surface); font-weight:600; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  /* calculator */
+  .set-row{ display:flex; align-items:center; gap:10px; padding:12px 2px; border-bottom:1px solid var(--border); font-size:16px; }
+  .set-row:last-child{ border-bottom:0; }
+  .set-row .set-label{ flex:1; }
+  .set-row .set-val{ color:var(--muted); font-size:14px; text-align:right; }
+  .set-row input{ width:112px; text-align:right; padding:9px 10px; font-size:16px; }
+  .stepper input{ flex:1; min-width:0; text-align:center; }
+  .fare-edit-btn{ display:block; width:100%; background:none; border:0; padding:0; cursor:pointer; color:var(--text); font-family:inherit; }
+  .trip-x{ border:0; background:var(--chip); color:var(--muted); width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:13px; flex:none; margin-left:auto; }
+  #c-fare-edit{ width:100%; text-align:center; font-size:52px; font-weight:700; letter-spacing:-.03em; border:0; background:transparent; color:var(--text); padding:0; margin:32px 0 4px; }
   .hidden{ display:none !important; }
 </style>
 </head>
@@ -214,6 +241,11 @@
   </div>
 </div>
 <button id="fab" aria-label="Details">+</button>
+<div id="menu-pill" role="navigation" aria-label="Menu">
+  <button data-menu="fares">Fare sheet</button>
+  <button data-menu="calc">Calculator</button>
+  <button data-menu="settings">Settings</button>
+</div>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
@@ -323,7 +355,14 @@ function setMyVote(id, val){
 function esc(s){
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-function money(n){ return "$" + (Number.isInteger(n) ? String(n) : n.toFixed(2)); }
+function money(n){
+  const v = Number(n) || 0;
+  const abs = Math.abs(v);
+  const s = Number.isInteger(v) ? String(abs) : abs.toFixed(2);
+  const parts = s.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return (v < 0 ? "-$" : "$") + parts.join(".");
+}
 /* A price is "plain" when it is a single dollar amount like $85.00 */
 function plainPrice(p){
   const m = /^\$?\s*([\d,]+(?:\.\d{1,2})?)\s*$/.exec(String(p || ""));
@@ -615,16 +654,18 @@ const STEP_NAMES = { 1: "Where from?", 2: "Where to?", 3: "Price" };
 let currentStep = 1;
 function setStep(n, label){
   currentStep = n;
-  const onSteps = n >= 1 && n <= 3 && view !== "pending";
+  const isCalcView = view === "calc" || view === "calc-month" || view === "settings" || view === "calc-pick";
+  const onSteps = n >= 1 && n <= 3 && view !== "pending" && !isCalcView;
   const curName = label || STEP_NAMES[n] || "";
   document.getElementById("nav-steps").innerHTML = [1, 2, 3].map(i => {
     if(onSteps && i === n) return '<span class="dot cur" aria-current="step"></span><span class="step-name">' + esc(curName) + "</span>";
     return '<button class="dot' + (i < n ? " done" : "") + '" data-dot="' + i + '" aria-label="Step ' + i + '"></button>';
   }).join("");
   const $t = document.getElementById("nav-title");
-  $t.style.display = view === "pending" ? "" : "none";
+  $t.style.display = (view === "pending" || isCalcView) ? "" : "none";
   $t.textContent = view === "pending" ? "Board" : (label || "Fare Lookup");
   const backTxt = view === "pending" ? "Start over"
+    : isCalcView ? "Back"
     : (view === "notlisted" || n === 3) ? "Where to?"
     : n === 2 ? "Where from?"
     : "Start over";
@@ -632,13 +673,49 @@ function setStep(n, label){
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
-  document.getElementById("nav-steps").style.display = view === "pending" ? "none" : "";
+  document.getElementById("nav-steps").style.display = (view === "pending" || isCalcView) ? "none" : "";
+  updateMenu();
   $scroll.scrollTop = 0;
 }
 function goToStep(n){
   if(n >= currentStep) return;
   if(n === 1){ inFlow = false; renderPlacePicker(1); }
   else if(n === 2 && sel.from) renderPlacePicker(2);
+}
+
+/* ---------- floating glass menu ---------- */
+let backTarget = "step1"; // view the nav back link returns to from calc/settings views
+function updateMenu(){
+  const pill = document.getElementById("menu-pill");
+  if(!pill) return;
+  const loopViews = ["quote", "flatbush", "calc"]; // screens showing the loop bar
+  pill.style.display = loopViews.includes(view) ? "none" : "";
+  const section = view === "settings" ? "settings"
+    : (view === "calc" || view === "calc-month" || view === "calc-pick") ? "calc" : "fares";
+  pill.querySelectorAll("[data-menu]").forEach(b => b.classList.toggle("on", b.dataset.menu === section));
+}
+function goMenu(section){
+  if(section === "fares"){ inFlow = false; sel = {}; renderPlacePicker(1); return; }
+  if(section === "calc"){
+    if(view !== "calc" && view !== "calc-month" && view !== "settings" && view !== "calc-pick") backTarget = view;
+    renderCalc(); return;
+  }
+  if(section === "settings"){
+    if(view !== "settings") backTarget = view;
+    renderSettings(); return;
+  }
+}
+function goBackFromCalc(){
+  const t = backTarget || "step1";
+  if(t === "calc") renderCalc();
+  else if(t === "calc-month") renderCalcMonth();
+  else if(t === "settings") renderSettings();
+  else if(t === "quote" && sel.resolved) renderQuote();
+  else if(t === "flatbush" && sel.fb) renderFlatbush(sel.fb.base);
+  else if(t === "pending") renderPending();
+  else if(t === "notlisted") renderNotListed("");
+  else if(t === "step2" && sel.from) renderPlacePicker(2);
+  else { inFlow = false; sel = {}; renderPlacePicker(1); }
 }
 function h(html){ $view.innerHTML = html; }
 
@@ -783,6 +860,7 @@ function renderQuote(){
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-breakdown"></div>' +
     '<button class="btn secondary" id="customize">Customize price</button>' +
+    '<button class="btn secondary" id="takehome">My take-home</button>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
     '<div class="loop-bar"><button class="btn" id="share">Share price</button>' +
@@ -809,6 +887,7 @@ function renderQuote(){
   });
   document.getElementById("new-rate").addEventListener("click", () => { inFlow = false; sel = {}; renderPlacePicker(1); });
   document.getElementById("customize").addEventListener("click", () => openCustomizeDrawer(refreshQuote));
+  document.getElementById("takehome").addEventListener("click", openCalcFromQuote);
   refreshQuote();
 }
 
@@ -1031,12 +1110,724 @@ async function castVote(id, dir){
   renderPending();
 }
 
+/* ---------- trip calculator: config, storage, auth, math ---------- */
+const CALC_DEFAULTS = { monthlyFixed: 2500, targetHours: 160, earningsTarget: 40, gasPrice: 3.50, mpg: 12.6, mileCharge: 0.35, returnMileCharge: 0.35, hubs: [] };
+let calcCfg = Object.assign({}, CALC_DEFAULTS, { hubs: [] });
+let calcTripsArr = [];
+let calcUser = null; // { id, email } when signed in via Google
+
+function calcDefaultHubs(){ return [...topPlaces]; } // bases derived from the sheet fares
+function calcHubs(){ return calcDefaultHubs().concat((calcCfg.hubs || []).map(x => x.name)); }
+
+function calcLoadLocal(){
+  try {
+    const c = JSON.parse(localStorage.getItem("fl_calc_config") || "null");
+    if(c && typeof c === "object") calcCfg = Object.assign({}, CALC_DEFAULTS, c);
+    if(!Array.isArray(calcCfg.hubs)) calcCfg.hubs = [];
+  } catch(e){}
+  try {
+    const t = JSON.parse(localStorage.getItem("fl_calc_trips") || "null");
+    if(Array.isArray(t)) calcTripsArr = t;
+  } catch(e){}
+}
+function calcSaveLocal(){
+  localStorage.setItem("fl_calc_config", JSON.stringify(calcCfg));
+  localStorage.setItem("fl_calc_trips", JSON.stringify(calcTripsArr));
+}
+calcLoadLocal();
+
+/* --- Supabase Auth (Google OAuth only, v1) — client code only.
+   The Google provider and the redirect URL allow-list are enabled in the
+   Supabase dashboard; this code works once that config is done. --- */
+function calcSession(){
+  try {
+    const s = JSON.parse(localStorage.getItem("fl_calc_session") || "null");
+    return (s && s.access_token) ? s : null;
+  } catch(e){ return null; }
+}
+function calcSaveSession(s){ localStorage.setItem("fl_calc_session", JSON.stringify(s)); }
+function calcClearSession(){ localStorage.removeItem("fl_calc_session"); }
+function jwtPayload(token){
+  try {
+    const parts = String(token).split(".");
+    if(parts.length !== 3) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(b64));
+  } catch(e){ return null; }
+}
+function calcApplySession(){
+  calcUser = null;
+  const s = calcSession();
+  if(!s) return;
+  const p = jwtPayload(s.access_token);
+  if(p && p.sub) calcUser = { id: p.sub, email: p.email || "" };
+}
+calcApplySession();
+function calcHandleAuthCallback(){
+  if(!location.hash || location.hash.indexOf("access_token=") === -1) return false;
+  const params = new URLSearchParams(location.hash.slice(1));
+  const at = params.get("access_token"), rt = params.get("refresh_token");
+  if(!at) return false;
+  const expiresIn = parseInt(params.get("expires_in") || "3600", 10);
+  calcSaveSession({ access_token: at, refresh_token: rt, expires_at: Date.now() + expiresIn * 1000 });
+  history.replaceState(null, "", location.pathname + location.search);
+  calcApplySession();
+  return true;
+}
+async function calcRefreshSession(){
+  const s = calcSession();
+  if(!s || !s.refresh_token) return null;
+  try {
+    const r = await fetch(SB + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers: { "apikey": KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: s.refresh_token })
+    });
+    if(!r.ok) throw new Error("refresh failed");
+    const d = await r.json();
+    const ns = { access_token: d.access_token, refresh_token: d.refresh_token || s.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000 };
+    calcSaveSession(ns);
+    calcApplySession();
+    return ns;
+  } catch(e){ calcClearSession(); calcUser = null; return null; }
+}
+async function calcAuthHeaders(){
+  let s = calcSession();
+  if(!s) return null;
+  if(s.expires_at && s.expires_at < Date.now() + 60000){
+    s = await calcRefreshSession();
+    if(!s) return null;
+  }
+  return { "apikey": KEY, "Authorization": "Bearer " + s.access_token, "Content-Type": "application/json" };
+}
+async function sbUser(path, opts){
+  const headers = await calcAuthHeaders();
+  if(!headers) throw new Error("not signed in");
+  const r = await fetch(SB + "/rest/v1/" + path, Object.assign({}, opts, { headers: Object.assign({}, headers, (opts && opts.headers) || {}) }));
+  if(!r.ok){ const t = await r.text(); throw new Error("DB " + r.status + ": " + t.slice(0, 200)); }
+  const t = await r.text();
+  return t ? JSON.parse(t) : null;
+}
+function calcSignInGoogle(){
+  const redirect = location.origin + "/?view=settings";
+  location.href = SB + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(redirect);
+}
+function calcSignOut(){
+  calcClearSession();
+  calcUser = null;
+  calcLoadLocal();
+  renderSettings();
+}
+
+/* --- storage routing: Supabase per-user tables when signed in, localStorage when signed out --- */
+async function calcLoadRemote(){
+  const cfgRows = await sbUser("calc_configs?select=config&user_id=eq." + calcUser.id);
+  if(cfgRows && cfgRows[0] && cfgRows[0].config) calcCfg = Object.assign({}, CALC_DEFAULTS, cfgRows[0].config);
+  if(!Array.isArray(calcCfg.hubs)) calcCfg.hubs = [];
+  const trips = await sbUser("calc_trips?select=trip&order=created_at.asc&user_id=eq." + calcUser.id);
+  if(Array.isArray(trips)) calcTripsArr = trips.map(r => r.trip);
+}
+async function calcSaveRemote(){
+  if(!calcUser) return;
+  await sbUser("calc_configs", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify({ user_id: calcUser.id, config: calcCfg }) });
+}
+async function calcSaveTripRemote(trip){
+  if(!calcUser) return;
+  await sbUser("calc_trips", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify({ user_id: calcUser.id, trip_id: trip.id, trip: trip }) });
+}
+async function calcDeleteTripRemote(id){
+  if(!calcUser) return;
+  await sbUser("calc_trips?user_id=eq." + calcUser.id + "&trip_id=eq." + encodeURIComponent(id), { method: "DELETE" });
+}
+/* First sign-in: upload local config/trips once when the account is empty, then the account is the source of truth. */
+async function calcSyncAfterSignIn(){
+  if(!calcUser) return;
+  const cfgRows = await sbUser("calc_configs?select=config&user_id=eq." + calcUser.id);
+  const localCfg = JSON.parse(localStorage.getItem("fl_calc_config") || "null");
+  if(!(cfgRows && cfgRows[0]) && localCfg){
+    await sbUser("calc_configs", { method: "POST", body: JSON.stringify({ user_id: calcUser.id, config: localCfg }) });
+  }
+  const remoteTrips = await sbUser("calc_trips?select=trip_id&user_id=eq." + calcUser.id);
+  const remoteIds = new Set((remoteTrips || []).map(r => r.trip_id));
+  const localTrips = JSON.parse(localStorage.getItem("fl_calc_trips") || "null");
+  if(Array.isArray(localTrips)){
+    for(const t of localTrips){
+      if(t && t.id && !remoteIds.has(t.id)){
+        await sbUser("calc_trips", { method: "POST", body: JSON.stringify({ user_id: calcUser.id, trip_id: t.id, trip: t }) });
+      }
+    }
+  }
+  await calcLoadRemote();
+}
+async function calcInitStore(){
+  calcLoadLocal();
+  calcApplySession();
+  if(calcUser){
+    try { await calcSyncAfterSignIn(); } catch(e){ /* tables not run yet or offline — stay on local data */ }
+  }
+}
+function calcPersist(){
+  calcSaveLocal();
+  if(calcUser){ calcSaveRemote().catch(() => {}); }
+}
+function calcPersistTrip(trip){
+  calcSaveLocal();
+  if(calcUser){ calcSaveTripRemote(trip).catch(() => {}); }
+}
+function calcRemoveTrip(id){
+  calcTripsArr = calcTripsArr.filter(t => t.id !== id);
+  calcSaveLocal();
+  if(calcUser){ calcDeleteTripRemote(id).catch(() => {}); }
+}
+
+/* --- math (design §8). Return tolls are an expense too: tolls are a
+   pass-through (§4.5) — they inflate the fare and the expenses equally. --- */
+function round2(n){ return Math.round(n * 100) / 100; }
+function round3(n){ return Math.round(n * 1000) / 1000; } // fuel is priced per thousandth: $0.278, not $0.28
+function roundToNearest50c(n){ return Math.round(n * 2) / 2; }
+function roundToNearest5(n){ return Math.round(n / 5) * 5; }
+function calcRates(cfg){
+  const monthlyFixed = Number(cfg.monthlyFixed) > 0 ? Number(cfg.monthlyFixed) : 2500;
+  const targetHours = Number(cfg.targetHours) > 0 ? Number(cfg.targetHours) : 160;
+  const earningsTarget = Number(cfg.earningsTarget) || 0;
+  const mpg = Number(cfg.mpg) > 0 ? Number(cfg.mpg) : 12.6;
+  const vehiclePerHr = round2(monthlyFixed / targetHours);
+  const passengerPerHr = roundToNearest50c(vehiclePerHr + earningsTarget);
+  const fuelPerMile = round3((Number(cfg.gasPrice) || 0) / mpg);
+  return { vehiclePerHr, passengerPerHr, fuelPerMile };
+}
+function fmtNum(n){
+  const v = round2(Number(n) || 0);
+  return Number.isInteger(v) ? String(v) : String(v);
+}
+function fmtWait(h){
+  const m = Math.round((Number(h) || 0) * 60);
+  if(m <= 0) return "0 min";
+  if(m < 60) return m + " min";
+  const hrs = Math.floor(m / 60), rem = m % 60;
+  return hrs + " hr" + (rem ? " " + rem + " min" : "");
+}
+function calcFare(t, cfg){
+  const r = calcRates(cfg);
+  const miles = Math.max(0, parseFloat(t.miles) || 0);
+  const hours = Math.max(0, parseFloat(t.hours) || 0);
+  const waitHours = Math.max(0, parseFloat(t.waitHours) || 0);
+  const tolls = Math.max(0, parseFloat(t.tolls) || 0);
+  const parking = Math.max(0, parseFloat(t.parking) || 0);
+  const hubNear = t.hubNear !== false;
+  const returnMiles = hubNear ? 0 : Math.max(0, parseFloat(t.returnMiles) || 0);
+  const returnHours = hubNear ? 0 : Math.max(0, parseFloat(t.returnHours) || 0);
+  const returnTolls = hubNear ? 0 : Math.max(0, parseFloat(t.returnTolls) || 0);
+  const timeCharge = hours * r.passengerPerHr;
+  const waitCharge = waitHours * r.passengerPerHr;
+  const mileCharge = miles * (Number(cfg.mileCharge) || 0);
+  const tollsParking = tolls + parking;
+  const returnCharge = hubNear ? 0 : returnMiles * (Number(cfg.returnMileCharge) || 0) + returnHours * r.vehiclePerHr + returnTolls;
+  const suggestedFare = roundToNearest5(timeCharge + waitCharge + mileCharge + tollsParking + returnCharge);
+  const fare = (t.adjustedFare != null && t.adjustedFare !== "") ? Number(t.adjustedFare) : suggestedFare;
+  const fuelCost = round2((miles + returnMiles) * r.fuelPerMile);
+  const totalHours = round2(hours + waitHours + returnHours);
+  const recovery = round2(totalHours * r.vehiclePerHr);
+  const expenses = round2(fuelCost + tollsParking + returnTolls + recovery);
+  const takeHome = round2(fare - expenses);
+  const effectivePerHour = totalHours > 0 ? round2(takeHome / totalHours) : null;
+  return { rates: r, miles, hours, waitHours, tolls, parking, hubNear, returnMiles, returnHours, returnTolls,
+    timeCharge: round2(timeCharge), waitCharge: round2(waitCharge), mileCharge: round2(mileCharge),
+    tollsParking: round2(tollsParking), returnCharge: round2(returnCharge),
+    suggestedFare, fare, fuelCost, recovery, expenses, takeHome, totalHours, effectivePerHour };
+}
+
+/* ---------- trip calculator: screen ---------- */
+let calc = null;
+function calcReset(){
+  calc = { mode: "oneway", from: null, to: null, miles: "", hours: "", waitHours: 0, waitOn: false,
+    tolls: "", parking: "", hubNear: true, returnMiles: "", returnHours: "", returnTolls: "", nearestHub: "", adjustedFare: null };
+}
+function calcListFare(){
+  if(!calc.from || !calc.to) return null;
+  const res = findFare(calc.from, calc.to);
+  if(!res) return null;
+  const f = res.fare;
+  if(calc.mode === "round" && f.round_trip) return plainPrice(f.round_trip);
+  return plainPrice(f.price);
+}
+function calcBuildTrip(r){
+  return { id: "t-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    date: new Date().toISOString().slice(0, 10),
+    from: calc.from, to: calc.to, roundTrip: calc.mode === "round",
+    miles: r.miles, hours: r.hours, waitHours: r.waitHours, tolls: r.tolls, parking: r.parking,
+    hubNear: r.hubNear, returnMiles: r.returnMiles, returnHours: r.returnHours, returnTolls: r.returnTolls, nearestHub: calc.nearestHub || null,
+    suggestedFare: r.suggestedFare, listFare: calcListFare(), fareCharged: r.fare,
+    fuelCost: r.fuelCost, recovery: r.recovery, takeHome: r.takeHome, totalHours: r.totalHours, effectivePerHour: r.effectivePerHour };
+}
+function calcHtml(){
+  return '<div class="seg" id="calc-mode" role="group" aria-label="Trip type">' +
+      '<button data-mode="oneway">One way</button>' +
+      '<button data-mode="round">Round trip</button></div>' +
+    '<div class="list" style="margin-top:14px">' +
+      '<button class="row" id="c-from"><span>' + (calc.from ? esc(calc.from) : '<span style="color:var(--muted)">From</span>') + '</span><span class="chev">›</span></button>' +
+      '<button class="row" id="c-to"><span>' + (calc.to ? esc(calc.to) : '<span style="color:var(--muted)">To</span>') + '</span><span class="chev">›</span></button>' +
+    '</div>' +
+    (calc.from && calc.to ? '<button class="quiet-link" id="c-clear-route">Clear route</button>' : "") +
+    '<div class="stepper" style="margin-top:14px"><button id="c-miles-minus" aria-label="Fewer miles">−</button>' +
+      '<input id="c-miles" inputmode="decimal" placeholder="Trip miles" value="' + esc(calc.miles) + '">' +
+      '<button id="c-miles-plus" aria-label="More miles">+</button></div>' +
+    '<input type="text" id="c-hours" inputmode="decimal" placeholder="Trip duration in hours (e.g. 1.5)" value="' + esc(calc.hours) + '">' +
+    '<div class="sub" style="margin:6px 0 0">Driving time, not including waiting.</div>' +
+    '<div id="calc-wait-wrap"></div>' +
+    '<div style="display:flex;gap:10px;margin-top:12px"><input type="text" id="c-tolls" inputmode="decimal" placeholder="Tolls ($)" value="' + esc(calc.tolls) + '">' +
+    '<input type="text" id="c-parking" inputmode="decimal" placeholder="Parking ($)" value="' + esc(calc.parking) + '"></div>' +
+    '<div class="sub" style="margin:6px 0 0">Actual cost — passed through, not profit.</div>' +
+    '<label class="toggle-row"><input type="checkbox" id="c-hub"' + (calc.hubNear ? " checked" : "") + '> Ends near a hub?</label>' +
+    '<div id="calc-return-wrap"></div>' +
+    '<div id="calc-result"></div>' +
+    '<button class="btn secondary hidden" id="c-save" style="margin-top:18px">Save trip</button>' +
+    '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-month">My month</button> · <button class="quiet-link" id="c-rates">Rates</button></div>' +
+    '<div class="loop-bar hidden" id="c-loop"><button class="btn" id="c-share">Share fare</button>' +
+    '<button class="btn secondary" id="c-new">New rate</button></div>';
+}
+function updateWaitWrap(){
+  const wrap = document.getElementById("calc-wait-wrap");
+  if(!wrap) return;
+  if(calc.mode === "round"){
+    wrap.innerHTML =
+      '<label class="toggle-row"><input type="checkbox" id="c-wait-on"' + (calc.waitOn ? " checked" : "") + '> Wait time' + (calc.waitOn ? ' <span class="amt">' + fmtWait(calc.waitHours) + "</span>" : "") + "</label>" +
+      (calc.waitOn
+        ? '<div class="stepper"><button id="c-wait-minus" aria-label="Less waiting">−</button><span class="step-val" id="c-wait-val">' + fmtWait(calc.waitHours) + '</span><button id="c-wait-plus" aria-label="More waiting">+</button></div>'
+        : "");
+    const t = document.getElementById("c-wait-on");
+    if(t) t.addEventListener("change", () => {
+      calc.waitOn = t.checked;
+      if(calc.waitOn && !(parseFloat(calc.waitHours) > 0)) calc.waitHours = 0.75;
+      if(!calc.waitOn) calc.waitHours = 0;
+      updateWaitWrap(); updateResult();
+    });
+  } else {
+    wrap.innerHTML =
+      '<div class="stepper" style="margin-top:12px"><button id="c-wait-minus" aria-label="Less waiting">−</button><span class="step-val" id="c-wait-val">' + fmtWait(calc.waitHours) + '</span><button id="c-wait-plus" aria-label="More waiting">+</button></div>';
+  }
+  const minus = document.getElementById("c-wait-minus");
+  const plus = document.getElementById("c-wait-plus");
+  if(minus) minus.addEventListener("click", () => { calc.waitHours = Math.max(0, round2((parseFloat(calc.waitHours) || 0) - 0.25)); updateWaitWrap(); updateResult(); });
+  if(plus) plus.addEventListener("click", () => { calc.waitHours = Math.min(24, round2((parseFloat(calc.waitHours) || 0) + 0.25)); updateWaitWrap(); updateResult(); });
+}
+function updateReturnWrap(){
+  const wrap = document.getElementById("calc-return-wrap");
+  if(!wrap) return;
+  if(calc.hubNear){ wrap.innerHTML = ""; return; }
+  const hubs = calcHubs();
+  wrap.innerHTML =
+    '<input type="text" id="c-rmiles" inputmode="decimal" placeholder="Return miles" value="' + esc(calc.returnMiles) + '">' +
+    '<input type="text" id="c-rhours" inputmode="decimal" placeholder="Return hours (e.g. 0.5)" value="' + esc(calc.returnHours) + '">' +
+    '<input type="text" id="c-rtolls" inputmode="decimal" placeholder="Return tolls ($)" value="' + esc(calc.returnTolls) + '">' +
+    '<select id="c-hub-pick"><option value="">Nearest hub (optional)</option>' +
+      hubs.map(x => "<option" + (calc.nearestHub === x ? " selected" : "") + ">" + esc(x) + "</option>").join("") + "</select>";
+  const bind = (id, key) => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener("input", () => { calc[key] = el.value; updateResult(); });
+  };
+  bind("c-rmiles", "returnMiles"); bind("c-rhours", "returnHours"); bind("c-rtolls", "returnTolls");
+  const pick = document.getElementById("c-hub-pick");
+  if(pick) pick.addEventListener("change", () => { calc.nearestHub = pick.value; });
+}
+function updateResult(){
+  const box = document.getElementById("calc-result");
+  const saveBtn = document.getElementById("c-save");
+  const loop = document.getElementById("c-loop");
+  if(!box) return;
+  const r = calcFare(calc, calcCfg);
+  if(!(r.miles > 0 && r.hours > 0)){
+    box.innerHTML = "";
+    if(saveBtn) saveBtn.classList.add("hidden");
+    if(loop) loop.classList.add("hidden");
+    return;
+  }
+  const listFare = calcListFare();
+  const adjusted = calc.adjustedFare != null && Number(calc.adjustedFare) !== r.suggestedFare;
+  const lines = [];
+  lines.push({ label: "Time (" + fmtNum(r.hours) + " hr × " + money(r.rates.passengerPerHr) + ")", amount: r.timeCharge });
+  lines.push({ label: "Miles (" + fmtNum(r.miles) + " mi × " + money(Number(calcCfg.mileCharge) || 0) + ")", amount: r.mileCharge });
+  if(r.waitHours > 0) lines.push({ label: "Waiting (" + fmtWait(r.waitHours) + " × " + money(r.rates.passengerPerHr) + "/hr)", amount: r.waitCharge });
+  if(r.tollsParking > 0) lines.push({ label: "Tolls + parking", amount: r.tollsParking });
+  if(!r.hubNear && r.returnCharge > 0){
+    const parts = [];
+    if(r.returnMiles > 0) parts.push(fmtNum(r.returnMiles) + " mi × " + money(Number(calcCfg.returnMileCharge) || 0));
+    if(r.returnHours > 0) parts.push(fmtNum(r.returnHours) + " hr × " + money(r.rates.vehiclePerHr));
+    if(r.returnTolls > 0) parts.push("tolls " + money(r.returnTolls));
+    lines.push({ label: "Return (" + parts.join(" + ") + ")", amount: r.returnCharge });
+  }
+  let cmp = "";
+  if(listFare != null){
+    const listTakeHome = round2(listFare - r.expenses);
+    const listPerHour = r.totalHours > 0 ? round2(listTakeHome / r.totalHours) : null;
+    let cmpLine = "";
+    if(listPerHour != null){
+      cmpLine = listPerHour >= 40
+        ? "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — covers your $40 target"
+        : "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — " + money(40 - listPerHour) + " under your $40 target";
+    }
+    cmp = '<div class="card"><div class="route">List price ' + money(listFare) + " · Suggested " + money(r.suggestedFare) + "</div>" +
+      (cmpLine ? '<div class="change">' + esc(cmpLine) + "</div>" : "") + "</div>";
+  }
+  const eff = r.effectivePerHour;
+  let targetLine = "";
+  if(eff == null) targetLine = "";
+  else if(eff >= 40) targetLine = "Meets your $40/hr target";
+  else if(r.takeHome < 0) targetLine = "That's " + money(-r.takeHome) + " below your costs";
+  else targetLine = money(40 - eff) + "/hr under your $40 target";
+  const routeLine = (calc.from && calc.to) ? '<div class="route-line">' + esc(calc.from) + " → " + esc(calc.to) + "</div>" : "";
+  box.innerHTML =
+    routeLine +
+    '<button class="price-big fare-edit-btn" id="c-fare-show">' + money(r.fare) + "</button>" +
+    '<input id="c-fare-edit" class="hidden" inputmode="decimal" value="' + esc(r.fare) + '">' +
+    '<div class="q-summary">' + (calc.mode === "round" ? "Round trip" : "One way") + "</div>" +
+    (adjusted ? '<div class="note-line">Suggested ' + money(r.suggestedFare) + "</div>" : "") +
+    ((listFare != null && r.fare !== listFare) ? '<div style="text-align:center"><button class="quiet-link" id="c-use-list">Use list price ' + money(listFare) + "</button></div>" : "") +
+    breakdownHtml(lines, r.fare) +
+    cmp +
+    '<div class="card"><div class="route">Take-home ' + money(r.takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
+    '<div class="change">Fare ' + money(r.fare) + " − fuel " + money(r.fuelCost) + " − tolls " + money(r.tollsParking + r.returnTolls) + " − recovery " + money(r.recovery) + "</div>" +
+    (targetLine ? '<div class="change">' + esc(targetLine) + "</div>" : "") + "</div>";
+  if(saveBtn) saveBtn.classList.remove("hidden");
+  if(loop) loop.classList.remove("hidden");
+}
+function wireCalc(){
+  const modeBtns = $view.querySelectorAll("#calc-mode button");
+  modeBtns.forEach(b => {
+    b.classList.toggle("on", b.dataset.mode === calc.mode);
+    b.addEventListener("click", () => {
+      if(calc.mode === b.dataset.mode) return;
+      calc.mode = b.dataset.mode;
+      calc.adjustedFare = null;
+      if(calc.mode === "round"){ calc.waitOn = true; if(!(parseFloat(calc.waitHours) > 0)) calc.waitHours = 0.75; }
+      else { calc.waitOn = false; calc.waitHours = 0; }
+      modeBtns.forEach(x => x.classList.toggle("on", x.dataset.mode === calc.mode));
+      updateWaitWrap(); updateResult();
+    });
+  });
+  const fromBtn = document.getElementById("c-from");
+  if(fromBtn) fromBtn.addEventListener("click", () => renderCalcPicker("from"));
+  const toBtn = document.getElementById("c-to");
+  if(toBtn) toBtn.addEventListener("click", () => renderCalcPicker("to"));
+  const clr = document.getElementById("c-clear-route");
+  if(clr) clr.addEventListener("click", () => { calc.from = null; calc.to = null; calc.adjustedFare = null; renderCalc(); });
+  const milesIn = document.getElementById("c-miles");
+  const setMiles = (v) => { calc.miles = v; if(milesIn) milesIn.value = v; updateResult(); };
+  if(milesIn) milesIn.addEventListener("input", () => { calc.miles = milesIn.value; updateResult(); });
+  const mm = document.getElementById("c-miles-minus");
+  if(mm) mm.addEventListener("click", () => setMiles(String(Math.max(0, (parseFloat(calc.miles) || 0) - 1))));
+  const mp = document.getElementById("c-miles-plus");
+  if(mp) mp.addEventListener("click", () => setMiles(String((parseFloat(calc.miles) || 0) + 1)));
+  const hrs = document.getElementById("c-hours");
+  if(hrs) hrs.addEventListener("input", () => { calc.hours = hrs.value; updateResult(); });
+  const tolls = document.getElementById("c-tolls");
+  if(tolls) tolls.addEventListener("input", () => { calc.tolls = tolls.value; updateResult(); });
+  const park = document.getElementById("c-parking");
+  if(park) park.addEventListener("input", () => { calc.parking = park.value; updateResult(); });
+  const hub = document.getElementById("c-hub");
+  if(hub) hub.addEventListener("change", () => { calc.hubNear = hub.checked; updateReturnWrap(); updateResult(); });
+  const box = document.getElementById("calc-result");
+  box.addEventListener("click", (e) => {
+    const show = e.target.closest("#c-fare-show");
+    if(show){
+      show.classList.add("hidden");
+      const inp = document.getElementById("c-fare-edit");
+      inp.classList.remove("hidden");
+      inp.focus(); inp.select();
+      return;
+    }
+    const useList = e.target.closest("#c-use-list");
+    if(useList){
+      const lf = calcListFare();
+      if(lf != null){ calc.adjustedFare = lf; updateResult(); }
+      return;
+    }
+  });
+  box.addEventListener("focusout", (e) => {
+    if(e.target && e.target.id === "c-fare-edit"){
+      const v = parseFloat(String(e.target.value).replace(/[$,]/g, ""));
+      if(v > 0) calc.adjustedFare = round2(v);
+      else calc.adjustedFare = null;
+      updateResult();
+    }
+  });
+  box.addEventListener("keydown", (e) => {
+    if(e.target && e.target.id === "c-fare-edit" && e.key === "Enter"){ e.target.blur(); }
+  });
+  const save = document.getElementById("c-save");
+  if(save) save.addEventListener("click", () => {
+    const r = calcFare(calc, calcCfg);
+    if(!(r.miles > 0 && r.hours > 0)) return;
+    const trip = calcBuildTrip(r);
+    calcTripsArr.push(trip);
+    calcPersistTrip(trip);
+    save.textContent = "✓ Trip saved";
+    setTimeout(() => { const b = document.getElementById("c-save"); if(b) b.textContent = "Save trip"; }, 1600);
+  });
+  const share = document.getElementById("c-share");
+  if(share) share.addEventListener("click", (e) => shareCalc(e.target));
+  const nw = document.getElementById("c-new");
+  if(nw) nw.addEventListener("click", () => { calcReset(); renderCalc(); });
+  const month = document.getElementById("c-month");
+  if(month) month.addEventListener("click", () => renderCalcMonth());
+  const rates = document.getElementById("c-rates");
+  if(rates) rates.addEventListener("click", () => { backTarget = "calc"; renderSettings(); });
+  updateWaitWrap();
+  updateReturnWrap();
+  updateResult();
+}
+function renderCalc(){
+  view = "calc"; setStep(0, "Calculator");
+  document.getElementById("fab").style.display = "";
+  if(!calc) calcReset();
+  h(calcHtml());
+  wireCalc();
+}
+function renderCalcPicker(which){
+  view = "calc-pick"; setStep(0, which === "from" ? "Where from?" : "Where to?");
+  document.getElementById("fab").style.display = "";
+  backTarget = "calc";
+  const other = which === "to" ? calc.from : null;
+  h('<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
+    '<div id="plist">' + placeListHTML("", other) + "</div>");
+  const input = document.getElementById("q");
+  input.addEventListener("input", () => {
+    document.getElementById("plist").innerHTML = placeListHTML(input.value, other);
+    bindCalcPickRows(which);
+  });
+  bindCalcPickRows(which);
+}
+function bindCalcPickRows(which){
+  $view.querySelectorAll("[data-place]").forEach(b => {
+    b.addEventListener("click", () => {
+      if(which === "from") calc.from = b.dataset.place;
+      else calc.to = b.dataset.place;
+      calc.adjustedFare = null;
+      renderCalc();
+    });
+  });
+}
+/* Prefill the calculator from a quote: route, mode, list fare, wait hours
+   and toll/parking add-ons carried over. Flat (once) wait has no hours,
+   so it is not carried. */
+function openCalcFromQuote(){
+  backTarget = "quote";
+  calcReset();
+  calc.from = sel.from; calc.to = sel.to;
+  calc.mode = sel.trip === "round" ? "round" : "oneway";
+  const w = sel.wait || {};
+  const wa = parseFloat(w.amount);
+  const hasWaitHrs = !!(wa && wa > 0 && w.unit !== "once");
+  if(hasWaitHrs) calc.waitHours = Math.max(0, parseFloat(w.hours) || 0);
+  if(calc.mode === "round"){ calc.waitOn = true; if(!hasWaitHrs) calc.waitHours = 0.75; }
+  else if(!hasWaitHrs) calc.waitHours = 0;
+  let tolls = 0, parking = 0;
+  (sel.addons || []).forEach(a => {
+    const amt = parseFloat(a.amount) || 0;
+    if(!a.name || !amt) return;
+    if(/toll/i.test(a.name)) tolls += amt;
+    else if(/park/i.test(a.name)) parking += amt;
+  });
+  calc.tolls = tolls > 0 ? String(tolls) : "";
+  calc.parking = parking > 0 ? String(parking) : "";
+  renderCalc();
+}
+
+/* ---------- trip calculator: My Month ---------- */
+let calcMonth = null; // "YYYY-MM" selected in My Month
+function calcMonthKey(d){ return String(d || "").slice(0, 7); }
+function fmtMonthLabel(ym){
+  const d = new Date(ym + "-01T12:00:00");
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+function fmtDateShort(iso){
+  const d = new Date(iso + "T12:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+function renderCalcMonth(){
+  view = "calc-month"; setStep(0, "My Month");
+  document.getElementById("fab").style.display = "";
+  backTarget = "calc";
+  const nowKey = new Date().toISOString().slice(0, 7);
+  if(!calcMonth) calcMonth = nowKey;
+  const months = [...new Set(calcTripsArr.map(t => calcMonthKey(t.date)))];
+  if(!months.includes(nowKey)) months.push(nowKey);
+  months.sort().reverse();
+  if(!months.includes(calcMonth)) calcMonth = nowKey;
+  const trips = calcTripsArr.filter(t => calcMonthKey(t.date) === calcMonth);
+  const recovered = round2(trips.reduce((s, t) => s + (Number(t.recovery) || 0), 0));
+  const hours = round2(trips.reduce((s, t) => s + (Number(t.totalHours) || 0), 0));
+  const revenue = round2(trips.reduce((s, t) => s + (Number(t.fareCharged) || 0), 0));
+  const takeHome = round2(trips.reduce((s, t) => s + (Number(t.takeHome) || 0), 0));
+  const expenses = round2(revenue - takeHome);
+  const eff = hours > 0 ? round2(takeHome / hours) : null;
+  const monthlyFixed = Number(calcCfg.monthlyFixed) || 2500;
+  const targetHours = Number(calcCfg.targetHours) || 160;
+  const recPct = Math.max(0, Math.min(100, Math.round(recovered / monthlyFixed * 100)));
+  const hrsPct = Math.max(0, Math.min(100, Math.round(hours / targetHours * 100)));
+  h(
+    '<select id="c-month-pick">' + months.map(m => "<option value=\"" + m + "\"" + (m === calcMonth ? " selected" : "") + ">" + esc(fmtMonthLabel(m)) + "</option>").join("") + "</select>" +
+    '<div class="card"><div class="route">Vehicle cost</div>' +
+      '<div class="change">Recovered ' + money(recovered) + " of " + money(monthlyFixed) + "</div>" +
+      '<div class="vote-row"><span class="bar"><i style="width:' + recPct + '%"></i></span><span class="votes">' + recPct + "%</span></div></div>" +
+    '<div class="card"><div class="route">Hours ' + fmtNum(hours) + " of " + fmtNum(targetHours) + "</div>" +
+      '<div class="vote-row"><span class="bar"><i style="width:' + hrsPct + '%"></i></span><span class="votes">' + hrsPct + "%</span></div></div>" +
+    '<div class="card"><div class="route">Take-home ' + money(takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
+      '<div class="change">Revenue ' + money(revenue) + " − expenses " + money(expenses) + "</div></div>" +
+    (trips.length
+      ? '<div class="group-label">Saved trips</div><div class="list">' + trips.map(t => {
+          const route = (t.from && t.to) ? t.from + " → " + t.to : "Manual trip";
+          return '<div class="row" data-trip="' + esc(t.id) + '"><span>' + esc(fmtDateShort(t.date)) + " · " + esc(route) + '<span class="row-sub">Charged ' + money(t.fareCharged) + " · take-home " + money(t.takeHome) + (t.effectivePerHour != null ? " · " + money(t.effectivePerHour) + "/hr" : "") + "</span></span>" +
+            '<button class="trip-x" data-trip="' + esc(t.id) + '" aria-label="Delete trip">✕</button></div>';
+        }).join("") + "</div>"
+      : '<div class="empty">No trips saved this month yet.</div>')
+  );
+  document.getElementById("c-month-pick").addEventListener("change", (e) => { calcMonth = e.target.value; renderCalcMonth(); });
+  $view.querySelectorAll(".trip-x").forEach(b => b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    calcRemoveTrip(b.dataset.trip);
+    renderCalcMonth();
+  }));
+  $view.querySelectorAll("[data-trip]").forEach(row => row.addEventListener("click", (e) => {
+    if(e.target.closest(".trip-x")) return;
+    const t = calcTripsArr.find(x => x.id === row.dataset.trip);
+    if(!t) return;
+    calcReset();
+    calc.from = t.from; calc.to = t.to;
+    calc.mode = t.roundTrip ? "round" : "oneway";
+    calc.miles = t.miles != null ? String(t.miles) : "";
+    calc.hours = t.hours != null ? String(t.hours) : "";
+    calc.waitHours = t.waitHours || 0;
+    calc.waitOn = calc.mode === "round" && calc.waitHours > 0;
+    calc.tolls = t.tolls ? String(t.tolls) : "";
+    calc.parking = t.parking ? String(t.parking) : "";
+    calc.hubNear = t.hubNear !== false;
+    calc.returnMiles = t.returnMiles ? String(t.returnMiles) : "";
+    calc.returnHours = t.returnHours ? String(t.returnHours) : "";
+    calc.returnTolls = t.returnTolls ? String(t.returnTolls) : "";
+    calc.nearestHub = t.nearestHub || "";
+    const r = calcFare(calc, calcCfg);
+    calc.adjustedFare = (t.fareCharged != null && Number(t.fareCharged) !== r.suggestedFare) ? Number(t.fareCharged) : null;
+    backTarget = "calc-month";
+    renderCalc();
+  }));
+}
+
+/* ---------- trip calculator: Settings ---------- */
+function calcDerivedHtml(){
+  const r = calcRates(calcCfg);
+  const mf = Number(calcCfg.monthlyFixed) || 2500;
+  const th = Number(calcCfg.targetHours) || 160;
+  return '<div class="set-row"><span class="set-label">Vehicle recovery</span><span class="set-val">' + money(r.vehiclePerHr) + " = " + money(mf) + " ÷ " + fmtNum(th) + " hrs</span></div>" +
+    '<div class="set-row"><span class="set-label">Passenger rate</span><span class="set-val">' + money(r.passengerPerHr) + " = " + money(r.vehiclePerHr) + " + " + money(Number(calcCfg.earningsTarget) || 0) + ", nearest $0.50</span></div>" +
+    '<div class="set-row"><span class="set-label">Waiting rate</span><span class="set-val">Same as passenger rate</span></div>' +
+    '<div class="set-row"><span class="set-label">Fuel cost</span><span class="set-val">' + money(r.fuelPerMile) + "/mi = " + money(Number(calcCfg.gasPrice) || 0) + " ÷ " + fmtNum(Number(calcCfg.mpg) || 0) + " MPG</span></div>" +
+    '<div class="set-row"><span class="set-label">Return hourly</span><span class="set-val">' + money(r.vehiclePerHr) + " — cost only, no earnings</span></div>";
+}
+function renderSettings(){
+  view = "settings"; setStep(0, "Settings");
+  document.getElementById("fab").style.display = "";
+  const rateRow = (key, label, ph) => '<div class="set-row"><span class="set-label">' + esc(label) + '</span><input type="text" inputmode="decimal" data-cfg="' + key + '" value="' + esc(calcCfg[key]) + '" placeholder="' + esc(ph) + '"></div>';
+  const userHubs = calcCfg.hubs || [];
+  const defaultHubs = calcDefaultHubs();
+  h(
+    '<div class="group-label">Rates</div><div class="list" style="padding:0 14px">' +
+      rateRow("monthlyFixed", "Monthly rental + insurance", "2500") +
+      rateRow("targetHours", "Target hours / month", "160") +
+      rateRow("earningsTarget", "Earnings target / hr", "40") +
+      rateRow("gasPrice", "Gas price / gallon", "3.50") +
+      rateRow("mpg", "Fuel economy (MPG)", "12.6") +
+      rateRow("mileCharge", "Passenger mileage / mi", "0.35") +
+      rateRow("returnMileCharge", "Return mileage / mi", "0.35") +
+    "</div>" +
+    '<div class="group-label">Derived rates</div><div class="list" style="padding:0 14px"><div id="s-derived">' + calcDerivedHtml() + "</div></div>" +
+    '<div style="text-align:center"><button class="quiet-link" id="s-reset">Reset rates to defaults</button></div>' +
+    '<div class="group-label">Hubs</div>' +
+    (defaultHubs.length ? '<div class="sub">Hubs from your fares: ' + esc(defaultHubs.join(" · ")) + "</div>" : "") +
+    (userHubs.length
+      ? '<div class="list">' + userHubs.map((hb, i) =>
+          '<div class="row"><span>' + esc(hb.name) + (hb.coverage ? '<span class="row-sub">' + esc(hb.coverage) + "</span>" : "") + '</span><button class="trip-x" data-hub="' + i + '" aria-label="Remove hub">✕</button></div>').join("") + "</div>"
+      : "") +
+    '<input type="text" id="s-hub-name" placeholder="Hub name" style="margin-top:12px">' +
+    '<input type="text" id="s-hub-cov" placeholder="Coverage (e.g. Rockland County)">' +
+    '<button class="btn secondary" id="s-hub-add">Add hub</button>' +
+    '<div class="group-label">Account</div>' +
+    (calcUser
+      ? '<div class="card"><div class="route">Signed in as ' + esc(calcUser.email || calcUser.id) + '</div><div class="change">Your rates and trips sync across devices.</div></div>' +
+        '<button class="btn secondary" id="s-signout">Sign out</button>'
+      : '<button class="btn" id="s-signin">Sign in with Google</button>' +
+        '<div class="sub" style="margin-top:10px">Sign in to sync your rates and trips across devices. The fare sheet stays free for everyone, no sign-in needed.</div>')
+  );
+  $view.querySelectorAll("[data-cfg]").forEach(inp => inp.addEventListener("input", () => {
+    const v = parseFloat(String(inp.value).replace(/[$,]/g, ""));
+    if(!isNaN(v) && v >= 0){
+      calcCfg[inp.dataset.cfg] = v;
+      calcPersist();
+      const d = document.getElementById("s-derived");
+      if(d) d.innerHTML = calcDerivedHtml();
+    }
+  }));
+  const reset = document.getElementById("s-reset");
+  if(reset) reset.addEventListener("click", () => {
+    const hubs = calcCfg.hubs;
+    calcCfg = Object.assign({}, CALC_DEFAULTS, { hubs: hubs });
+    calcPersist();
+    renderSettings();
+  });
+  $view.querySelectorAll("[data-hub]").forEach(b => b.addEventListener("click", () => {
+    calcCfg.hubs = (calcCfg.hubs || []).filter((_, i) => i !== Number(b.dataset.hub));
+    calcPersist();
+    renderSettings();
+  }));
+  const hubAdd = document.getElementById("s-hub-add");
+  if(hubAdd) hubAdd.addEventListener("click", () => {
+    const name = document.getElementById("s-hub-name").value.trim();
+    const cov = document.getElementById("s-hub-cov").value.trim();
+    if(!name) return;
+    if(!calcCfg.hubs) calcCfg.hubs = [];
+    calcCfg.hubs.push({ name: name, coverage: cov || "" });
+    calcPersist();
+    renderSettings();
+  });
+  const signin = document.getElementById("s-signin");
+  if(signin) signin.addEventListener("click", calcSignInGoogle);
+  const signout = document.getElementById("s-signout");
+  if(signout) signout.addEventListener("click", calcSignOut);
+}
+
+/* ---------- trip calculator: share (amount-only) ---------- */
+async function shareCalc(btn){
+  const r = calcFare(calc, calcCfg);
+  if(!(r.miles > 0 && r.hours > 0)) return;
+  const row = { code: makeShareCode(), calc_fare: r.fare,
+    calc_route: (calc.from && calc.to) ? calc.from + " → " + calc.to : null,
+    calc_roundtrip: calc.mode === "round" };
+  let url = null;
+  try {
+    await sb("shares", { method: "POST", body: JSON.stringify(row) });
+    url = location.origin + "/s/c" + row.code;
+  } catch(e){ url = null; }
+  if(!url){
+    btn.textContent = "Couldn't share — try again";
+    setTimeout(() => { const b = document.getElementById("c-share"); if(b) b.textContent = "Share fare"; }, 1600);
+    return;
+  }
+  if(navigator.share){
+    try { await navigator.share({ url: url }); } catch(e){}
+    return;
+  }
+  try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
+  catch(e){ btn.textContent = url; }
+  setTimeout(() => { const b = document.getElementById("c-share"); if(b) b.textContent = "Share fare"; }, 1600);
+}
+
 /* ---------- init ---------- */
 document.getElementById("nav-pending").addEventListener("click", () => {
   if(view === "pending"){ openAddDrawer({}); }
   else renderPending();
 });
 document.getElementById("nav-back").addEventListener("click", () => {
+  if(view === "calc" || view === "calc-month" || view === "settings" || view === "calc-pick"){ goBackFromCalc(); return; }
   if(view === "quote" || view === "flatbush" || view === "notlisted"){ renderPlacePicker(2); }
   else { inFlow = false; sel = {}; renderPlacePicker(1); }
 });
@@ -1047,10 +1838,14 @@ document.getElementById("nav-steps").addEventListener("click", e => {
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
 document.getElementById("fab").addEventListener("click", openDetails);
+document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b => {
+  b.addEventListener("click", () => goMenu(b.dataset.menu));
+});
 document.getElementById("modal-close").addEventListener("click", () => $modal.classList.add("hidden"));
 document.getElementById("modal-backdrop").addEventListener("click", () => $modal.classList.add("hidden"));
 
 async function init(){
+  calcHandleAuthCallback();
   if(!SB || !KEY){
     h('<div class="empty">This app is being set up — the price database is not connected yet.</div>');
     setStep(0, "");
@@ -1059,10 +1854,17 @@ async function init(){
   h('<div class="empty">Loading prices…</div>');
   try {
     await loadData();
+    await calcInitStore();
     const q = new URLSearchParams(location.search);
     const shRow = q.get("sh") ? await sb("shares?code=eq." + encodeURIComponent(q.get("sh")) + "&select=*").catch(() => null) : null;
     const shared = shRow && shRow[0];
-    if(shared){
+    const viewParam = q.get("view");
+    if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "settings"){
+      backTarget = "step1";
+      if(viewParam === "calc") renderCalc();
+      else if(viewParam === "calc-month") renderCalcMonth();
+      else renderSettings();
+    } else if(shared){
       sel.wait = { amount: shared.wait_amount != null ? String(shared.wait_amount) : "", unit: shared.wait_unit || "hour", hours: shared.wait_hours || 1 };
       sel.addons = (shared.addons || []).map(a => ({ name: a.name, amount: String(a.amount) }));
       sel.customPrice = shared.custom_price != null ? { trip: shared.grid ? "flatbush" : (shared.trip === "round" ? "round" : "oneway"), price: Number(shared.custom_price) } : null;
@@ -1074,7 +1876,7 @@ async function init(){
         if(fc2.options[shared.grid.col]) fc2.selectedIndex = shared.grid.col;
         fr2.dispatchEvent(new Event("change"));
       } else {
-        const sf = shared.fare_id ? data.fares.find(f => f.id === shared.fare_id) : null;
+        const sf = shared.fare_id ? fares.find(f => f.id === shared.fare_id) : null;
         if(sf){
           inFlow = true;
           sel.from = sf.from_place; sel.to = sf.to_place;

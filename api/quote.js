@@ -2,6 +2,10 @@
 /* Share links.
    Short form: /s/<fareId>[r][m][p]  (r=round trip, m=mini van, p=airport pickup)
                /s/g<baseIdx>-<rowIdx>-<colIdx>  for zone-grid quotes.
+               /s/c<code>  for calculator fares — amount-only: the landing
+               page shows the amount and the route, never rates or
+               take-home. The app link opens the fare sheet home, so a
+               recipient never lands inside the driver's calculator.
    The fare is resolved from the database here, so the link stays tiny and
    the preview image shows the real amount. Legacy /q?f=..&t=..&a=.. links
    keep working. Either way the page carries the Open Graph tags and sends
@@ -105,6 +109,19 @@ async function resolveShare(code){
 }
 
 async function resolveCode(code){
+  const calc = code.match(/^c([a-z0-9]{4,})$/i);
+  if(calc){
+    try {
+      const rows = await db("shares?code=eq." + encodeURIComponent(calc[1]) + "&select=calc_fare,calc_route,calc_roundtrip");
+      const row = rows && rows[0];
+      if(row && row.calc_fare != null){
+        return { route: row.calc_route || "Calculator fare",
+          amount: money(Number(row.calc_fare)),
+          appParams: {} };
+      }
+    } catch(e){ return null; }
+    return null;
+  }
   const shm = code.match(/^q([a-z0-9]{4,})$/i);
   if(shm){ try { return await resolveShare(shm[1]); } catch(e){ return null; } }
   const grid = code.match(/^g(\d+)-(\d+)-(\d+)$/);
