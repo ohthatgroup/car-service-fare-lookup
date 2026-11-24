@@ -37,11 +37,21 @@
   nav .title{ font-weight:600; font-size:17px; letter-spacing:-.01em; }
   nav #nav-back{ display:none; }
   nav.in-flow #nav-back{ display:block; }
-  nav .steps{ display:flex; align-items:center; gap:7px; }
-  nav .dot{ width:10px; height:10px; padding:17px; margin:-17px; border-radius:50%; border:0; background:var(--border); background-clip:content-box; cursor:default; transition:background .2s; }
-  nav .dot.done{ background:var(--text); background-clip:content-box; cursor:pointer; }
-  nav .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
-  nav .dot.cur{ background:var(--muted); background-clip:content-box; }
+  #nav-gear{ background:none; border:0; color:var(--text); padding:8px; margin:-8px -4px; border-radius:10px; cursor:pointer; flex:none; }
+  #nav-gear svg{ width:22px; height:22px; display:block; }
+  /* header subhead (v4): mode toggle + unified step row, one row each */
+  #subhead{
+    flex:none; padding:10px 16px 12px;
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border); z-index:5;
+  }
+  #subhead .seg{ max-width:600px; margin:0 auto; }
+  #step-row{ display:flex; align-items:center; gap:7px; max-width:600px; margin:12px auto 0; }
+  #step-row .dot{ width:10px; height:10px; padding:17px; margin:-17px; border-radius:50%; border:0; background:var(--border); background-clip:content-box; cursor:default; transition:background .2s; }
+  #step-row .dot.done{ background:var(--text); background-clip:content-box; cursor:pointer; }
+  #step-row .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
+  #step-row .dot.cur{ background:var(--muted); background-clip:content-box; }
   #nav-logo{ display:flex; align-items:baseline; font-weight:800; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
   #nav-logo .wm-b{ color:var(--accent); }
   nav.in-flow #nav-logo{ display:none; }
@@ -152,6 +162,18 @@
   .set-chip button{ background:none; border:0; color:var(--text); font-size:15px; padding:8px 4px; cursor:pointer; min-height:36px; }
   .set-chip .set-chip-x{ color:var(--muted); width:32px; height:32px; min-height:32px; border-radius:50%; padding:0; font-size:13px; flex:none; }
   .stepper{ display:flex; align-items:center; gap:16px; margin:4px 0 12px; }
+  /* time selector (v4): hours + minutes fields — the time counterpart
+     of the distance stepper. Distances are steppers, times are selectors. */
+  .time-field{ display:flex; align-items:center; gap:8px; margin:4px 0 12px; }
+  .time-field input{ flex:1; min-width:0; text-align:center; }
+  .time-field select{ flex:1; min-width:0; text-align:center; }
+  .time-colon{ color:var(--muted); font-size:17px; font-weight:600; flex:none; }
+  /* Month widget (v4): summary card on the Account screen */
+  .month-pick{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .month-pick .month-label{ font-size:17px; font-weight:600; }
+  .month-nav{ border:0; background:var(--chip); color:var(--text); width:36px; height:36px; border-radius:50%; font-size:18px; line-height:1; cursor:pointer; flex:none; }
+  .month-nav:disabled{ opacity:.35; cursor:default; }
+  .month-sec{ margin-top:14px; }
   .stepper button{ width:44px; height:44px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:20px; line-height:1; cursor:pointer; flex:none; }
   .stepper .step-val{ font-size:17px; min-width:72px; text-align:center; }
   #x-wait-amt, #x-wait-unit, .xa-name, .xa-amt{ margin-bottom:12px; }
@@ -186,33 +208,7 @@
     border:0; background:var(--surface); color:var(--muted); width:22px; height:22px;
     border-radius:50%; font-size:13px; line-height:1; cursor:pointer; padding:0;
   }
-  /* floating glass menu: bottom-center pill, three sections */
-  #menu-pill{
-    position:fixed; left:16px; right:16px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:30;
-    display:flex; gap:2px; padding:5px;
-    background:color-mix(in srgb, var(--surface) 68%, transparent);
-    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-    border:1px solid var(--border); border-radius:980px;
-    box-shadow:0 8px 28px rgba(0,0,0,.18);
-  }
-  @media (min-width:560px){
-    #menu-pill{ left:50%; right:auto; transform:translateX(-50%); width:min(220px, calc(100vw - 120px)); }
-  }
-  #menu-pill button{
-    flex:1; border:0; background:transparent; color:var(--text);
-    padding:10px 4px; border-radius:980px; cursor:pointer; white-space:nowrap;
-  }
-  #menu-pill button svg{ width:22px; height:22px; display:block; margin:0 auto; }
-  #menu-pill button.on{ background:var(--surface); color:var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.12); }
-  .row .menu-ic{ display:inline-flex; color:var(--muted); flex:none; }
-  .row .menu-ic svg{ width:20px; height:20px; }
   /* calculator */
-  /* calculator: multi-step form (v3) — dots mirror the wizard's nav dots */
-  .calc-steps{ display:flex; align-items:center; gap:7px; margin:2px 0 16px; }
-  .calc-steps .dot{ width:10px; height:10px; padding:17px; margin:-17px; border-radius:50%; border:0; background:var(--border); background-clip:content-box; }
-  .calc-steps .dot.done{ background:var(--text); background-clip:content-box; cursor:pointer; }
-  .calc-steps .dot.cur{ background:var(--muted); background-clip:content-box; }
-  .calc-steps .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
   .set-row{ display:flex; align-items:center; gap:10px; padding:12px 2px; border-bottom:1px solid var(--border); font-size:16px; }
   .set-row:last-child{ border-bottom:0; }
   .set-row .set-label{ flex:1; }
@@ -231,20 +227,20 @@
   <span id="nav-logo"><span>Fare</span><span class="wm-b">Lookup</span></span></span>
   <span class="title" id="nav-title">Fare Lookup</span>
   <span class="spacer"></span>
-  <span class="steps" id="nav-steps">
-    <button class="dot" data-dot="1" aria-label="Step 1"></button><button class="dot" data-dot="2" aria-label="Step 2"></button><button class="dot" data-dot="3" aria-label="Step 3"></button>
-  </span>
   <button class="link" id="nav-pending"><span id="nav-pending-label">Board</span><span class="badge hidden" id="pending-count">0</span></button>
+  <button id="nav-gear" aria-label="Account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </nav>
+<div id="subhead">
+  <div class="seg" id="mode-toggle" role="group" aria-label="Mode">
+    <button data-mode="fares" class="on" aria-pressed="true">Fare rate</button>
+    <button data-mode="calc" aria-pressed="false">Calculator</button>
+  </div>
+  <div id="step-row"></div>
+</div>
 <div id="scroll">
   <div class="col">
     <div id="view"></div>
   </div>
-</div>
-<div id="menu-pill" role="navigation" aria-label="Menu">
-  <button data-menu="fares" aria-label="Fare sheet"></button>
-  <button data-menu="calc" aria-label="Calculator"></button>
-  <button data-menu="account" aria-label="Account"></button>
 </div>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
@@ -650,10 +646,9 @@ function summaryLine(withOptions){
 }
 
 /* ---------- rendering helpers ---------- */
-const STEP_NAMES = { 1: "Where from?", 2: "Where to?", 3: "Price" };
 /* Calculator + Account views (v3 layers included). The fare wizard views
    (step1/step2/quote/flatbush/notlisted/pending) are not in this list. */
-const CALC_VIEWS = ["calc", "calc-month", "account", "calc-pick", "calc-result", "calc-trip", "account-rates"];
+const CALC_VIEWS = ["calc", "calc-history", "account", "calc-pick", "calc-result", "calc-trip", "account-rates"];
 function isCalcViewName(v){ return CALC_VIEWS.includes(v); }
 /* Layered screens: layers pushed on top of a root calc/account
    screen; nav back pops. Root jumps (icon bar, deep links) clear it. */
@@ -670,24 +665,99 @@ function popScreen(){
   prev.render();
   return true;
 }
-/* Icon menu (v3): icons only, inline SVG in currentColor. */
-const MENU_ICONS = {
-  fares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
-  calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7.5h8M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/></svg>',
-  account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
-};
+/* ---------- header: mode toggle + unified step row (v4) ----------
+   The header carries both tools at the same level: a segmented
+   control (Fare rate | Calculator) and, directly under it, one step
+   row (dots + current step name) shared by both modes. The wizard's
+   steps are From → To → Price; the calculator's are Route → Trip →
+   Return (only when To is empty) → Waiting & costs. Completed dots
+   are tappable to jump back in both modes. The whole subhead hides
+   on loop-bar screens (quote, flatbush, calc-result) — the same
+   screens where the bottom menu used to hide — so nothing stands
+   between a driver and a fare. The step row hides on screens with
+   no step (Account, My Month, trip detail, Rates, Board). */
+const WIZARD_STEP_NAMES = ["From", "To", "Price"];
+const LOOP_VIEWS = ["quote", "flatbush", "calc-result"];
+let mode = "fares"; // last mode entered: "fares" | "calc"
+let lastNotListedMsg = "";
+function renderHeader(){
+  const sub = document.getElementById("subhead");
+  sub.style.display = LOOP_VIEWS.includes(view) ? "none" : "";
+  document.getElementById("mode-toggle").querySelectorAll("[data-mode]").forEach(b => {
+    const on = b.dataset.mode === mode;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  const row = document.getElementById("step-row");
+  let items = null, cur = -1, curName = "";
+  if(view === "step1" || view === "step2" || view === "notlisted"){
+    items = WIZARD_STEP_NAMES.map((n, i) => ({ label: n, step: i + 1 }));
+    cur = currentStep - 1;
+    curName = view === "notlisted" ? "Not listed" : WIZARD_STEP_NAMES[cur];
+  } else if(view === "calc" || view === "calc-pick"){
+    const l = calcStepList();
+    items = l.map(n => ({ label: CALC_STEP_NAMES[n], step: n }));
+    cur = l.indexOf(calcStep);
+    curName = CALC_STEP_NAMES[calcStep];
+  }
+  if(!items || cur < 0){
+    row.innerHTML = "";
+    row.style.display = "none";
+    return;
+  }
+  row.style.display = "";
+  row.innerHTML = items.map((it, i) => {
+    if(i === cur) return '<span class="dot cur"></span><span class="step-name">' + esc(curName) + "</span>";
+    if(i < cur) return '<button class="dot done" data-ustep="' + it.step + '" aria-label="Step ' + esc(it.label) + '"></button>';
+    return '<span class="dot"></span>';
+  }).join("");
+}
+/* Mode switch (v4): the header toggle is root navigation. Entering
+   the calculator resets its form fresh (same rule as the v3 pill).
+   The wizard keeps its in-progress state when you switch away and
+   back — tapping Fare rate restores the wizard where it was (quote,
+   Flatbush grid, step 2, or step 1); it never wipes sel. Tapping the
+   mode you are already on is a no-op, except from a side screen
+   (Account, My Month, Board, Rates): there the tap leaves that
+   screen for the mode. */
+function goMode(next){
+  const onFaresMain = view === "step1" || view === "step2" || view === "notlisted";
+  const onCalcMain = view === "calc";
+  if((next === "fares" && onFaresMain) || (next === "calc" && onCalcMain)) return;
+  screenStack = [];
+  mode = next;
+  if(next === "calc"){
+    if(!isCalcViewName(view)) backTarget = view;
+    calcReset(); calcStep = 1;
+    renderCalc(); return;
+  }
+  // fares: restore the wizard from its kept state
+  if(sel.resolved){ renderQuote(); return; }
+  if(sel.fb){
+    const fb = sel.fb;
+    renderFlatbush(fb.base);
+    const fr = document.getElementById("fb-row"), fc = document.getElementById("fb-col");
+    if(fr && fb.row) fr.value = fb.row;
+    if(fc && fb.col) fc.value = fb.col;
+    if(fr) fr.dispatchEvent(new Event("change"));
+    return;
+  }
+  if(sel.from && sel.to){ renderNotListed(lastNotListedMsg); return; }
+  if(sel.from){ inFlow = true; renderPlacePicker(2); return; }
+  inFlow = false; sel = {}; renderPlacePicker(1);
+}
 let currentStep = 1;
 function setStep(n, label){
   currentStep = n;
+  // mode follows the screen family; Account leaves it unchanged.
+  if(view === "step1" || view === "step2" || view === "quote" || view === "flatbush" || view === "notlisted" || view === "pending") mode = "fares";
+  else if(view === "calc" || view === "calc-result" || view === "calc-history" || view === "calc-trip" || view === "calc-pick" || view === "account-rates") mode = "calc";
   const isCalcView = isCalcViewName(view);
-  const onSteps = n >= 1 && n <= 3 && view !== "pending" && !isCalcView;
-  const curName = label || STEP_NAMES[n] || "";
-  document.getElementById("nav-steps").innerHTML = [1, 2, 3].map(i => {
-    if(onSteps && i === n) return '<span class="dot cur" aria-current="step"></span><span class="step-name">' + esc(curName) + "</span>";
-    return '<button class="dot' + (i < n ? " done" : "") + '" data-dot="' + i + '" aria-label="Step ' + i + '"></button>';
-  }).join("");
   const $t = document.getElementById("nav-title");
-  $t.style.display = (view === "pending" || isCalcView) ? "" : "none";
+  // The nav title shows on screens with no step row; the step row
+  // carries the name on the wizard and calculator forms.
+  const showTitle = view === "pending" || (isCalcView && view !== "calc" && view !== "calc-pick");
+  $t.style.display = showTitle ? "" : "none";
   $t.textContent = view === "pending" ? "Board" : (label || "Fare Lookup");
   const backTxt = view === "pending" ? "Start over"
     : isCalcView ? "Back"
@@ -698,8 +768,7 @@ function setStep(n, label){
   document.getElementById("topnav").classList.toggle("in-flow", inFlow || view !== "step1");
   document.getElementById("topnav").classList.toggle("on-board", view === "pending");
   document.getElementById("nav-pending-label").textContent = view === "pending" ? "Add" : "Board";
-  document.getElementById("nav-steps").style.display = (view === "pending" || isCalcView) ? "none" : "";
-  updateMenu();
+  renderHeader();
   $scroll.scrollTop = 0;
 }
 function goToStep(n){
@@ -708,39 +777,13 @@ function goToStep(n){
   else if(n === 2 && sel.from) renderPlacePicker(2);
 }
 
-/* ---------- icon menu (v2): icons only, no text labels ---------- */
+/* ---------- header mode switch (v4): see goMode above ---------- */
 let backTarget = "step1"; // view the nav back link returns to from calc/settings views
-function updateMenu(){
-  const pill = document.getElementById("menu-pill");
-  if(!pill) return;
-  // The icon bar hides wherever the loop bar shows.
-  const loopViews = ["quote", "flatbush", "calc-result"];
-  pill.style.display = loopViews.includes(view) ? "none" : "";
-  const section = view === "account" || view.indexOf("account-") === 0 ? "account"
-    : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "fares";
-  pill.querySelectorAll("[data-menu]").forEach(b => b.classList.toggle("on", b.dataset.menu === section));
-}
-function goMenu(section){
-  screenStack = []; // icon bar jumps are root navigation, not layers
-  if(section === "fares"){ inFlow = false; sel = {}; renderPlacePicker(1); return; }
-  if(section === "calc"){
-    if(!isCalcViewName(view)) backTarget = view;
-    /* v3: the pill is root navigation — a fresh calculator, starting at
-       Route. In-flow Back still preserves the in-progress trip; only
-       the pill (and "New rate" on the result) resets it. */
-    calcReset(); calcStep = 1;
-    renderCalc(); return;
-  }
-  if(section === "account"){
-    if(!isCalcViewName(view)) backTarget = view;
-    renderAccount(); return;
-  }
-}
 function goBackFromCalc(){
   if(popScreen()) return;
   const t = backTarget || "step1";
   if(t === "calc") renderCalc();
-  else if(t === "calc-month") renderCalcMonth();
+  else if(t === "calc-history") renderCalcHistory();
   else if(t === "account") renderAccount();
   else if(t === "quote" && sel.resolved) renderQuote();
   else if(t === "flatbush" && sel.fb) renderFlatbush(sel.fb.base);
@@ -987,6 +1030,7 @@ function renderFlatbush(base){
 }
 
 function renderNotListed(msg){
+  lastNotListedMsg = msg || "";
   view = "notlisted"; setStep(2, "Not listed");
   h(
     '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
@@ -1345,6 +1389,47 @@ function fmtWait(h){
   const hrs = Math.floor(m / 60), rem = m % 60;
   return hrs + " hr" + (rem ? " " + rem + " min" : "");
 }
+/* v4: time selector — every time field in the calculator is hours +
+   minutes, the counterpart of the distance stepper. Minutes snap to
+   15-minute steps (the granularity the old wait stepper had). */
+function timeParts(dec){
+  let total = Math.max(0, Math.round((parseFloat(dec) || 0) * 60));
+  total = Math.round(total / 15) * 15; // snap to the selector steps
+  return { h: Math.floor(total / 60), m: total % 60 };
+}
+function timeFieldHtml(prefix, decValue){
+  const empty = decValue === "" || decValue == null;
+  const p = empty ? { h: "", m: 0 } : timeParts(decValue);
+  return '<div class="time-field"><input type="number" id="' + prefix + '-h" inputmode="numeric" min="0" max="24" placeholder="0" value="' + (p.h === "" ? "" : p.h) + '" aria-label="Hours">' +
+    '<span class="time-colon">:</span>' +
+    '<select id="' + prefix + '-m" aria-label="Minutes">' +
+    [0, 15, 30, 45].map(m => '<option value="' + m + '"' + (p.m === m ? " selected" : "") + '>' + (m < 10 ? "0" + m : m) + "</option>").join("") +
+    "</select></div>";
+}
+/* Distance stepper wiring, shared by every miles field (trip miles,
+   return miles, actual miles): −/+ in whole miles, free typing. */
+function bindMilesField(prefix, get, set){
+  const inp = document.getElementById(prefix);
+  const setMiles = (v) => { set(v); if(inp) inp.value = v; updateCalcForm(); };
+  if(inp) inp.addEventListener("input", () => { set(inp.value); updateCalcForm(); });
+  const mm = document.getElementById(prefix + "-minus");
+  if(mm) mm.addEventListener("click", () => setMiles(String(Math.max(0, (parseFloat(get()) || 0) - 1))));
+  const mp = document.getElementById(prefix + "-plus");
+  if(mp) mp.addEventListener("click", () => setMiles(String((parseFloat(get()) || 0) + 1)));
+}
+function bindTimeField(prefix, set){
+  const hEl = document.getElementById(prefix + "-h");
+  const mEl = document.getElementById(prefix + "-m");
+  if(!hEl || !mEl) return;
+  const upd = () => {
+    const h = Math.max(0, Math.min(24, parseInt(hEl.value, 10) || 0));
+    const m = parseInt(mEl.value, 10) || 0;
+    set(round2(h + m / 60));
+    updateCalcForm();
+  };
+  hEl.addEventListener("input", upd);
+  mEl.addEventListener("change", upd);
+}
 /* v3 rule: endsAtHub = (To is set). Adding a location to To means the
    trip ends at a hub; no To means a return leg to the closest hub.
    The rule is uniform in both modes (answer 1): even in round-trip
@@ -1450,25 +1535,17 @@ function calcBuildTrip(r, actuals){
 /* One topic per screen, wizard-style. Step 1 choices decide the later
    steps: the Return step appears only when To is empty (the trip does
    not end at a hub). Step numbers are canonical (1 Route, 2 Trip,
-   3 Return, 4 Waiting & costs); the indicator shows only the steps in
-   the current path. Back is the nav back link; Next is the button at
-   the bottom of each step; "See my fare" sits on the last step only
-   and stays gated on miles > 0 and hours > 0, as before. */
+   3 Return, 4 Waiting & costs); the header step row shows only the
+   steps in the current path (v4: one unified row for both modes).
+   Back is the nav back link; Next is the button at the bottom of
+   each step; "See my fare" sits on the last step only and stays
+   gated on miles > 0 and hours > 0, as before. */
 const CALC_STEP_NAMES = { 1: "Route", 2: "Trip", 3: "Return", 4: "Waiting & costs" };
 let calcStep = 1;
 function calcStepList(){ return calc.to ? [1, 2, 4] : [1, 2, 3, 4]; }
 function calcNextStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return (i >= 0 && i < l.length - 1) ? l[i + 1] : null; }
 function calcPrevStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return i > 0 ? l[i - 1] : null; }
 function calcGoStep(n){ calcStep = n; renderCalc(); }
-function calcStepsHtml(){
-  const l = calcStepList();
-  const cur = l.indexOf(calcStep);
-  return '<div class="calc-steps">' + l.map((n, i) => {
-    if(i === cur) return '<span class="dot cur"></span><span class="step-name">' + CALC_STEP_NAMES[n] + "</span>";
-    if(i < cur) return '<button class="dot done" data-cstep="' + n + '" aria-label="Step ' + CALC_STEP_NAMES[n] + '"></button>';
-    return '<span class="dot"></span>';
-  }).join("") + "</div>";
-}
 /* First step that still needs input — where "My take-home" and
    "Reopen in calculator" land. Step 1 never blocks: From and To are
    optional (answer 1) — they only matter for the standard-price
@@ -1487,7 +1564,7 @@ function calcFirstIncompleteStep(){
   return steps[steps.length - 1];
 }
 function calcHtml(){
-  let out = calcStepsHtml();
+  let out = "";
   if(calcStep === 1){
     out += '<div class="seg" id="calc-mode" role="group" aria-label="Trip type">' +
         '<button data-mode="oneway">One way</button>' +
@@ -1503,7 +1580,7 @@ function calcHtml(){
     out += '<div class="stepper"><button id="c-miles-minus" aria-label="Fewer miles">−</button>' +
         '<input id="c-miles" inputmode="decimal" placeholder="Trip miles" value="' + esc(calc.miles) + '">' +
         '<button id="c-miles-plus" aria-label="More miles">+</button></div>' +
-      '<input type="text" id="c-hours" inputmode="decimal" placeholder="Trip duration in hours (e.g. 1.5)" value="' + esc(calc.hours) + '">' +
+      timeFieldHtml("c-dur", calc.hours) +
       '<button class="btn" id="c-next">Next</button>';
   } else if(calcStep === 3){
     /* Return step (answer 2: "Both"): miles to the closest hub AND how
@@ -1515,29 +1592,17 @@ function calcHtml(){
       '<div class="stepper"><button id="c-rmiles-minus" aria-label="Fewer return miles">−</button>' +
         '<input id="c-rmiles" inputmode="decimal" placeholder="Return miles" value="' + esc(calc.returnMiles) + '">' +
         '<button id="c-rmiles-plus" aria-label="More return miles">+</button></div>' +
-      '<input type="text" id="c-rhours" inputmode="decimal" placeholder="Return hours (e.g. 0.5)" value="' + esc(calc.returnHours) + '">' +
+      timeFieldHtml("c-rh", calc.returnHours) +
       '<input type="text" id="c-rtolls" inputmode="decimal" placeholder="Return tolls ($)" value="' + esc(calc.returnTolls) + '" style="margin-top:12px">' +
       '<button class="btn" id="c-next">Next</button>';
   } else {
-    out += '<div id="calc-wait-wrap"></div>' +
+    out += timeFieldHtml("c-wait", calc.waitHours) +
       '<div style="display:flex;gap:10px;margin-top:12px"><input type="text" id="c-tolls" inputmode="decimal" placeholder="Tolls ($)" value="' + esc(calc.tolls) + '">' +
       '<input type="text" id="c-parking" inputmode="decimal" placeholder="Parking ($)" value="' + esc(calc.parking) + '"></div>' +
       '<button class="btn" id="c-see-fare" disabled>See my fare</button>';
   }
   return out;
 }
-/* v2: the wait stepper is always visible, both modes — off is 0. No toggle. */
-function updateWaitWrap(){
-  const wrap = document.getElementById("calc-wait-wrap");
-  if(!wrap) return;
-  wrap.innerHTML =
-    '<div class="stepper" style="margin-top:12px"><button id="c-wait-minus" aria-label="Less waiting">−</button><span class="step-val" id="c-wait-val">' + fmtWait(calc.waitHours) + '</span><button id="c-wait-plus" aria-label="More waiting">+</button></div>';
-  const minus = document.getElementById("c-wait-minus");
-  const plus = document.getElementById("c-wait-plus");
-  if(minus) minus.addEventListener("click", () => { calc.waitHours = Math.max(0, round2((parseFloat(calc.waitHours) || 0) - 0.25)); updateWaitWrap(); updateCalcForm(); });
-  if(plus) plus.addEventListener("click", () => { calc.waitHours = Math.min(24, round2((parseFloat(calc.waitHours) || 0) + 0.25)); updateWaitWrap(); updateCalcForm(); });
-}
-
 function updateCalcForm(){
   const btn = document.getElementById("c-see-fare");
   if(!btn) return;
@@ -1673,9 +1738,8 @@ function wireCalcResult(){
     const r = calcFare(calc, calcCfg);
     if(!(r.miles > 0 && r.hours > 0)) return;
     calcPendingSave = r;
-    calcMonthTab = "history";
     calcMonth = new Date().toISOString().slice(0, 7);
-    pushScreen("calc-month", () => renderCalcResult(), () => renderCalcMonth("calc"));
+    pushScreen("calc-history", () => renderCalcResult(), () => renderCalcHistory("calc"));
   });
   const share = document.getElementById("c-share");
   if(share) share.addEventListener("click", (e) => shareCalc(e.target));
@@ -1683,15 +1747,18 @@ function wireCalcResult(){
   if(nw) nw.addEventListener("click", () => { calcReset(); screenStack = []; renderCalc(); });
 }
 /* v3 save flow (answers 3 + 4): the actuals fields live at the top of
-   the History tab while a trip is being saved — prefilled with the
+   the History screen while a trip is being saved — prefilled with the
    estimate, so an untouched save equals the old estimate-only save.
    Actual time is driving + waiting (total time). The fields live in
    calcActualsFieldsHtml so they can move as one piece if the placement
-   decision ever changes. */
+   decision ever changes. v4: same control rule as the form — Actual
+   miles is a stepper, Actual time is a time selector. */
 function calcActualsFieldsHtml(prefill){
   return '<input type="text" id="c-act-amount" inputmode="decimal" placeholder="Actual amount ($)" value="' + esc(prefill.amount) + '">' +
-    '<input type="text" id="c-act-miles" inputmode="decimal" placeholder="Actual miles" value="' + esc(prefill.miles) + '" style="margin-top:12px">' +
-    '<input type="text" id="c-act-time" inputmode="decimal" placeholder="Actual time (hours)" value="' + esc(prefill.time) + '" style="margin-top:12px">';
+    '<div class="stepper" style="margin-top:12px"><button id="c-act-miles-minus" aria-label="Fewer miles">−</button>' +
+      '<input id="c-act-miles" inputmode="decimal" placeholder="Actual miles" value="' + esc(prefill.miles) + '">' +
+      '<button id="c-act-miles-plus" aria-label="More miles">+</button></div>' +
+    '<div style="margin-top:12px">' + timeFieldHtml("c-act-t", prefill.time) + "</div>";
 }
 function calcSaveActuals(){
   const num = (id) => {
@@ -1700,9 +1767,14 @@ function calcSaveActuals(){
     const v = parseFloat(String(el.value).replace(/[$,]/g, ""));
     return (isNaN(v) || v < 0) ? null : v;
   };
-  return { amount: num("c-act-amount"), miles: num("c-act-miles"), time: num("c-act-time") };
+  const hEl = document.getElementById("c-act-t-h"), mEl = document.getElementById("c-act-t-m");
+  let time = null;
+  if(hEl && mEl && hEl.value !== ""){
+    time = round2((parseInt(hEl.value, 10) || 0) + (parseInt(mEl.value, 10) || 0) / 60);
+  }
+  return { amount: num("c-act-amount"), miles: num("c-act-miles"), time: time };
 }
-/* The pending-save form, shown at the top of the History tab while
+/* The pending-save form, shown at the top of the History screen while
    calcPendingSave holds the result being saved. */
 function calcPendingSaveHtml(){
   const r = calcPendingSave;
@@ -1714,7 +1786,6 @@ function calcPendingSaveHtml(){
     '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-act-cancel">Cancel</button></div></div>';
 }
 function wireCalc(){
-  $view.querySelectorAll("[data-cstep]").forEach(b => b.addEventListener("click", () => calcGoStep(Number(b.dataset.cstep))));
   const modeBtns = $view.querySelectorAll("#calc-mode button");
   modeBtns.forEach(b => {
     b.classList.toggle("on", b.dataset.mode === calc.mode);
@@ -1734,24 +1805,10 @@ function wireCalc(){
   if(toBtn) toBtn.addEventListener("click", () => pushScreen("calc-pick", () => renderCalc(), () => renderCalcPicker("to")));
   const clr = document.getElementById("c-clear-route");
   if(clr) clr.addEventListener("click", () => { calc.from = null; calc.to = null; calc.adjustedFare = null; renderCalc(); });
-  const milesIn = document.getElementById("c-miles");
-  const setMiles = (v) => { calc.miles = v; if(milesIn) milesIn.value = v; updateCalcForm(); };
-  if(milesIn) milesIn.addEventListener("input", () => { calc.miles = milesIn.value; updateCalcForm(); });
-  const mm = document.getElementById("c-miles-minus");
-  if(mm) mm.addEventListener("click", () => setMiles(String(Math.max(0, (parseFloat(calc.miles) || 0) - 1))));
-  const mp = document.getElementById("c-miles-plus");
-  if(mp) mp.addEventListener("click", () => setMiles(String((parseFloat(calc.miles) || 0) + 1)));
-  const hrs = document.getElementById("c-hours");
-  if(hrs) hrs.addEventListener("input", () => { calc.hours = hrs.value; updateCalcForm(); });
-  const rmilesIn = document.getElementById("c-rmiles");
-  const setRMiles = (v) => { calc.returnMiles = v; if(rmilesIn) rmilesIn.value = v; };
-  if(rmilesIn) rmilesIn.addEventListener("input", () => { calc.returnMiles = rmilesIn.value; });
-  const rmm = document.getElementById("c-rmiles-minus");
-  if(rmm) rmm.addEventListener("click", () => setRMiles(String(Math.max(0, (parseFloat(calc.returnMiles) || 0) - 1))));
-  const rmp = document.getElementById("c-rmiles-plus");
-  if(rmp) rmp.addEventListener("click", () => setRMiles(String((parseFloat(calc.returnMiles) || 0) + 1)));
-  const rh = document.getElementById("c-rhours");
-  if(rh) rh.addEventListener("input", () => { calc.returnHours = rh.value; });
+  bindMilesField("c-miles", () => calc.miles, v => { calc.miles = v; });
+  bindTimeField("c-dur", v => { calc.hours = v; });
+  bindMilesField("c-rmiles", () => calc.returnMiles, v => { calc.returnMiles = v; });
+  bindTimeField("c-rh", v => { calc.returnHours = v; });
   const rt = document.getElementById("c-rtolls");
   if(rt) rt.addEventListener("input", () => { calc.returnTolls = rt.value; });
   const tolls = document.getElementById("c-tolls");
@@ -1763,10 +1820,10 @@ function wireCalc(){
   const seeFare = document.getElementById("c-see-fare");
   if(seeFare) seeFare.addEventListener("click", () => pushScreen("calc-result", () => renderCalc(), renderCalcResult));
   const month = document.getElementById("c-month");
-  if(month) month.addEventListener("click", () => { screenStack = []; renderCalcMonth("calc"); });
+  if(month) month.addEventListener("click", () => { screenStack = []; renderCalcHistory("calc"); });
   const rates = document.getElementById("c-rates");
   if(rates) rates.addEventListener("click", () => { backTarget = "calc"; screenStack = []; renderAccount(); pushScreen("account-rates", () => renderAccount(), renderAccountRates); });
-  updateWaitWrap();
+  bindTimeField("c-wait", v => { calc.waitHours = v; });
   updateCalcForm();
 }
 function renderCalc(){
@@ -1829,7 +1886,6 @@ function openCalcFromQuote(){
 
 /* ---------- trip calculator: My Month ---------- */
 let calcMonth = null; // "YYYY-MM" selected in My Month
-let calcMonthTab = "history"; // v3: My Month opens on History, since tapping My Month should show trips
 let calcPendingSave = null; // v3: the fare result being saved; its actuals form sits at the top of History
 function calcMonthKey(d){ return String(d || "").slice(0, 7); }
 function fmtMonthLabel(ym){
@@ -1840,18 +1896,13 @@ function fmtDateShort(iso){
   const d = new Date(iso + "T12:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
-function renderCalcMonth(from){
-  view = "calc-month"; setStep(0, "My Month");
-  if(from) backTarget = from;
-  const nowKey = new Date().toISOString().slice(0, 7);
-  if(!calcMonth) calcMonth = nowKey;
-  const months = [...new Set(calcTripsArr.map(t => calcMonthKey(t.date)))];
-  if(!months.includes(nowKey)) months.push(nowKey);
-  months.sort().reverse();
-  if(!months.includes(calcMonth)) calcMonth = nowKey;
-  const trips = calcTripsArr.filter(t => calcMonthKey(t.date) === calcMonth);
-  /* v3: aggregates recompute from each trip's actuals (or estimates) at
-     the current rates — never from the stored snapshot fields. */
+/* v4: the month aggregates live in one helper — the Account Month
+   widget and the History screen both read through it, so the numbers
+   can never drift apart. Aggregates recompute from each trip's
+   actuals (or estimates) at the current rates, never from the stored
+   snapshot fields. */
+function calcMonthAgg(ym){
+  const trips = calcTripsArr.filter(t => calcMonthKey(t.date) === ym);
   const paired = trips.map(t => ({ t, r: calcTripResult(t) }));
   const recovered = round2(paired.reduce((s, p) => s + p.r.recovery, 0));
   const hours = round2(paired.reduce((s, p) => s + p.r.totalHours, 0));
@@ -1861,18 +1912,57 @@ function renderCalcMonth(from){
   const eff = hours > 0 ? round2(takeHome / hours) : null;
   const monthlyFixed = Number(calcCfg.monthlyFixed) || 2500;
   const targetHours = Number(calcCfg.targetHours) || 160;
-  const recPct = Math.max(0, Math.min(100, Math.round(recovered / monthlyFixed * 100)));
-  const hrsPct = Math.max(0, Math.min(100, Math.round(hours / targetHours * 100)));
-  const monthHtml =
-    '<div class="card"><div class="route">Vehicle cost</div>' +
-      '<div class="change">Recovered ' + money(recovered) + " of " + money(monthlyFixed) + "</div>" +
-      '<div class="vote-row"><span class="bar"><i style="width:' + recPct + '%"></i></span><span class="votes">' + recPct + "%</span></div></div>" +
-    '<div class="card"><div class="route">Hours ' + fmtNum(hours) + " of " + fmtNum(targetHours) + "</div>" +
-      '<div class="vote-row"><span class="bar"><i style="width:' + hrsPct + '%"></i></span><span class="votes">' + hrsPct + "%</span></div></div>" +
-    '<div class="card"><div class="route">Take-home ' + money(takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
-      '<div class="change">Revenue ' + money(revenue) + " − expenses " + money(expenses) + "</div></div>";
-  const historyTrips = [...paired].reverse(); // newest first
-  const historyHtml =
+  return { trips, paired, recovered, hours, revenue, takeHome, expenses, eff, monthlyFixed, targetHours,
+    recPct: Math.max(0, Math.min(100, Math.round(recovered / monthlyFixed * 100))),
+    hrsPct: Math.max(0, Math.min(100, Math.round(hours / targetHours * 100))) };
+}
+/* Months with saved trips plus the current month, newest first —
+   the Month widget steps through exactly these. */
+function calcMonthList(){
+  const nowKey = new Date().toISOString().slice(0, 7);
+  const months = [...new Set(calcTripsArr.map(t => calcMonthKey(t.date)))];
+  if(!months.includes(nowKey)) months.push(nowKey);
+  return months.sort().reverse();
+}
+function calcEnsureMonth(){
+  const nowKey = new Date().toISOString().slice(0, 7);
+  if(!calcMonth || !calcMonthList().includes(calcMonth)) calcMonth = nowKey;
+}
+/* v4: the Month widget — the selected month's summary at a glance on
+   the Account screen, with a ‹ › picker that sets the month. No tap
+   needed to see the numbers. */
+function calcMonthWidgetHtml(){
+  calcEnsureMonth();
+  const months = calcMonthList();
+  const idx = months.indexOf(calcMonth);
+  const agg = calcMonthAgg(calcMonth);
+  const prev = idx >= 0 && idx < months.length - 1 ? months[idx + 1] : null;
+  const next = idx > 0 ? months[idx - 1] : null;
+  return '<div class="card"><div class="month-pick">' +
+      '<button class="month-nav" id="a-month-prev" aria-label="Previous month"' + (prev ? "" : " disabled") + '>‹</button>' +
+      '<span class="month-label">' + esc(fmtMonthLabel(calcMonth)) + "</span>" +
+      '<button class="month-nav" id="a-month-next" aria-label="Next month"' + (next ? "" : " disabled") + '>›</button></div>' +
+    '<div class="month-sec"><div class="route">Vehicle cost</div>' +
+      '<div class="change">Recovered ' + money(agg.recovered) + " of " + money(agg.monthlyFixed) + "</div>" +
+      '<div class="vote-row"><span class="bar"><i style="width:' + agg.recPct + '%"></i></span><span class="votes">' + agg.recPct + "%</span></div></div>" +
+    '<div class="month-sec"><div class="route">Hours ' + fmtNum(agg.hours) + " of " + fmtNum(agg.targetHours) + "</div>" +
+      '<div class="vote-row"><span class="bar"><i style="width:' + agg.hrsPct + '%"></i></span><span class="votes">' + agg.hrsPct + "%</span></div></div>" +
+    '<div class="month-sec"><div class="route">Take-home ' + money(agg.takeHome) + (agg.eff != null ? " · " + money(agg.eff) + "/hr" : "") + "</div>" +
+      '<div class="change">Revenue ' + money(agg.revenue) + " − expenses " + money(agg.expenses) + "</div></div></div>";
+}
+/* v4: the trips list is its own screen, reached from the Account
+   History row (or the calculator's "My month" link). The month
+   summary lives on the Account screen as the Month widget; this
+   screen shows the saved trips for the selected month, newest first.
+   The pending-save form (actuals) still sits at the top while a
+   trip is being saved. */
+function renderCalcHistory(from){
+  view = "calc-history"; setStep(0, "History");
+  if(from) backTarget = from;
+  calcEnsureMonth();
+  const agg = calcMonthAgg(calcMonth);
+  const historyTrips = [...agg.paired].reverse(); // newest first
+  h('<div class="sub">' + esc(fmtMonthLabel(calcMonth)) + "</div>" +
     (calcPendingSave ? calcPendingSaveHtml() : "") +
     (historyTrips.length
       ? '<div class="group-label">Saved trips</div><div class="list">' + historyTrips.map(p => {
@@ -1881,16 +1971,10 @@ function renderCalcMonth(from){
           return '<div class="row" data-trip="' + esc(t.id) + '"><span>' + esc(fmtDateShort(t.date)) + " · " + esc(route) + '<span class="row-sub">Charged ' + money(r.fare) + " · take-home " + money(r.takeHome) + (r.effectivePerHour != null ? " · " + money(r.effectivePerHour) + "/hr" : "") + "</span></span>" +
             '<button class="trip-x" data-trip="' + esc(t.id) + '" aria-label="Delete trip">✕</button></div>';
         }).join("") + "</div>"
-      : '<div class="empty">No trips saved this month yet.</div>');
-  h(
-    '<select id="c-month-pick">' + months.map(m => "<option value=\"" + m + "\"" + (m === calcMonth ? " selected" : "") + ">" + esc(fmtMonthLabel(m)) + "</option>").join("") + "</select>" +
-    '<div class="seg" id="c-month-tabs" role="group" aria-label="My Month view" style="margin-top:12px">' +
-      '<button data-tab="month" aria-pressed="' + (calcMonthTab === "month") + '"' + (calcMonthTab === "month" ? ' class="on"' : "") + '>Month</button>' +
-      '<button data-tab="history" aria-pressed="' + (calcMonthTab === "history") + '"' + (calcMonthTab === "history" ? ' class="on"' : "") + '>History</button></div>' +
-    (calcMonthTab === "month" ? monthHtml : historyHtml)
+      : '<div class="empty">No trips saved this month yet.</div>')
   );
-  document.getElementById("c-month-pick").addEventListener("change", (e) => { calcMonth = e.target.value; renderCalcMonth(); });
-  $view.querySelectorAll("#c-month-tabs [data-tab]").forEach(b => b.addEventListener("click", () => { calcMonthTab = b.dataset.tab; renderCalcMonth(); }));
+  const actMiles = document.getElementById("c-act-miles");
+  if(actMiles) bindMilesField("c-act-miles", () => actMiles.value, v => { actMiles.value = v; });
   const actSave = document.getElementById("c-act-save");
   if(actSave) actSave.addEventListener("click", () => {
     const trip = calcBuildTrip(calcPendingSave, calcSaveActuals());
@@ -1898,21 +1982,20 @@ function renderCalcMonth(from){
     calcPersistTrip(trip);
     calcPendingSave = null;
     calcMonth = trip.date.slice(0, 7);
-    calcMonthTab = "history";
-    renderCalcMonth();
+    renderCalcHistory();
   });
   const actCancel = document.getElementById("c-act-cancel");
-  if(actCancel) actCancel.addEventListener("click", () => { calcPendingSave = null; renderCalcMonth(); });
+  if(actCancel) actCancel.addEventListener("click", () => { calcPendingSave = null; renderCalcHistory(); });
   $view.querySelectorAll(".trip-x").forEach(b => b.addEventListener("click", (e) => {
     e.stopPropagation();
     calcRemoveTrip(b.dataset.trip);
-    renderCalcMonth();
+    renderCalcHistory();
   }));
   $view.querySelectorAll("[data-trip]").forEach(row => row.addEventListener("click", (e) => {
     if(e.target.closest(".trip-x")) return;
     const t = calcTripsArr.find(x => x.id === row.dataset.trip);
     if(!t) return;
-    pushScreen("calc-trip", () => renderCalcMonth(), () => renderCalcTrip(t));
+    pushScreen("calc-trip", () => renderCalcHistory(), () => renderCalcTrip(t));
   }));
 }
 /* v3: the detail recomputes from the trip's actuals (or estimates) at
@@ -1951,13 +2034,13 @@ function renderCalcTrip(t){
     calc.adjustedFare = (saved.fareCharged != null && Number(saved.fareCharged) !== r2.suggestedFare) ? Number(saved.fareCharged) : null;
     calcStep = calcFirstIncompleteStep();
     screenStack = [];
-    backTarget = "calc-month";
+    backTarget = "calc-history";
     renderCalc();
   });
   const del = document.getElementById("c-trip-delete");
   if(del) del.addEventListener("click", () => {
     calcRemoveTrip(saved.id);
-    if(!popScreen()) renderCalcMonth();
+    if(!popScreen()) renderCalcHistory();
   });
 }
 
@@ -1972,16 +2055,21 @@ function calcDerivedHtml(){
     '<div class="set-row"><span class="set-label">Fuel cost</span><span class="set-val">$' + r.fuelPerMile.toFixed(3) + "/mi = " + money(Number(calcCfg.gasPrice) || 0) + " ÷ " + fmtNum(Number(calcCfg.mpg) || 0) + " MPG</span></div>" +
     '<div class="set-row"><span class="set-label">Return hourly</span><span class="set-val">' + money(r.vehiclePerHr) + " — cost only, no earnings</span></div>";
 }
-/* v3: the Settings screen is the Account screen. My Month is the main
-   item at the top; then Rates and Details rows; then the sign-in block.
-   The old Menu section (Fare sheet / Calculator / Settings rows) is
-   gone — the bottom pill IS the menu. The old Hubs section is gone —
-   hubs are the fare-sheet locations. */
+/* v4: the Account screen carries the month at a glance — a Month
+   widget at the top (this month's summary + ‹ › picker, no tap
+   needed), then History / Rates / Details rows, then sign-in.
+   The My Month button and the Month/History tabs are gone; the
+   trips list is its own screen (renderCalcHistory). */
 function renderAccount(){
   view = "account"; setStep(0, "Account");
+  calcEnsureMonth();
+  const agg = calcMonthAgg(calcMonth);
+  const n = agg.trips.length;
+  const countLabel = n === 0 ? "No trips" : n === 1 ? "1 trip" : n + " trips";
   h(
-    '<button class="btn" id="a-month">My Month</button>' +
+    calcMonthWidgetHtml() +
     '<div class="list" style="margin-top:14px">' +
+      '<button class="row" id="a-history"><span>History</span><span class="tag">' + esc(countLabel) + '</span><span class="chev">›</span></button>' +
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev">›</span></button>' +
       '<button class="row" id="a-details"><span>Details</span><span class="chev">›</span></button>' +
     "</div>" +
@@ -1991,8 +2079,18 @@ function renderAccount(){
       : '<button class="btn secondary" id="a-signin" style="margin-top:18px">Sign in with Google</button>' +
         '<div class="sub" style="margin-top:10px">Sign in to sync your rates and trips across devices. The fare sheet stays free for everyone, no sign-in needed.</div>')
   );
-  const month = document.getElementById("a-month");
-  if(month) month.addEventListener("click", () => { screenStack = []; renderCalcMonth("account"); });
+  const prev = document.getElementById("a-month-prev");
+  if(prev) prev.addEventListener("click", () => {
+    const m = calcMonthList(); const i = m.indexOf(calcMonth);
+    if(i >= 0 && i < m.length - 1){ calcMonth = m[i + 1]; renderAccount(); }
+  });
+  const next = document.getElementById("a-month-next");
+  if(next) next.addEventListener("click", () => {
+    const m = calcMonthList(); const i = m.indexOf(calcMonth);
+    if(i > 0){ calcMonth = m[i - 1]; renderAccount(); }
+  });
+  const hist = document.getElementById("a-history");
+  if(hist) hist.addEventListener("click", () => { screenStack = []; renderCalcHistory("account"); });
   const rates = document.getElementById("a-rates");
   if(rates) rates.addEventListener("click", () => pushScreen("account-rates", () => renderAccount(), renderAccountRates));
   const details = document.getElementById("a-details");
@@ -2071,16 +2169,27 @@ document.getElementById("nav-back").addEventListener("click", () => {
   if(view === "quote" || view === "flatbush" || view === "notlisted"){ renderPlacePicker(2); }
   else { inFlow = false; sel = {}; renderPlacePicker(1); }
 });
-document.getElementById("nav-steps").addEventListener("click", e => {
-  const d = e.target.closest("[data-dot]");
-  if(d) goToStep(Number(d.dataset.dot));
+/* v4: the unified step row lives in the header; completed dots jump
+   back in both modes (wizard: goToStep, calculator: calcGoStep). */
+document.getElementById("step-row").addEventListener("click", e => {
+  const d = e.target.closest("[data-ustep]");
+  if(!d) return;
+  const n = Number(d.dataset.ustep);
+  if(view === "step1" || view === "step2" || view === "notlisted") goToStep(n);
+  else if(view === "calc" || view === "calc-pick"){
+    if(view === "calc-pick") screenStack = []; // a dot jump leaves the picker layer
+    calcGoStep(n);
+  }
+});
+document.getElementById("mode-toggle").querySelectorAll("[data-mode]").forEach(b => {
+  b.addEventListener("click", () => goMode(b.dataset.mode));
+});
+document.getElementById("nav-gear").addEventListener("click", () => {
+  if(!isCalcViewName(view)) backTarget = view;
+  renderAccount();
 });
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
-document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b => {
-  b.innerHTML = MENU_ICONS[b.dataset.menu] || "";
-  b.addEventListener("click", () => goMenu(b.dataset.menu));
-});
 document.getElementById("modal-close").addEventListener("click", () => $modal.classList.add("hidden"));
 document.getElementById("modal-backdrop").addEventListener("click", () => $modal.classList.add("hidden"));
 
@@ -2102,7 +2211,7 @@ async function init(){
     if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
       backTarget = "step1";
       if(viewParam === "calc") renderCalc();
-      else if(viewParam === "calc-month") renderCalcMonth("calc");
+      else if(viewParam === "calc-month") renderCalcHistory("calc"); // "calc-month" still works as an alias
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
     } else if(shared){
       sel.wait = { amount: shared.wait_amount != null ? String(shared.wait_amount) : "", unit: shared.wait_unit || "hour", hours: shared.wait_hours || 1 };
