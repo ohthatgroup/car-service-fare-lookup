@@ -48,10 +48,16 @@
   }
   #subhead .seg{ max-width:600px; margin:0 auto; }
   #step-row{ display:flex; align-items:center; gap:7px; max-width:600px; margin:12px auto 0; }
-  #step-row .dot{ width:10px; height:10px; padding:17px; margin:-17px; border-radius:50%; border:0; background:var(--border); background-clip:content-box; cursor:default; transition:background .2s; }
-  #step-row .dot.done{ background:var(--text); background-clip:content-box; cursor:pointer; }
+  /* Dots are plain solid circles painted with ::after. The old
+     background-clip:content-box + padding trick never painted at all
+     (border-box collapses the content box to 0), so the dots were
+     invisible in both themes while still present in the DOM. */
+  #step-row .dot{ display:inline-flex; align-items:center; justify-content:center; flex:none; width:44px; height:44px; margin:0 -14px; padding:0; border:0; background:transparent; cursor:default; }
+  #step-row .dot::after{ content:""; display:block; width:12px; height:12px; border-radius:50%; background:var(--muted); opacity:.45; }
+  #step-row .dot.done{ cursor:pointer; }
+  #step-row .dot.done::after{ background:var(--text); opacity:1; }
   #step-row .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
-  #step-row .dot.cur{ background:var(--muted); background-clip:content-box; }
+  #step-row .dot.cur::after{ background:var(--muted); opacity:1; }
   #nav-logo{ display:flex; align-items:baseline; font-weight:800; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
   #nav-logo .wm-b{ color:var(--accent); }
   nav.in-flow #nav-logo{ display:none; }
@@ -111,7 +117,7 @@
   .row .chev{ margin-left:auto; color:var(--muted); font-size:15px; }
   .row .tag{ margin-left:auto; font-size:12px; color:var(--muted); }
   .search-wrap{ position:sticky; top:0; padding:4px 0 10px; background:var(--bg); z-index:2; }
-  input[type="search"], input[type="text"], select{
+  input[type="search"], input[type="text"], input[type="number"], input:not([type]), select{
     width:100%; font-size:17px; padding:12px 14px; border-radius:12px;
     border:1px solid var(--border); background:var(--surface); color:var(--text); appearance:none;
   }
@@ -162,11 +168,15 @@
   .set-chip button{ background:none; border:0; color:var(--text); font-size:15px; padding:8px 4px; cursor:pointer; min-height:36px; }
   .set-chip .set-chip-x{ color:var(--muted); width:32px; height:32px; min-height:32px; border-radius:50%; padding:0; font-size:13px; flex:none; }
   .stepper{ display:flex; align-items:center; gap:16px; margin:4px 0 12px; }
-  /* time selector (v4): hours + minutes fields — the time counterpart
-     of the distance stepper. Distances are steppers, times are selectors. */
-  .time-field{ display:flex; align-items:center; gap:8px; margin:4px 0 12px; }
-  .time-field input{ flex:1; min-width:0; text-align:center; }
-  .time-field select{ flex:1; min-width:0; text-align:center; }
+  /* Duration Picker (v4.1, Rare UI pattern): hours + minutes as ONE
+     uniform control — one background, one border — with a small "h"
+     after hours and "min" after minutes, so the field reads as a
+     duration on its own ("2 h 30 min"). Distances are steppers, times
+     are selectors; the two halves of a time field never differ. */
+  .time-field{ display:flex; align-items:center; gap:6px; margin:4px 0 12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0 14px; }
+  .time-field input[type="number"], .time-field select{ flex:1; min-width:0; text-align:center; background:transparent; border:0; padding:12px 0; font-size:17px; color:var(--text); }
+  .time-field select{ appearance:none; }
+  .time-unit{ color:var(--muted); font-size:15px; flex:none; }
   .time-colon{ color:var(--muted); font-size:17px; font-weight:600; flex:none; }
   /* Month widget (v4): summary card on the Account screen */
   .month-pick{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
@@ -759,7 +769,9 @@ function setStep(n, label){
   const showTitle = view === "pending" || (isCalcView && view !== "calc" && view !== "calc-pick");
   $t.style.display = showTitle ? "" : "none";
   $t.textContent = view === "pending" ? "Board" : (label || "Fare Lookup");
+  const calcPrev = isCalcView && view === "calc" ? calcPrevStep() : null;
   const backTxt = view === "pending" ? "Start over"
+    : calcPrev != null ? CALC_STEP_NAMES[calcPrev]
     : isCalcView ? "Back"
     : (view === "notlisted" || n === 3) ? "Where to?"
     : n === 2 ? "Where from?"
@@ -1389,9 +1401,12 @@ function fmtWait(h){
   const hrs = Math.floor(m / 60), rem = m % 60;
   return hrs + " hr" + (rem ? " " + rem + " min" : "");
 }
-/* v4: time selector — every time field in the calculator is hours +
-   minutes, the counterpart of the distance stepper. Minutes snap to
-   15-minute steps (the granularity the old wait stepper had). */
+/* v4.1: Duration Picker (Rare UI pattern) — every time field in the
+   calculator is hours + "h" and minutes + "min" in ONE uniform control,
+   so it reads as a duration on its own ("2 h 30 min"). Empty renders
+   as a real 0, never a grey placeholder next to a white minutes value.
+   Minutes snap to 15-minute steps (the granularity the old wait
+   stepper had). Hours clamp at 24 (bindTimeField). */
 function timeParts(dec){
   let total = Math.max(0, Math.round((parseFloat(dec) || 0) * 60));
   total = Math.round(total / 15) * 15; // snap to the selector steps
@@ -1399,12 +1414,12 @@ function timeParts(dec){
 }
 function timeFieldHtml(prefix, decValue){
   const empty = decValue === "" || decValue == null;
-  const p = empty ? { h: "", m: 0 } : timeParts(decValue);
-  return '<div class="time-field"><input type="number" id="' + prefix + '-h" inputmode="numeric" min="0" max="24" placeholder="0" value="' + (p.h === "" ? "" : p.h) + '" aria-label="Hours">' +
-    '<span class="time-colon">:</span>' +
+  const p = empty ? { h: 0, m: 0 } : timeParts(decValue);
+  return '<div class="time-field"><input type="number" id="' + prefix + '-h" inputmode="numeric" min="0" max="24" placeholder="0" value="' + p.h + '" aria-label="Hours">' +
+    '<span class="time-unit">h</span><span class="time-colon">:</span>' +
     '<select id="' + prefix + '-m" aria-label="Minutes">' +
     [0, 15, 30, 45].map(m => '<option value="' + m + '"' + (p.m === m ? " selected" : "") + '>' + (m < 10 ? "0" + m : m) + "</option>").join("") +
-    "</select></div>";
+    '</select><span class="time-unit">min</span></div>';
 }
 /* Distance stepper wiring, shared by every miles field (trip miles,
    return miles, actual miles): −/+ in whole miles, free typing. */
