@@ -688,8 +688,11 @@ let backTarget = "step1"; // view the nav back link returns to from calc/setting
 function updateMenu(){
   const pill = document.getElementById("menu-pill");
   if(!pill) return;
-  const loopViews = ["quote", "flatbush", "calc"]; // screens showing the loop bar
-  pill.style.display = loopViews.includes(view) ? "none" : "";
+  const loopViews = ["quote", "flatbush"]; // screens showing the loop bar
+  // On the calculator the loop bar only shows once a fare is computed:
+  // hide the pill only then, not on the blank form.
+  const calcLoop = view === "calc" && (() => { const l = document.getElementById("c-loop"); return !!(l && !l.classList.contains("hidden")); })();
+  pill.style.display = (loopViews.includes(view) || calcLoop) ? "none" : "";
   const section = view === "settings" ? "settings"
     : (view === "calc" || view === "calc-month" || view === "calc-pick") ? "calc" : "fares";
   pill.querySelectorAll("[data-menu]").forEach(b => b.classList.toggle("on", b.dataset.menu === section));
@@ -1440,6 +1443,7 @@ function updateResult(){
     box.innerHTML = "";
     if(saveBtn) saveBtn.classList.add("hidden");
     if(loop) loop.classList.add("hidden");
+    updateMenu();
     return;
   }
   const listFare = calcListFare();
@@ -1490,6 +1494,7 @@ function updateResult(){
     (targetLine ? '<div class="change">' + esc(targetLine) + "</div>" : "") + "</div>";
   if(saveBtn) saveBtn.classList.remove("hidden");
   if(loop) loop.classList.remove("hidden");
+  updateMenu();
 }
 function wireCalc(){
   const modeBtns = $view.querySelectorAll("#calc-mode button");
