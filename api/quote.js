@@ -4,12 +4,15 @@
                /s/g<baseIdx>-<rowIdx>-<colIdx>  for zone-grid quotes.
                /s/c<code>  for calculator fares — amount-only: the landing
                page SHOWS the amount big and the route, never rates or
-               take-home, with an "Open FareLookup" button that deep-links
-               to the quoted route (/?f=..&t=..&trip=..) — or the app home
-               when the share has no route. (v4.2: the instant redirect
-               to the fare sheet is gone — the recipient never saw the
-               fare. The Open Graph tags are unchanged, so the WhatsApp
-               preview still shows the amount.)
+               take-home, with an "Open FareLookup" button that starts
+               a NEW trip in the calculator with the shared inputs
+               prefilled (/?view=calc&f=..&t=..&miles=..&hours=..&
+               wait=..&tolls=..&parking=..&adj=..&rmiles=..&rhours=..&
+               rtolls=..) — the full breakdown of miles and time, the
+               shared amount exactly (adj=), and the return leg when
+               the trip has one. (v4.4.2 — was a deep-link to the
+               fare-sheet list price. Rows made before the inputs
+               were stored keep the old fare-sheet deep-link.)
                /s/m<code>  for month snapshots (v4.4) — a point-in-time
                snapshot of one month (revenue, expenses, take-home,
                hours, recovered), frozen at share time; the landing
@@ -131,18 +134,40 @@ async function resolveCode(code){
   const calc = code.match(/^c([a-z0-9]{4,})$/i);
   if(calc){
     try {
-      const rows = await db("shares?code=eq." + encodeURIComponent(calc[1]) + "&select=calc_fare,calc_route,calc_roundtrip");
+      const rows = await db("shares?code=eq." + encodeURIComponent(calc[1]) + "&select=calc_fare,calc_route,calc_roundtrip,calc_miles,calc_hours,calc_wait_hours,calc_tolls,calc_parking,calc_adjusted,calc_return_miles,calc_return_hours,calc_return_tolls");
       const row = rows && rows[0];
       if(row && row.calc_fare != null){
-        /* v4.4: the Open button deep-links to the quoted route
-           (/?f=..&t=..&trip=..) instead of the app home. */
+        /* v4.4.2: the Open button starts a NEW trip in the calculator
+           with the shared inputs prefilled — /?view=calc&f=..&t=..&
+           trip=..&miles=..&hours=..&wait=..&tolls=..&parking=..,
+           including only the params that exist. Rows made before
+           the inputs were stored have none — those keep the v4.4
+           fare-sheet deep-link (/?f=..&t=..&trip=..).
+           Follow-up: the adjusted fare rides on the link too
+           (adj= — the fare actually shown when the share was made,
+           so the opened trip shows exactly the shared amount), and
+           so does the return leg (rmiles=/rhours=/rtolls=) when the
+           trip has one. Rows without them behave as before. */
         const params = {};
+        const hasInputs = row.calc_miles != null || row.calc_hours != null || row.calc_wait_hours != null || row.calc_tolls != null || row.calc_parking != null || row.calc_adjusted != null || row.calc_return_miles != null || row.calc_return_hours != null || row.calc_return_tolls != null;
+        if(hasInputs) params.view = "calc";
         if(row.calc_route){
           const parts = String(row.calc_route).split(" → ");
           if(parts.length === 2 && parts[0] && parts[1]){
             params.f = parts[0]; params.t = parts[1];
             if(row.calc_roundtrip) params.trip = "round";
           }
+        }
+        if(hasInputs){
+          if(row.calc_miles != null) params.miles = String(row.calc_miles);
+          if(row.calc_hours != null) params.hours = String(row.calc_hours);
+          if(row.calc_wait_hours != null) params.wait = String(row.calc_wait_hours);
+          if(row.calc_tolls != null) params.tolls = String(row.calc_tolls);
+          if(row.calc_parking != null) params.parking = String(row.calc_parking);
+          if(row.calc_adjusted != null) params.adj = String(row.calc_adjusted);
+          if(row.calc_return_miles != null) params.rmiles = String(row.calc_return_miles);
+          if(row.calc_return_hours != null) params.rhours = String(row.calc_return_hours);
+          if(row.calc_return_tolls != null) params.rtolls = String(row.calc_return_tolls);
         }
         return { route: row.calc_route || "Calculator fare",
           amount: money(Number(row.calc_fare)),
@@ -242,10 +267,12 @@ module.exports = async (req, res) => {
   const appUrl = origin + "/?" + new URLSearchParams(appParams).toString();
 
   /* Calculator shares land ON the fare: amount big, route under it, one
-     button to the quoted route (v4.4 — was the app home). No redirect,
-     no rates, no take-home. */
+     button that starts a NEW trip in the calculator with the shared
+     inputs prefilled (v4.4.2 — was the fare-sheet list price). No
+     redirect, no rates, no take-home. Rows without inputs keep the
+     old fare-sheet deep-link; rows with neither go home. */
   if(isCalc){
-    const openUrl = (appParams && appParams.f && appParams.t) ? appUrl : origin + "/";
+    const openUrl = (appParams && (appParams.view === "calc" || (appParams.f && appParams.t))) ? appUrl : origin + "/";
     const calcHtml = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
       "<title>" + esc(title) + "</title>" +
       "<meta property=\"og:type\" content=\"website\">" +

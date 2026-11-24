@@ -2065,6 +2065,45 @@ function calcPrefillFromHistory(){
   calc.tolls = eff.tolls > 0 ? String(eff.tolls) : "";
   calc.parking = eff.parking > 0 ? String(eff.parking) : "";
 }
+/* v4.4.2: a calculator share link opens a NEW trip in the calculator —
+   the shared inputs prefilled, the result on screen with the full
+   breakdown (fare, miles, time, waiting, fuel, tolls, take-home,
+   $/hr). Back goes to the Trip step with the values still in place,
+   so the recipient can adjust them. Nothing is saved automatically;
+   Save trip works as normal from the result. Follow-up: the adjusted
+   fare rides on the link too (adj=) and is applied as the trip's
+   adjusted fare, so the result shows exactly the shared amount with
+   the "Suggested $X" line when it differs; the return leg rides on
+   it as well (rmiles=/rhours=/rtolls=) and prefills the Return step.
+   Returns false when the URL carries no share params at all — the
+   caller then renders the plain form. With a route but no inputs
+   (an old /s/c link, or a bare ?view=calc&f=..&t=..) it renders the
+   form with the route set instead of the result. */
+function calcOpenFromShare(q){
+  const hasInputs = q.get("miles") != null || q.get("hours") != null || q.get("wait") != null || q.get("tolls") != null || q.get("parking") != null || q.get("adj") != null || q.get("rmiles") != null || q.get("rhours") != null || q.get("rtolls") != null;
+  const hasRoute = q.get("f") != null || q.get("t") != null;
+  if(!hasInputs && !hasRoute) return false;
+  if(!calc) calcReset();
+  const num = (k) => { const raw = q.get(k); if(raw == null) return null; const v = parseFloat(raw); return (isFinite(v) && v >= 0) ? v : null; };
+  if(q.get("f")) calc.from = q.get("f");
+  if(q.get("t")) calc.to = q.get("t");
+  if(q.get("trip") === "round") calc.mode = "round";
+  else if(q.get("trip") === "oneway") calc.mode = "oneway";
+  const miles = num("miles"); if(miles != null) calc.miles = String(miles);
+  const hours = num("hours"); if(hours != null) calc.hours = String(hours);
+  const wait = num("wait"); if(wait != null) calc.waitHours = wait;
+  const tolls = num("tolls"); if(tolls != null) calc.tolls = String(tolls);
+  const parking = num("parking"); if(parking != null) calc.parking = String(parking);
+  const rmiles = num("rmiles"); if(rmiles != null) calc.returnMiles = String(rmiles);
+  const rhours = num("rhours"); if(rhours != null) calc.returnHours = rhours;
+  const rtolls = num("rtolls"); if(rtolls != null) calc.returnTolls = String(rtolls);
+  const adj = num("adj"); calc.adjustedFare = adj; // null when absent — the suggested fare stands
+  const r = calcFare(calc, calcCfg);
+  if(!(r.miles > 0 && r.hours > 0)){ renderCalc(); return true; }
+  calcStep = 2; // Back from the result lands on the Trip step, values in place
+  pushScreen("calc-result", () => renderCalc(), renderCalcResult);
+  return true;
+}
 /* v4.3: the comparison card opens the fare-sheet quote for that route.
    The quote opens at the list fare — that is the point — and Share
    produces the fare-sheet /s/<id> link. The quote is a layer over the
@@ -2438,9 +2477,26 @@ function renderAccountRates(){
 async function shareCalc(btn){
   const r = calcFare(calc, calcCfg);
   if(!(r.miles > 0 && r.hours > 0)) return;
+  /* Follow-up to v4.4.2: the adjusted fare rides on the share row too
+     (calc_adjusted = the fare actually shown on the result — the
+     adjusted total when the driver edited it, else the suggested fare),
+     and so does the return leg when there is one. A trip with no
+     return leg stores nulls, never zeros — the Open link then carries
+     no return params at all. */
+  const hasReturn = r.returnMiles > 0 || r.returnHours > 0 || r.returnTolls > 0;
   const row = { code: makeShareCode(), calc_fare: r.fare,
     calc_route: (calc.from && calc.to) ? calc.from + " → " + calc.to : null,
-    calc_roundtrip: calc.mode === "round" };
+    calc_roundtrip: calc.mode === "round",
+    /* v4.4.2: the trip inputs ride on the share row so the Open
+       button can start a NEW trip in the calculator with the full
+       breakdown (see calc-share-trip-inputs.sql — run it before
+       this works live). */
+    calc_miles: r.miles, calc_hours: r.hours, calc_wait_hours: r.waitHours,
+    calc_tolls: r.tolls, calc_parking: r.parking,
+    calc_adjusted: r.fare,
+    calc_return_miles: hasReturn ? r.returnMiles : null,
+    calc_return_hours: hasReturn ? r.returnHours : null,
+    calc_return_tolls: hasReturn ? r.returnTolls : null };
   let url = null;
   try {
     await sb("shares", { method: "POST", body: JSON.stringify(row) });
@@ -2464,9 +2520,23 @@ async function shareCalc(btn){
    share link as shareCalc, built from the trip's recomputed fare. */
 async function shareTrip(t, btn){
   const r = calcTripResult(t);
+  const eff = calcTripEff(t); // actuals when present, else the estimate
+  /* Follow-up to v4.4.2: the trip's saved fare rides on the share row
+     (r.fare IS the saved fare — the actual amount, or fareCharged),
+     and so does its return leg when it has one. Same nulls rule as
+     shareCalc: no leg, no return columns. */
+  const hasReturn = r.returnMiles > 0 || r.returnHours > 0 || r.returnTolls > 0;
   const row = { code: makeShareCode(), calc_fare: r.fare,
     calc_route: (t.from && t.to) ? t.from + " → " + t.to : null,
-    calc_roundtrip: !!t.roundTrip };
+    calc_roundtrip: !!t.roundTrip,
+    /* v4.4.2: the trip's effective inputs ride on the share row (see
+       shareCalc) so the Open button can start a NEW trip with them. */
+    calc_miles: eff.miles, calc_hours: eff.hours, calc_wait_hours: eff.waitHours,
+    calc_tolls: eff.tolls, calc_parking: eff.parking,
+    calc_adjusted: r.fare,
+    calc_return_miles: hasReturn ? r.returnMiles : null,
+    calc_return_hours: hasReturn ? r.returnHours : null,
+    calc_return_tolls: hasReturn ? r.returnTolls : null };
   let url = null;
   try {
     await sb("shares", { method: "POST", body: JSON.stringify(row) });
@@ -2581,7 +2651,7 @@ async function init(){
     const viewParam = q.get("view");
     if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
       backTarget = "step1";
-      if(viewParam === "calc") renderCalc();
+      if(viewParam === "calc"){ if(!calcOpenFromShare(q)) renderCalc(); } // v4.4.2: a share link opens a new trip on the result
       else if(viewParam === "calc-month") renderCalcHistory("calc"); // "calc-month" still works as an alias
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
     } else if(shared){
