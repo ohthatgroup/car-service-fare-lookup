@@ -1153,20 +1153,33 @@ let calcCfg = Object.assign({}, CALC_DEFAULTS, { hubs: [] });
 let calcTripsArr = [];
 let calcUser = null; // { id, email } when signed in via Google
 
-function calcDefaultHubs(){ return [...topPlaces]; } // bases derived from the sheet fares
+/* The 8 pickup hubs, explicit: the fare sheet's 4 bases plus the other
+   coverage places. Wizard place names exactly as they appear in the
+   fares data — the airports are JFK, LaGuardia, Newark ("LGA"/"EWR"
+   are shorthand, not place names, and would never match a fare). */
+const CALC_DEFAULT_HUBS = ["Borough Park", "Monsey", "Monroe", "Lakewood", "Flatbush", "JFK", "LaGuardia", "Newark"];
+function calcDefaultHubs(){ return [...CALC_DEFAULT_HUBS]; }
 function calcNormalizeConfig(){
   delete calcCfg.mileCharge; delete calcCfg.returnMileCharge;
   if(!Array.isArray(calcCfg.hubs)) calcCfg.hubs = [];
   calcCfg.hubs = calcCfg.hubs.map(x => typeof x === "string" ? x : (x && x.name)).filter(Boolean);
 }
-/* The managed hub list, seeded lazily on first use (after fares load, so
-   the 8 bases are known): defaults + any v1 user-added hubs, deduped. */
+/* The managed hub list, seeded lazily on first use: the 8 defaults +
+   any v1 user-added hubs, deduped. An existing stored list (v2 seeded
+   only the 4 sheet bases) gains any missing defaults on read — the
+   union preserves user-added hubs and stored order. */
 function calcHubs(){
+  const defaults = calcDefaultHubs();
   if(!Array.isArray(calcCfg.hubList)){
-    const base = calcDefaultHubs();
-    const extra = (calcCfg.hubs || []).filter(n => n && !base.includes(n));
-    calcCfg.hubList = [...new Set(base.concat(extra))];
+    const extra = (calcCfg.hubs || []).filter(n => n && !defaults.includes(n));
+    calcCfg.hubList = [...new Set(defaults.concat(extra))];
     calcCfg.hubs = [];
+    calcPersist();
+    return [...calcCfg.hubList];
+  }
+  const missing = defaults.filter(n => !calcCfg.hubList.includes(n));
+  if(missing.length){
+    calcCfg.hubList = [...new Set(calcCfg.hubList.concat(missing))];
     calcPersist();
   }
   return [...calcCfg.hubList];
@@ -1483,11 +1496,14 @@ function calcHubFare(from, hub){
   return plainPrice(res.fare.price);
 }
 /* Hub rows, cheapest-first by the list fare from the drop-off; no list
-   fare sorts last and shows —. The top row is effectively the nearest. */
+   fare sorts last and shows —. The top row is effectively the nearest.
+   The repositioning origin itself is never a candidate (it showed as
+   "$0" before the fix). */
 function hubListHTML(query){
   const q = (query || "").trim().toLowerCase();
   const from = calc.mode === "round" ? calc.from : calc.to;
   const rows = calcHubs()
+    .filter(h => h !== from)
     .filter(h => !q || h.toLowerCase().includes(q))
     .map(h => ({ name: h, fare: calcHubFare(from, h) }))
     .sort((a, b) => {
@@ -1585,7 +1601,7 @@ function calcResultHtml(r, listFare, opts){
     ((opts.editable && listFare != null && fare !== listFare) ? '<div style="text-align:center"><button class="quiet-link" id="c-use-list">Use list price ' + money(listFare) + "</button></div>" : "") +
     breakdownHtml(calcBreakdownLines(r), fare) +
     cmp +
-    '<div class="card"><div class="route">Take-home ' + money(r.takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
+    '<div class="card" id="c-takehome"><div class="route">Take-home ' + money(r.takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
     '<div class="change">Fare ' + money(fare) + " − fuel " + money(r.fuelCost) + " − tolls " + money(r.tollsParking + r.returnTolls) + " − recovery " + money(r.recovery) + "</div>" +
     (targetLine ? '<div class="change">' + esc(targetLine) + "</div>" : "") + "</div>";
 }
@@ -1628,6 +1644,27 @@ function wireCalcResult(){
       else calc.adjustedFare = null;
       renderCalcResult();
     }
+  });
+  /* Live update while typing: take-home + $/hr follow the typed fare
+     immediately. Only the take-home card is rewritten — never the input —
+     so focus and cursor are untouched. Commit still happens on blur/Enter. */
+  box.addEventListener("input", (e) => {
+    if(!(e.target && e.target.id === "c-fare-edit")) return;
+    const card = document.getElementById("c-takehome");
+    if(!card) return;
+    const v = parseFloat(String(e.target.value).replace(/[$,]/g, ""));
+    const r = calcFare(calc, calcCfg); // expenses / hours are fare-independent
+    const fare = (v > 0) ? round2(v) : r.suggestedFare;
+    const takeHome = round2(fare - r.expenses);
+    const eff = r.totalHours > 0 ? round2(takeHome / r.totalHours) : null;
+    let targetLine = "";
+    if(eff == null) targetLine = "";
+    else if(eff >= 40) targetLine = "Meets your $40/hr target";
+    else if(takeHome < 0) targetLine = "That's " + money(-takeHome) + " below your costs";
+    else targetLine = money(40 - eff) + "/hr under your $40 target";
+    card.innerHTML = '<div class="route">Take-home ' + money(takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
+      '<div class="change">Fare ' + money(fare) + " − fuel " + money(r.fuelCost) + " − tolls " + money(r.tollsParking + r.returnTolls) + " − recovery " + money(r.recovery) + "</div>" +
+      (targetLine ? '<div class="change">' + esc(targetLine) + "</div>" : "");
   });
   box.addEventListener("keydown", (e) => {
     if(e.target && e.target.id === "c-fare-edit" && e.key === "Enter"){ e.target.blur(); }
