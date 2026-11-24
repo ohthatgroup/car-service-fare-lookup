@@ -45,14 +45,6 @@
   #nav-logo{ display:flex; align-items:baseline; font-weight:800; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
   #nav-logo .wm-b{ color:var(--accent); }
   nav.in-flow #nav-logo{ display:none; }
-  #fab{
-    position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:40;
-    width:56px; height:56px; border-radius:50%; border:0; cursor:pointer;
-    background:var(--accent); color:var(--accent-text); font-size:32px; font-weight:300; line-height:1;
-    display:grid; place-items:center; padding:0 0 3px;
-    box-shadow:0 6px 22px rgba(0,0,0,.28);
-  }
-  #fab:active{ transform:scale(.95); }
   .drawer-src{ text-align:center; color:var(--muted); font-size:12.5px; margin-top:10px; }
   .hire-line{ text-align:center; margin-top:14px; font-size:14px; }
   .inline-link{ color:var(--link); text-decoration:none; }
@@ -196,7 +188,7 @@
   }
   /* floating glass menu: bottom-center pill, three sections */
   #menu-pill{
-    position:fixed; left:16px; right:92px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:30;
+    position:fixed; left:16px; right:16px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:30;
     display:flex; gap:2px; padding:5px;
     background:color-mix(in srgb, var(--surface) 68%, transparent);
     backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
@@ -215,6 +207,12 @@
   .row .menu-ic{ display:inline-flex; color:var(--muted); flex:none; }
   .row .menu-ic svg{ width:20px; height:20px; }
   /* calculator */
+  /* calculator: multi-step form (v3) — dots mirror the wizard's nav dots */
+  .calc-steps{ display:flex; align-items:center; gap:7px; margin:2px 0 16px; }
+  .calc-steps .dot{ width:10px; height:10px; padding:17px; margin:-17px; border-radius:50%; border:0; background:var(--border); background-clip:content-box; }
+  .calc-steps .dot.done{ background:var(--text); background-clip:content-box; cursor:pointer; }
+  .calc-steps .dot.cur{ background:var(--muted); background-clip:content-box; }
+  .calc-steps .step-name{ color:var(--muted); font-weight:600; font-size:15.5px; white-space:nowrap; }
   .set-row{ display:flex; align-items:center; gap:10px; padding:12px 2px; border-bottom:1px solid var(--border); font-size:16px; }
   .set-row:last-child{ border-bottom:0; }
   .set-row .set-label{ flex:1; }
@@ -243,11 +241,10 @@
     <div id="view"></div>
   </div>
 </div>
-<button id="fab" aria-label="Details">+</button>
 <div id="menu-pill" role="navigation" aria-label="Menu">
   <button data-menu="fares" aria-label="Fare sheet"></button>
   <button data-menu="calc" aria-label="Calculator"></button>
-  <button data-menu="settings" aria-label="Settings"></button>
+  <button data-menu="account" aria-label="Account"></button>
 </div>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
@@ -654,11 +651,11 @@ function summaryLine(withOptions){
 
 /* ---------- rendering helpers ---------- */
 const STEP_NAMES = { 1: "Where from?", 2: "Where to?", 3: "Price" };
-/* Calculator + Settings views (v2 layers included). The fare wizard views
+/* Calculator + Account views (v3 layers included). The fare wizard views
    (step1/step2/quote/flatbush/notlisted/pending) are not in this list. */
-const CALC_VIEWS = ["calc", "calc-month", "settings", "calc-pick", "calc-result", "calc-trip", "settings-rates", "settings-hubs", "settings-account"];
+const CALC_VIEWS = ["calc", "calc-month", "account", "calc-pick", "calc-result", "calc-trip", "account-rates"];
 function isCalcViewName(v){ return CALC_VIEWS.includes(v); }
-/* Layered screens (v2): layers pushed on top of a root calc/settings
+/* Layered screens: layers pushed on top of a root calc/account
    screen; nav back pops. Root jumps (icon bar, deep links) clear it. */
 let screenStack = []; // [{name, render}] — render re-opens the screen below
 function pushScreen(name, backRender, renderFn){
@@ -673,12 +670,11 @@ function popScreen(){
   prev.render();
   return true;
 }
-/* Icon menu (v2): icons only, inline SVG in currentColor. Same icons are
-   reused as labeled rows on the Settings menu screen. */
+/* Icon menu (v3): icons only, inline SVG in currentColor. */
 const MENU_ICONS = {
   fares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
   calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7.5h8M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/></svg>',
-  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+  account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
 };
 let currentStep = 1;
 function setStep(n, label){
@@ -720,7 +716,7 @@ function updateMenu(){
   // The icon bar hides wherever the loop bar shows.
   const loopViews = ["quote", "flatbush", "calc-result"];
   pill.style.display = loopViews.includes(view) ? "none" : "";
-  const section = view === "settings" || view.indexOf("settings-") === 0 ? "settings"
+  const section = view === "account" || view.indexOf("account-") === 0 ? "account"
     : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "fares";
   pill.querySelectorAll("[data-menu]").forEach(b => b.classList.toggle("on", b.dataset.menu === section));
 }
@@ -729,11 +725,15 @@ function goMenu(section){
   if(section === "fares"){ inFlow = false; sel = {}; renderPlacePicker(1); return; }
   if(section === "calc"){
     if(!isCalcViewName(view)) backTarget = view;
+    /* v3: the pill is root navigation — a fresh calculator, starting at
+       Route. In-flow Back still preserves the in-progress trip; only
+       the pill (and "New rate" on the result) resets it. */
+    calcReset(); calcStep = 1;
     renderCalc(); return;
   }
-  if(section === "settings"){
+  if(section === "account"){
     if(!isCalcViewName(view)) backTarget = view;
-    renderSettings(); return;
+    renderAccount(); return;
   }
 }
 function goBackFromCalc(){
@@ -741,7 +741,7 @@ function goBackFromCalc(){
   const t = backTarget || "step1";
   if(t === "calc") renderCalc();
   else if(t === "calc-month") renderCalcMonth();
-  else if(t === "settings") renderSettings();
+  else if(t === "account") renderAccount();
   else if(t === "quote" && sel.resolved) renderQuote();
   else if(t === "flatbush" && sel.fb) renderFlatbush(sel.fb.base);
   else if(t === "pending") renderPending();
@@ -770,7 +770,6 @@ function placeListHTML(query, exclude){
 }
 
 function renderPlacePicker(step){
-  document.getElementById("fab").style.display = "";
   const isFrom = step === 1;
   if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; sel.customPrice = null; }
   view = isFrom ? "step1" : "step2";
@@ -878,7 +877,6 @@ async function shareQuote(btn){
 
 function renderQuote(){
   view = "quote"; setStep(3);
-  document.getElementById("fab").style.display = "none";
   const { fare } = sel.resolved;
   const o = optionsApply();
   h(
@@ -944,7 +942,6 @@ function refreshQuote(){
 
 function renderFlatbush(base){
   view = "flatbush"; setStep(3, zoneLabel(base));
-  document.getElementById("fab").style.display = "none";
   const grid = gridFor(base);
   h(
     '<div class="sub">' + esc(base) + " zone, by street and cross-street.</div>" +
@@ -991,7 +988,6 @@ function renderFlatbush(base){
 
 function renderNotListed(msg){
   view = "notlisted"; setStep(2, "Not listed");
-  document.getElementById("fab").style.display = "";
   h(
     '<div class="sub">' + esc(sel.from) + " → " + esc(sel.to) + " isn't on the list yet." + (msg ? " " + esc(msg) : "") + "</div>" +
     '<button class="btn" id="add">Add this price</button>'
@@ -1100,7 +1096,6 @@ function openSuggestDrawer(){
 /* ---------- Pending changes ---------- */
 function renderPending(){
   view = "pending"; setStep(0, "Board");
-  document.getElementById("fab").style.display = "";
   const mine = myVotes();
   const sorted = [...proposals].sort((a, b) => b.votes - a.votes);
   h(    '<div class="group-label">Open votes</div>' +
@@ -1143,46 +1138,22 @@ async function castVote(id, dir){
 }
 
 /* ---------- trip calculator: config, storage, auth, math ---------- */
-/* v2 config shape: no mileage fee (see design §8). Stale mileCharge /
-   returnMileCharge keys in stored configs are ignored — calcNormalizeConfig
-   drops them. Hubs are a managed explicit list (hubList); the old v1
-   `hubs` key held user-added {name, coverage} objects and is migrated
-   once into hubList, then retired. */
-const CALC_DEFAULTS = { monthlyFixed: 2500, targetHours: 160, earningsTarget: 40, gasPrice: 3.50, mpg: 12.6, hubs: [] };
-let calcCfg = Object.assign({}, CALC_DEFAULTS, { hubs: [] });
+/* v3 config shape: no mileage fee (see design §8), no hub list (see
+   design §14 — hubs are the fare-sheet locations). Stale mileCharge /
+   returnMileCharge / hubs / hubList keys in stored configs are dropped
+   by calcNormalizeConfig. */
+const CALC_DEFAULTS = { monthlyFixed: 2500, targetHours: 160, earningsTarget: 40, gasPrice: 3.50, mpg: 12.6 };
+let calcCfg = Object.assign({}, CALC_DEFAULTS);
 let calcTripsArr = [];
 let calcUser = null; // { id, email } when signed in via Google
 
-/* The 8 pickup hubs, explicit: the fare sheet's 4 bases plus the other
-   coverage places. Wizard place names exactly as they appear in the
-   fares data — the airports are JFK, LaGuardia, Newark ("LGA"/"EWR"
-   are shorthand, not place names, and would never match a fare). */
-const CALC_DEFAULT_HUBS = ["Borough Park", "Monsey", "Monroe", "Lakewood", "Flatbush", "JFK", "LaGuardia", "Newark"];
-function calcDefaultHubs(){ return [...CALC_DEFAULT_HUBS]; }
+/* v3: there is no separate hub list — hubs ARE the fare-sheet locations
+   (the wizard place picker), and the To picker is the hub list. Stale
+   hub keys in stored configs are dropped, the way v2 dropped the
+   mileCharge keys. */
 function calcNormalizeConfig(){
   delete calcCfg.mileCharge; delete calcCfg.returnMileCharge;
-  if(!Array.isArray(calcCfg.hubs)) calcCfg.hubs = [];
-  calcCfg.hubs = calcCfg.hubs.map(x => typeof x === "string" ? x : (x && x.name)).filter(Boolean);
-}
-/* The managed hub list, seeded lazily on first use: the 8 defaults +
-   any v1 user-added hubs, deduped. An existing stored list (v2 seeded
-   only the 4 sheet bases) gains any missing defaults on read — the
-   union preserves user-added hubs and stored order. */
-function calcHubs(){
-  const defaults = calcDefaultHubs();
-  if(!Array.isArray(calcCfg.hubList)){
-    const extra = (calcCfg.hubs || []).filter(n => n && !defaults.includes(n));
-    calcCfg.hubList = [...new Set(defaults.concat(extra))];
-    calcCfg.hubs = [];
-    calcPersist();
-    return [...calcCfg.hubList];
-  }
-  const missing = defaults.filter(n => !calcCfg.hubList.includes(n));
-  if(missing.length){
-    calcCfg.hubList = [...new Set(calcCfg.hubList.concat(missing))];
-    calcPersist();
-  }
-  return [...calcCfg.hubList];
+  delete calcCfg.hubs; delete calcCfg.hubList;
 }
 
 function calcLoadLocal(){
@@ -1275,17 +1246,14 @@ async function sbUser(path, opts){
   return t ? JSON.parse(t) : null;
 }
 function calcSignInGoogle(){
-  const redirect = location.origin + "/?view=settings";
+  const redirect = location.origin + "/?view=account";
   location.href = SB + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(redirect);
 }
 function calcSignOut(){
   calcClearSession();
   calcUser = null;
   calcLoadLocal();
-  /* v2: re-render wherever the user is — the account layer, or the
-     settings menu if signed out from there. */
-  if(view === "settings-account") renderSettingsAccount();
-  else renderSettings();
+  renderAccount(); // sign-out only happens from the Account screen
 }
 
 /* --- storage routing: Supabase per-user tables when signed in, localStorage when signed out --- */
@@ -1377,6 +1345,16 @@ function fmtWait(h){
   const hrs = Math.floor(m / 60), rem = m % 60;
   return hrs + " hr" + (rem ? " " + rem + " min" : "");
 }
+/* v3 rule: endsAtHub = (To is set). Adding a location to To means the
+   trip ends at a hub; no To means a return leg to the closest hub.
+   The rule is uniform in both modes (answer 1): even in round-trip
+   mode, To set = no return leg, To empty = the return step applies.
+   The return-leg origin (drop-off one-way, origin round-trip) is
+   unchanged — with the hub drawer gone it has no code consumer left;
+   the return miles are simply entered from wherever the trip ends. */
+function calcEndsAtHub(t){
+  return !!t.to;
+}
 function calcFare(t, cfg){
   const r = calcRates(cfg);
   const miles = Math.max(0, parseFloat(t.miles) || 0);
@@ -1384,7 +1362,7 @@ function calcFare(t, cfg){
   const waitHours = Math.max(0, parseFloat(t.waitHours) || 0);
   const tolls = Math.max(0, parseFloat(t.tolls) || 0);
   const parking = Math.max(0, parseFloat(t.parking) || 0);
-  const hubNear = t.hubNear !== false;
+  const hubNear = calcEndsAtHub(t); // v3: To set = ends at a hub
   const returnMiles = hubNear ? 0 : Math.max(0, parseFloat(t.returnMiles) || 0);
   const returnHours = hubNear ? 0 : Math.max(0, parseFloat(t.returnHours) || 0);
   const returnTolls = hubNear ? 0 : Math.max(0, parseFloat(t.returnTolls) || 0);
@@ -1407,11 +1385,38 @@ function calcFare(t, cfg){
     suggestedFare, fare, fuelCost, recovery, expenses, takeHome, totalHours, effectivePerHour };
 }
 
+/* v3: effective inputs for a saved trip — actuals when present, else the
+   saved estimates. Actual time is total time (driving + waiting, answer
+   4), so with actuals the wait is folded into hours and waitHours is 0.
+   The month aggregates and the trip detail both recompute through here,
+   so a saved trip's numbers always reflect its actuals. */
+function calcTripEff(t){
+  const hasActuals = t.actualAmount != null || t.actualMiles != null || t.actualTime != null;
+  const eff = { mode: t.roundTrip ? "round" : "oneway", from: t.from, to: t.to,
+    miles: t.actualMiles != null ? t.actualMiles : t.miles,
+    tolls: t.tolls, parking: t.parking,
+    returnMiles: t.returnMiles, returnHours: t.returnHours, returnTolls: t.returnTolls,
+    adjustedFare: null };
+  if(hasActuals){
+    eff.hours = t.actualTime != null ? t.actualTime : (Number(t.hours) || 0) + (Number(t.waitHours) || 0);
+    eff.waitHours = 0;
+    eff.adjustedFare = t.actualAmount != null ? t.actualAmount : t.fareCharged;
+  } else {
+    eff.hours = t.hours; eff.waitHours = Number(t.waitHours) || 0;
+    eff.adjustedFare = t.fareCharged;
+  }
+  return eff;
+}
+/* A saved trip's numbers, recomputed from its actuals (or estimates)
+   at the current rates. */
+function calcTripResult(t){ return calcFare(calcTripEff(t), calcCfg); }
+
 /* ---------- trip calculator: screen ---------- */
 let calc = null;
 function calcReset(){
   calc = { mode: "oneway", from: null, to: null, miles: "", hours: "", waitHours: 0,
-    tolls: "", parking: "", hubNear: true, returnMiles: "", returnHours: "", returnTolls: "", nearestHub: "", adjustedFare: null };
+    tolls: "", parking: "", returnMiles: "", returnHours: "", returnTolls: "", adjustedFare: null };
+  calcStep = 1;
 }
 function calcListFare(){
   if(!calc.from || !calc.to) return null;
@@ -1421,37 +1426,105 @@ function calcListFare(){
   if(calc.mode === "round" && f.round_trip) return plainPrice(f.round_trip);
   return plainPrice(f.price);
 }
-function calcBuildTrip(r){
-  return { id: "t-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+/* v3: actuals are stored on the trip when the save layer supplies them
+   (design §14). fareCharged is the actual amount when one was entered,
+   else the fare shown on the result. The estimate-derived snapshot
+   fields (fuelCost, recovery, takeHome, ...) are kept for shape
+   stability; aggregates and the detail layer recompute from actuals. */
+function calcBuildTrip(r, actuals){
+  const trip = { id: "t-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     date: new Date().toISOString().slice(0, 10),
     from: calc.from, to: calc.to, roundTrip: calc.mode === "round",
     miles: r.miles, hours: r.hours, waitHours: r.waitHours, tolls: r.tolls, parking: r.parking,
-    hubNear: r.hubNear, returnMiles: r.returnMiles, returnHours: r.returnHours, returnTolls: r.returnTolls, nearestHub: calc.nearestHub || null,
+    hubNear: r.hubNear, returnMiles: r.returnMiles, returnHours: r.returnHours, returnTolls: r.returnTolls,
     suggestedFare: r.suggestedFare, listFare: calcListFare(), fareCharged: r.fare,
     fuelCost: r.fuelCost, recovery: r.recovery, takeHome: r.takeHome, totalHours: r.totalHours, effectivePerHour: r.effectivePerHour };
+  if(actuals){
+    if(actuals.amount != null){ trip.actualAmount = actuals.amount; trip.fareCharged = actuals.amount; }
+    if(actuals.miles != null) trip.actualMiles = actuals.miles;
+    if(actuals.time != null) trip.actualTime = actuals.time;
+  }
+  return trip;
+}
+/* ---------- trip calculator: multi-step form (v3) ---------- */
+/* One topic per screen, wizard-style. Step 1 choices decide the later
+   steps: the Return step appears only when To is empty (the trip does
+   not end at a hub). Step numbers are canonical (1 Route, 2 Trip,
+   3 Return, 4 Waiting & costs); the indicator shows only the steps in
+   the current path. Back is the nav back link; Next is the button at
+   the bottom of each step; "See my fare" sits on the last step only
+   and stays gated on miles > 0 and hours > 0, as before. */
+const CALC_STEP_NAMES = { 1: "Route", 2: "Trip", 3: "Return", 4: "Waiting & costs" };
+let calcStep = 1;
+function calcStepList(){ return calc.to ? [1, 2, 4] : [1, 2, 3, 4]; }
+function calcNextStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return (i >= 0 && i < l.length - 1) ? l[i + 1] : null; }
+function calcPrevStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return i > 0 ? l[i - 1] : null; }
+function calcGoStep(n){ calcStep = n; renderCalc(); }
+function calcStepsHtml(){
+  const l = calcStepList();
+  const cur = l.indexOf(calcStep);
+  return '<div class="calc-steps">' + l.map((n, i) => {
+    if(i === cur) return '<span class="dot cur"></span><span class="step-name">' + CALC_STEP_NAMES[n] + "</span>";
+    if(i < cur) return '<button class="dot done" data-cstep="' + n + '" aria-label="Step ' + CALC_STEP_NAMES[n] + '"></button>';
+    return '<span class="dot"></span>';
+  }).join("") + "</div>";
+}
+/* First step that still needs input — where "My take-home" and
+   "Reopen in calculator" land. Step 1 never blocks: From and To are
+   optional (answer 1) — they only matter for the standard-price
+   comparison. A step counts as filled when its required values are
+   entered; Waiting & costs never blocks (0 waiting and $0 tolls/parking
+   are all legitimate), so a fully-filled trip lands on the last step,
+   where "See my fare" is right there. */
+function calcFirstIncompleteStep(){
+  const steps = calcStepList();
+  const r = calcFare(calc, calcCfg);
+  if(!(r.miles > 0 && r.hours > 0)) return 2;
+  if(steps.includes(3)){
+    const rm = parseFloat(calc.returnMiles) || 0, rh = parseFloat(calc.returnHours) || 0, rt = parseFloat(calc.returnTolls) || 0;
+    if(!(rm > 0 || rh > 0 || rt > 0)) return 3;
+  }
+  return steps[steps.length - 1];
 }
 function calcHtml(){
-  return '<div class="seg" id="calc-mode" role="group" aria-label="Trip type">' +
-      '<button data-mode="oneway">One way</button>' +
-      '<button data-mode="round">Round trip</button></div>' +
-    '<div class="list" style="margin-top:14px">' +
-      '<button class="row" id="c-from"><span>' + (calc.from ? esc(calc.from) : '<span style="color:var(--muted)">From</span>') + '</span><span class="chev">›</span></button>' +
-      '<button class="row" id="c-to"><span>' + (calc.to ? esc(calc.to) : '<span style="color:var(--muted)">To</span>') + '</span><span class="chev">›</span></button>' +
-    '</div>' +
-    (calc.from && calc.to ? '<button class="quiet-link" id="c-clear-route">Clear route</button>' : "") +
-    '<div class="stepper" style="margin-top:14px"><button id="c-miles-minus" aria-label="Fewer miles">−</button>' +
-      '<input id="c-miles" inputmode="decimal" placeholder="Trip miles" value="' + esc(calc.miles) + '">' +
-      '<button id="c-miles-plus" aria-label="More miles">+</button></div>' +
-    '<input type="text" id="c-hours" inputmode="decimal" placeholder="Trip duration in hours (e.g. 1.5)" value="' + esc(calc.hours) + '">' +
-    '<div class="sub" style="margin:6px 0 0">Driving time, not including waiting.</div>' +
-    '<div id="calc-wait-wrap"></div>' +
-    '<div style="display:flex;gap:10px;margin-top:12px"><input type="text" id="c-tolls" inputmode="decimal" placeholder="Tolls ($)" value="' + esc(calc.tolls) + '">' +
-    '<input type="text" id="c-parking" inputmode="decimal" placeholder="Parking ($)" value="' + esc(calc.parking) + '"></div>' +
-    '<div class="sub" style="margin:6px 0 0">Actual cost — passed through, not profit.</div>' +
-    '<label class="toggle-row"><input type="checkbox" id="c-hub"' + (calc.hubNear ? " checked" : "") + '> Ends near a hub?</label>' +
-    '<div id="calc-return-wrap"></div>' +
-    '<button class="btn" id="c-see-fare" disabled>See my fare</button>' +
-    '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-month">My month</button> · <button class="quiet-link" id="c-rates">Rates</button></div>';
+  let out = calcStepsHtml();
+  if(calcStep === 1){
+    out += '<div class="seg" id="calc-mode" role="group" aria-label="Trip type">' +
+        '<button data-mode="oneway">One way</button>' +
+        '<button data-mode="round">Round trip</button></div>' +
+      '<div class="list" style="margin-top:14px">' +
+        '<button class="row" id="c-from"><span>' + (calc.from ? esc(calc.from) : '<span style="color:var(--muted)">Optional — only for the standard price</span>') + '</span><span class="chev">›</span></button>' +
+        '<button class="row" id="c-to"><span>' + (calc.to ? esc(calc.to) : '<span style="color:var(--muted)">Optional — only if this is a hub trip and you want the standard price</span>') + '</span><span class="chev">›</span></button>' +
+      '</div>' +
+      ((calc.from || calc.to) ? '<button class="quiet-link" id="c-clear-route">Clear route</button>' : "") +
+      '<button class="btn" id="c-next">Next</button>' +
+      '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-month">My month</button> · <button class="quiet-link" id="c-rates">Rates</button></div>';
+  } else if(calcStep === 2){
+    out += '<div class="stepper"><button id="c-miles-minus" aria-label="Fewer miles">−</button>' +
+        '<input id="c-miles" inputmode="decimal" placeholder="Trip miles" value="' + esc(calc.miles) + '">' +
+        '<button id="c-miles-plus" aria-label="More miles">+</button></div>' +
+      '<input type="text" id="c-hours" inputmode="decimal" placeholder="Trip duration in hours (e.g. 1.5)" value="' + esc(calc.hours) + '">' +
+      '<button class="btn" id="c-next">Next</button>';
+  } else if(calcStep === 3){
+    /* Return step (answer 2: "Both"): miles to the closest hub AND how
+       long the drive back takes — return miles + return hours + return
+       tolls, exactly as the old return drawer had them. The return math
+       needs the hours for the $15.63/hr recovery. */
+    out += '<div class="group-label" style="margin-top:0">Back to the nearest hub</div>' +
+      (calc.mode === "round" && calc.from ? '<div class="sub">From ' + esc(calc.from) + '</div>' : "") +
+      '<div class="stepper"><button id="c-rmiles-minus" aria-label="Fewer return miles">−</button>' +
+        '<input id="c-rmiles" inputmode="decimal" placeholder="Return miles" value="' + esc(calc.returnMiles) + '">' +
+        '<button id="c-rmiles-plus" aria-label="More return miles">+</button></div>' +
+      '<input type="text" id="c-rhours" inputmode="decimal" placeholder="Return hours (e.g. 0.5)" value="' + esc(calc.returnHours) + '">' +
+      '<input type="text" id="c-rtolls" inputmode="decimal" placeholder="Return tolls ($)" value="' + esc(calc.returnTolls) + '" style="margin-top:12px">' +
+      '<button class="btn" id="c-next">Next</button>';
+  } else {
+    out += '<div id="calc-wait-wrap"></div>' +
+      '<div style="display:flex;gap:10px;margin-top:12px"><input type="text" id="c-tolls" inputmode="decimal" placeholder="Tolls ($)" value="' + esc(calc.tolls) + '">' +
+      '<input type="text" id="c-parking" inputmode="decimal" placeholder="Parking ($)" value="' + esc(calc.parking) + '"></div>' +
+      '<button class="btn" id="c-see-fare" disabled>See my fare</button>';
+  }
+  return out;
 }
 /* v2: the wait stepper is always visible, both modes — off is 0. No toggle. */
 function updateWaitWrap(){
@@ -1464,88 +1537,12 @@ function updateWaitWrap(){
   if(minus) minus.addEventListener("click", () => { calc.waitHours = Math.max(0, round2((parseFloat(calc.waitHours) || 0) - 0.25)); updateWaitWrap(); updateCalcForm(); });
   if(plus) plus.addEventListener("click", () => { calc.waitHours = Math.min(24, round2((parseFloat(calc.waitHours) || 0) + 0.25)); updateWaitWrap(); updateCalcForm(); });
 }
-/* v2: the return leg lives in a drawer. The form shows one row that opens
-   it; once a hub is picked the row reads "Nearest hub: X". */
-function updateReturnWrap(){
-  const wrap = document.getElementById("calc-return-wrap");
-  if(!wrap) return;
-  if(calc.hubNear){ wrap.innerHTML = ""; return; }
-  const summary = [calc.returnMiles ? fmtNum(calc.returnMiles) + " mi" : "", calc.returnHours ? fmtWait(calc.returnHours) : "", calc.returnTolls ? "tolls " + money(calc.returnTolls) : ""].filter(Boolean).join(" · ");
-  wrap.innerHTML =
-    '<button class="row" id="c-return-row"><span>' + (calc.nearestHub ? "Nearest hub: " + esc(calc.nearestHub) : "Return to hub") +
-    (summary ? '<span class="row-sub">' + esc(summary) + "</span>" : "") + '</span><span class="chev">›</span></button>';
-  const row = document.getElementById("c-return-row");
-  if(row) row.addEventListener("click", openReturnDrawer);
-}
-/* The form has no live result in v2 — it only gates the "See my fare"
-   button on miles + hours being entered. */
+
 function updateCalcForm(){
   const btn = document.getElementById("c-see-fare");
   if(!btn) return;
   const r = calcFare(calc, calcCfg);
   btn.disabled = !(r.miles > 0 && r.hours > 0);
-}
-/* ---------- return to hub: drawer with the hub picker ---------- */
-/* List fare from the drop-off to a hub (one-way). In round-trip mode the
-   return leg starts where the trip ends — the origin. Same place = $0. */
-function calcHubFare(from, hub){
-  if(!from || !hub) return null;
-  if(from === hub) return 0;
-  const res = findFare(from, hub);
-  if(!res) return null;
-  return plainPrice(res.fare.price);
-}
-/* Hub rows, cheapest-first by the list fare from the drop-off; no list
-   fare sorts last and shows —. The top row is effectively the nearest.
-   The repositioning origin itself is never a candidate (it showed as
-   "$0" before the fix). */
-function hubListHTML(query){
-  const q = (query || "").trim().toLowerCase();
-  const from = calc.mode === "round" ? calc.from : calc.to;
-  const rows = calcHubs()
-    .filter(h => h !== from)
-    .filter(h => !q || h.toLowerCase().includes(q))
-    .map(h => ({ name: h, fare: calcHubFare(from, h) }))
-    .sort((a, b) => {
-      if(a.fare == null && b.fare == null) return 0;
-      if(a.fare == null) return 1;
-      if(b.fare == null) return -1;
-      return a.fare - b.fare;
-    });
-  if(!rows.length) return '<div class="empty">No hubs match.</div>';
-  return '<div class="list">' + rows.map(r =>
-    '<button class="row" data-hub="' + esc(r.name) + '"><span>' + esc(r.name) + (calc.nearestHub === r.name ? " ✓" : "") + '</span><span class="tag">' + (r.fare != null ? money(r.fare) : "—") + "</span></button>").join("") + "</div>";
-}
-function openReturnDrawer(){
-  openDrawer("Return to hub",
-    '<div class="search-wrap"><input type="search" id="rh-q" placeholder="Search hubs" autocomplete="off"></div>' +
-    '<div id="rh-list">' + hubListHTML("") + '</div>' +
-    '<div class="group-label">Return leg</div>' +
-    '<input type="text" id="rh-rmiles" inputmode="decimal" placeholder="Return miles" value="' + esc(calc.returnMiles) + '">' +
-    '<input type="text" id="rh-rhours" inputmode="decimal" placeholder="Return hours (e.g. 0.5)" value="' + esc(calc.returnHours) + '">' +
-    '<input type="text" id="rh-rtolls" inputmode="decimal" placeholder="Return tolls ($)" value="' + esc(calc.returnTolls) + '">' +
-    '<button class="btn" id="rh-done">Done</button>');
-  const bindRows = () => {
-    document.querySelectorAll("#rh-list [data-hub]").forEach(b => b.addEventListener("click", () => {
-      calc.nearestHub = b.dataset.hub;
-      document.getElementById("rh-list").innerHTML = hubListHTML(document.getElementById("rh-q").value);
-      bindRows();
-      updateReturnWrap();
-    }));
-  };
-  bindRows();
-  const q = document.getElementById("rh-q");
-  if(q) q.addEventListener("input", () => {
-    document.getElementById("rh-list").innerHTML = hubListHTML(q.value);
-    bindRows();
-  });
-  const bindNum = (id, key) => {
-    const el = document.getElementById(id);
-    if(el) el.addEventListener("input", () => { calc[key] = el.value; updateReturnWrap(); });
-  };
-  bindNum("rh-rmiles", "returnMiles"); bindNum("rh-rhours", "returnHours"); bindNum("rh-rtolls", "returnTolls");
-  const done = document.getElementById("rh-done");
-  if(done) done.addEventListener("click", () => { closeDrawer(); renderCalc(); });
 }
 /* v2 breakdown lines (design §8): Time, Waiting, Fuel at cost, Tolls +
    parking, Return — no mileage-fee line anywhere. */
@@ -1611,7 +1608,6 @@ function renderCalcResult(){
   const r0 = calcFare(calc, calcCfg);
   if(!(r0.miles > 0 && r0.hours > 0)){ renderCalc(); return; }
   view = "calc-result"; setStep(0, "My fare");
-  document.getElementById("fab").style.display = "";
   const listFare = calcListFare();
   h('<div id="calc-result">' + calcResultHtml(r0, listFare, { editable: true, mode: calc.mode, from: calc.from, to: calc.to }) + "</div>" +
     '<button class="btn secondary" id="c-save" style="margin-top:18px">Save trip</button>' +
@@ -1669,22 +1665,56 @@ function wireCalcResult(){
   box.addEventListener("keydown", (e) => {
     if(e.target && e.target.id === "c-fare-edit" && e.key === "Enter"){ e.target.blur(); }
   });
+  /* Answer 3: "Save trip" opens the History view with the new trip's
+     actuals fields at the top; Save stores it and leaves the History
+     list showing the new trip. Back from History returns here. */
   const save = document.getElementById("c-save");
   if(save) save.addEventListener("click", () => {
     const r = calcFare(calc, calcCfg);
     if(!(r.miles > 0 && r.hours > 0)) return;
-    const trip = calcBuildTrip(r);
-    calcTripsArr.push(trip);
-    calcPersistTrip(trip);
-    save.textContent = "✓ Trip saved";
-    setTimeout(() => { const b = document.getElementById("c-save"); if(b) b.textContent = "Save trip"; }, 1600);
+    calcPendingSave = r;
+    calcMonthTab = "history";
+    calcMonth = new Date().toISOString().slice(0, 7);
+    pushScreen("calc-month", () => renderCalcResult(), () => renderCalcMonth("calc"));
   });
   const share = document.getElementById("c-share");
   if(share) share.addEventListener("click", (e) => shareCalc(e.target));
   const nw = document.getElementById("c-new");
   if(nw) nw.addEventListener("click", () => { calcReset(); screenStack = []; renderCalc(); });
 }
+/* v3 save flow (answers 3 + 4): the actuals fields live at the top of
+   the History tab while a trip is being saved — prefilled with the
+   estimate, so an untouched save equals the old estimate-only save.
+   Actual time is driving + waiting (total time). The fields live in
+   calcActualsFieldsHtml so they can move as one piece if the placement
+   decision ever changes. */
+function calcActualsFieldsHtml(prefill){
+  return '<input type="text" id="c-act-amount" inputmode="decimal" placeholder="Actual amount ($)" value="' + esc(prefill.amount) + '">' +
+    '<input type="text" id="c-act-miles" inputmode="decimal" placeholder="Actual miles" value="' + esc(prefill.miles) + '" style="margin-top:12px">' +
+    '<input type="text" id="c-act-time" inputmode="decimal" placeholder="Actual time (hours)" value="' + esc(prefill.time) + '" style="margin-top:12px">';
+}
+function calcSaveActuals(){
+  const num = (id) => {
+    const el = document.getElementById(id);
+    if(!el) return null;
+    const v = parseFloat(String(el.value).replace(/[$,]/g, ""));
+    return (isNaN(v) || v < 0) ? null : v;
+  };
+  return { amount: num("c-act-amount"), miles: num("c-act-miles"), time: num("c-act-time") };
+}
+/* The pending-save form, shown at the top of the History tab while
+   calcPendingSave holds the result being saved. */
+function calcPendingSaveHtml(){
+  const r = calcPendingSave;
+  const routeLine = (calc.from && calc.to) ? esc(calc.from) + " → " + esc(calc.to) + " · " : "";
+  return '<div class="card"><div class="route">Save this trip</div>' +
+    '<div class="change">' + routeLine + (calc.mode === "round" ? "Round trip" : "One way") + " · suggested " + money(r.suggestedFare) + "</div>" +
+    calcActualsFieldsHtml({ amount: r.fare, miles: r.miles, time: round2(r.hours + r.waitHours) }) +
+    '<button class="btn" id="c-act-save">Save trip</button>' +
+    '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-act-cancel">Cancel</button></div></div>';
+}
 function wireCalc(){
+  $view.querySelectorAll("[data-cstep]").forEach(b => b.addEventListener("click", () => calcGoStep(Number(b.dataset.cstep))));
   const modeBtns = $view.querySelectorAll("#calc-mode button");
   modeBtns.forEach(b => {
     b.classList.toggle("on", b.dataset.mode === calc.mode);
@@ -1695,7 +1725,7 @@ function wireCalc(){
       if(calc.mode === "round"){ if(!(parseFloat(calc.waitHours) > 0)) calc.waitHours = 0.75; }
       else { calc.waitHours = 0; }
       modeBtns.forEach(x => x.classList.toggle("on", x.dataset.mode === calc.mode));
-      updateWaitWrap(); updateCalcForm();
+      updateCalcForm();
     });
   });
   const fromBtn = document.getElementById("c-from");
@@ -1713,32 +1743,43 @@ function wireCalc(){
   if(mp) mp.addEventListener("click", () => setMiles(String((parseFloat(calc.miles) || 0) + 1)));
   const hrs = document.getElementById("c-hours");
   if(hrs) hrs.addEventListener("input", () => { calc.hours = hrs.value; updateCalcForm(); });
+  const rmilesIn = document.getElementById("c-rmiles");
+  const setRMiles = (v) => { calc.returnMiles = v; if(rmilesIn) rmilesIn.value = v; };
+  if(rmilesIn) rmilesIn.addEventListener("input", () => { calc.returnMiles = rmilesIn.value; });
+  const rmm = document.getElementById("c-rmiles-minus");
+  if(rmm) rmm.addEventListener("click", () => setRMiles(String(Math.max(0, (parseFloat(calc.returnMiles) || 0) - 1))));
+  const rmp = document.getElementById("c-rmiles-plus");
+  if(rmp) rmp.addEventListener("click", () => setRMiles(String((parseFloat(calc.returnMiles) || 0) + 1)));
+  const rh = document.getElementById("c-rhours");
+  if(rh) rh.addEventListener("input", () => { calc.returnHours = rh.value; });
+  const rt = document.getElementById("c-rtolls");
+  if(rt) rt.addEventListener("input", () => { calc.returnTolls = rt.value; });
   const tolls = document.getElementById("c-tolls");
   if(tolls) tolls.addEventListener("input", () => { calc.tolls = tolls.value; updateCalcForm(); });
   const park = document.getElementById("c-parking");
   if(park) park.addEventListener("input", () => { calc.parking = park.value; updateCalcForm(); });
-  const hub = document.getElementById("c-hub");
-  if(hub) hub.addEventListener("change", () => { calc.hubNear = hub.checked; updateReturnWrap(); updateCalcForm(); });
+  const next = document.getElementById("c-next");
+  if(next) next.addEventListener("click", () => { const n = calcNextStep(); if(n != null) calcGoStep(n); });
   const seeFare = document.getElementById("c-see-fare");
   if(seeFare) seeFare.addEventListener("click", () => pushScreen("calc-result", () => renderCalc(), renderCalcResult));
   const month = document.getElementById("c-month");
-  if(month) month.addEventListener("click", () => { screenStack = []; backTarget = "calc"; renderCalcMonth(); });
+  if(month) month.addEventListener("click", () => { screenStack = []; renderCalcMonth("calc"); });
   const rates = document.getElementById("c-rates");
-  if(rates) rates.addEventListener("click", () => { backTarget = "calc"; screenStack = []; renderSettings(); pushScreen("settings-rates", () => renderSettings(), renderSettingsRates); });
+  if(rates) rates.addEventListener("click", () => { backTarget = "calc"; screenStack = []; renderAccount(); pushScreen("account-rates", () => renderAccount(), renderAccountRates); });
   updateWaitWrap();
-  updateReturnWrap();
   updateCalcForm();
 }
 function renderCalc(){
-  view = "calc"; setStep(0, "Calculator");
-  document.getElementById("fab").style.display = "";
+  view = "calc";
   if(!calc) calcReset();
+  const steps = calcStepList();
+  if(!steps.includes(calcStep)) calcStep = steps[steps.length - 1]; // guard: the step vanished (e.g. To set while on the Return step)
+  setStep(0, CALC_STEP_NAMES[calcStep]);
   h(calcHtml());
   wireCalc();
 }
 function renderCalcPicker(which){
   view = "calc-pick"; setStep(0, which === "from" ? "Where from?" : "Where to?");
-  document.getElementById("fab").style.display = "";
   const other = which === "to" ? calc.from : null;
   h('<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
     '<div id="plist">' + placeListHTML("", other) + "</div>");
@@ -1782,11 +1823,14 @@ function openCalcFromQuote(){
   });
   calc.tolls = tolls > 0 ? String(tolls) : "";
   calc.parking = parking > 0 ? String(parking) : "";
+  calcStep = calcFirstIncompleteStep(); // v3: land on the first step that still needs input
   renderCalc();
 }
 
 /* ---------- trip calculator: My Month ---------- */
 let calcMonth = null; // "YYYY-MM" selected in My Month
+let calcMonthTab = "history"; // v3: My Month opens on History, since tapping My Month should show trips
+let calcPendingSave = null; // v3: the fare result being saved; its actuals form sits at the top of History
 function calcMonthKey(d){ return String(d || "").slice(0, 7); }
 function fmtMonthLabel(ym){
   const d = new Date(ym + "-01T12:00:00");
@@ -1796,10 +1840,9 @@ function fmtDateShort(iso){
   const d = new Date(iso + "T12:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
-function renderCalcMonth(){
+function renderCalcMonth(from){
   view = "calc-month"; setStep(0, "My Month");
-  document.getElementById("fab").style.display = "";
-  backTarget = "calc";
+  if(from) backTarget = from;
   const nowKey = new Date().toISOString().slice(0, 7);
   if(!calcMonth) calcMonth = nowKey;
   const months = [...new Set(calcTripsArr.map(t => calcMonthKey(t.date)))];
@@ -1807,34 +1850,59 @@ function renderCalcMonth(){
   months.sort().reverse();
   if(!months.includes(calcMonth)) calcMonth = nowKey;
   const trips = calcTripsArr.filter(t => calcMonthKey(t.date) === calcMonth);
-  const recovered = round2(trips.reduce((s, t) => s + (Number(t.recovery) || 0), 0));
-  const hours = round2(trips.reduce((s, t) => s + (Number(t.totalHours) || 0), 0));
-  const revenue = round2(trips.reduce((s, t) => s + (Number(t.fareCharged) || 0), 0));
-  const takeHome = round2(trips.reduce((s, t) => s + (Number(t.takeHome) || 0), 0));
+  /* v3: aggregates recompute from each trip's actuals (or estimates) at
+     the current rates — never from the stored snapshot fields. */
+  const paired = trips.map(t => ({ t, r: calcTripResult(t) }));
+  const recovered = round2(paired.reduce((s, p) => s + p.r.recovery, 0));
+  const hours = round2(paired.reduce((s, p) => s + p.r.totalHours, 0));
+  const revenue = round2(paired.reduce((s, p) => s + p.r.fare, 0));
+  const takeHome = round2(paired.reduce((s, p) => s + p.r.takeHome, 0));
   const expenses = round2(revenue - takeHome);
   const eff = hours > 0 ? round2(takeHome / hours) : null;
   const monthlyFixed = Number(calcCfg.monthlyFixed) || 2500;
   const targetHours = Number(calcCfg.targetHours) || 160;
   const recPct = Math.max(0, Math.min(100, Math.round(recovered / monthlyFixed * 100)));
   const hrsPct = Math.max(0, Math.min(100, Math.round(hours / targetHours * 100)));
-  h(
-    '<select id="c-month-pick">' + months.map(m => "<option value=\"" + m + "\"" + (m === calcMonth ? " selected" : "") + ">" + esc(fmtMonthLabel(m)) + "</option>").join("") + "</select>" +
+  const monthHtml =
     '<div class="card"><div class="route">Vehicle cost</div>' +
       '<div class="change">Recovered ' + money(recovered) + " of " + money(monthlyFixed) + "</div>" +
       '<div class="vote-row"><span class="bar"><i style="width:' + recPct + '%"></i></span><span class="votes">' + recPct + "%</span></div></div>" +
     '<div class="card"><div class="route">Hours ' + fmtNum(hours) + " of " + fmtNum(targetHours) + "</div>" +
       '<div class="vote-row"><span class="bar"><i style="width:' + hrsPct + '%"></i></span><span class="votes">' + hrsPct + "%</span></div></div>" +
     '<div class="card"><div class="route">Take-home ' + money(takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
-      '<div class="change">Revenue ' + money(revenue) + " − expenses " + money(expenses) + "</div></div>" +
-    (trips.length
-      ? '<div class="group-label">Saved trips</div><div class="list">' + trips.map(t => {
+      '<div class="change">Revenue ' + money(revenue) + " − expenses " + money(expenses) + "</div></div>";
+  const historyTrips = [...paired].reverse(); // newest first
+  const historyHtml =
+    (calcPendingSave ? calcPendingSaveHtml() : "") +
+    (historyTrips.length
+      ? '<div class="group-label">Saved trips</div><div class="list">' + historyTrips.map(p => {
+          const t = p.t, r = p.r;
           const route = (t.from && t.to) ? t.from + " → " + t.to : "Manual trip";
-          return '<div class="row" data-trip="' + esc(t.id) + '"><span>' + esc(fmtDateShort(t.date)) + " · " + esc(route) + '<span class="row-sub">Charged ' + money(t.fareCharged) + " · take-home " + money(t.takeHome) + (t.effectivePerHour != null ? " · " + money(t.effectivePerHour) + "/hr" : "") + "</span></span>" +
+          return '<div class="row" data-trip="' + esc(t.id) + '"><span>' + esc(fmtDateShort(t.date)) + " · " + esc(route) + '<span class="row-sub">Charged ' + money(r.fare) + " · take-home " + money(r.takeHome) + (r.effectivePerHour != null ? " · " + money(r.effectivePerHour) + "/hr" : "") + "</span></span>" +
             '<button class="trip-x" data-trip="' + esc(t.id) + '" aria-label="Delete trip">✕</button></div>';
         }).join("") + "</div>"
-      : '<div class="empty">No trips saved this month yet.</div>')
+      : '<div class="empty">No trips saved this month yet.</div>');
+  h(
+    '<select id="c-month-pick">' + months.map(m => "<option value=\"" + m + "\"" + (m === calcMonth ? " selected" : "") + ">" + esc(fmtMonthLabel(m)) + "</option>").join("") + "</select>" +
+    '<div class="seg" id="c-month-tabs" role="group" aria-label="My Month view" style="margin-top:12px">' +
+      '<button data-tab="month" aria-pressed="' + (calcMonthTab === "month") + '"' + (calcMonthTab === "month" ? ' class="on"' : "") + '>Month</button>' +
+      '<button data-tab="history" aria-pressed="' + (calcMonthTab === "history") + '"' + (calcMonthTab === "history" ? ' class="on"' : "") + '>History</button></div>' +
+    (calcMonthTab === "month" ? monthHtml : historyHtml)
   );
   document.getElementById("c-month-pick").addEventListener("change", (e) => { calcMonth = e.target.value; renderCalcMonth(); });
+  $view.querySelectorAll("#c-month-tabs [data-tab]").forEach(b => b.addEventListener("click", () => { calcMonthTab = b.dataset.tab; renderCalcMonth(); }));
+  const actSave = document.getElementById("c-act-save");
+  if(actSave) actSave.addEventListener("click", () => {
+    const trip = calcBuildTrip(calcPendingSave, calcSaveActuals());
+    calcTripsArr.push(trip);
+    calcPersistTrip(trip);
+    calcPendingSave = null;
+    calcMonth = trip.date.slice(0, 7);
+    calcMonthTab = "history";
+    renderCalcMonth();
+  });
+  const actCancel = document.getElementById("c-act-cancel");
+  if(actCancel) actCancel.addEventListener("click", () => { calcPendingSave = null; renderCalcMonth(); });
   $view.querySelectorAll(".trip-x").forEach(b => b.addEventListener("click", (e) => {
     e.stopPropagation();
     calcRemoveTrip(b.dataset.trip);
@@ -1847,11 +1915,10 @@ function renderCalcMonth(){
     pushScreen("calc-trip", () => renderCalcMonth(), () => renderCalcTrip(t));
   }));
 }
-/* v2: a saved trip opens as its own detail layer — breakdown (repriced at
-   current rates), reopen in the calculator, delete. */
+/* v3: the detail recomputes from the trip's actuals (or estimates) at
+   the current rates, and shows the actuals when the trip has them. */
 function renderCalcTrip(t){
   view = "calc-trip"; setStep(0, "Trip");
-  document.getElementById("fab").style.display = "";
   const saved = Object.assign({}, t);
   calcReset();
   calc.from = t.from; calc.to = t.to;
@@ -1861,25 +1928,28 @@ function renderCalcTrip(t){
   calc.waitHours = t.waitHours || 0;
   calc.tolls = t.tolls ? String(t.tolls) : "";
   calc.parking = t.parking ? String(t.parking) : "";
-  calc.hubNear = t.hubNear !== false;
   calc.returnMiles = t.returnMiles ? String(t.returnMiles) : "";
   calc.returnHours = t.returnHours ? String(t.returnHours) : "";
   calc.returnTolls = t.returnTolls ? String(t.returnTolls) : "";
-  calc.nearestHub = t.nearestHub || "";
-  const r0 = calcFare(calc, calcCfg);
-  const r = Object.assign({}, r0, { fare: saved.fareCharged != null ? Number(saved.fareCharged) : r0.suggestedFare });
-  r.takeHome = round2(r.fare - r.expenses);
-  r.effectivePerHour = r.totalHours > 0 ? round2(r.takeHome / r.totalHours) : null;
+  const r = calcTripResult(t);
   const listFare = calcListFare();
-  h('<div class="sub">' + esc(fmtDateShort(saved.date)) + "</div>" +
+  const hasActuals = saved.actualAmount != null || saved.actualMiles != null || saved.actualTime != null;
+  const actualsLine = hasActuals
+    ? '<div class="q-summary">Actuals — ' +
+      (saved.actualAmount != null ? money(saved.actualAmount) : "—") + " · " +
+      (saved.actualMiles != null ? fmtNum(saved.actualMiles) + " mi" : "—") + " · " +
+      (saved.actualTime != null ? fmtWait(saved.actualTime) : "—") + "</div>"
+    : "";
+  h('<div class="sub">' + esc(fmtDateShort(saved.date)) + "</div>" + actualsLine +
     calcResultHtml(r, listFare, { editable: false, mode: calc.mode, from: calc.from, to: calc.to }) +
     '<button class="btn" id="c-trip-reopen" style="margin-top:18px">Reopen in calculator</button>' +
     '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-trip-delete">Delete trip</button></div>');
   const reopen = document.getElementById("c-trip-reopen");
   if(reopen) reopen.addEventListener("click", () => {
-    /* calc already holds this trip's inputs from above. */
+    /* calc already holds this trip's inputs (the estimates) from above. */
     const r2 = calcFare(calc, calcCfg);
     calc.adjustedFare = (saved.fareCharged != null && Number(saved.fareCharged) !== r2.suggestedFare) ? Number(saved.fareCharged) : null;
+    calcStep = calcFirstIncompleteStep();
     screenStack = [];
     backTarget = "calc-month";
     renderCalc();
@@ -1891,7 +1961,7 @@ function renderCalcTrip(t){
   });
 }
 
-/* ---------- trip calculator: Settings ---------- */
+/* ---------- trip calculator: Account ---------- */
 function calcDerivedHtml(){
   const r = calcRates(calcCfg);
   const mf = Number(calcCfg.monthlyFixed) || 2500;
@@ -1902,37 +1972,38 @@ function calcDerivedHtml(){
     '<div class="set-row"><span class="set-label">Fuel cost</span><span class="set-val">$' + r.fuelPerMile.toFixed(3) + "/mi = " + money(Number(calcCfg.gasPrice) || 0) + " ÷ " + fmtNum(Number(calcCfg.mpg) || 0) + " MPG</span></div>" +
     '<div class="set-row"><span class="set-label">Return hourly</span><span class="set-val">' + money(r.vehiclePerHr) + " — cost only, no earnings</span></div>";
 }
-/* v2: Settings is a menu screen. Top section is the icon menu as labeled
-   rows; Rates / Hubs / Account each open as their own layer. */
-function renderSettings(){
-  view = "settings"; setStep(0, "Settings");
-  document.getElementById("fab").style.display = "";
+/* v3: the Settings screen is the Account screen. My Month is the main
+   item at the top; then Rates and Details rows; then the sign-in block.
+   The old Menu section (Fare sheet / Calculator / Settings rows) is
+   gone — the bottom pill IS the menu. The old Hubs section is gone —
+   hubs are the fare-sheet locations. */
+function renderAccount(){
+  view = "account"; setStep(0, "Account");
   h(
-    '<div class="group-label">Menu</div><div class="list">' +
-      '<button class="row" data-menu="fares"><span class="menu-ic">' + MENU_ICONS.fares + '</span><span>Fare sheet</span><span class="chev">›</span></button>' +
-      '<button class="row" data-menu="calc"><span class="menu-ic">' + MENU_ICONS.calc + '</span><span>Calculator</span><span class="chev">›</span></button>' +
-      '<button class="row" data-menu="settings"><span class="menu-ic">' + MENU_ICONS.settings + '</span><span>Settings</span><span class="tag">Current</span></button>' +
+    '<button class="btn" id="a-month">My Month</button>' +
+    '<div class="list" style="margin-top:14px">' +
+      '<button class="row" id="a-rates"><span>Rates</span><span class="chev">›</span></button>' +
+      '<button class="row" id="a-details"><span>Details</span><span class="chev">›</span></button>' +
     "</div>" +
-    '<div class="group-label">Settings</div><div class="list">' +
-      '<button class="row" id="s-go-rates"><span>Rates</span><span class="chev">›</span></button>' +
-      '<button class="row" id="s-go-hubs"><span>Hubs</span><span class="chev">›</span></button>' +
-      '<button class="row" id="s-go-account"><span>Account</span><span class="chev">›</span></button>' +
-    "</div>"
+    (calcUser
+      ? '<div class="card"><div class="route">Signed in as ' + esc(calcUser.email || calcUser.id) + '</div><div class="change">Your rates and trips sync across devices.</div></div>' +
+        '<button class="btn secondary" id="a-signout">Sign out</button>'
+      : '<button class="btn secondary" id="a-signin" style="margin-top:18px">Sign in with Google</button>' +
+        '<div class="sub" style="margin-top:10px">Sign in to sync your rates and trips across devices. The fare sheet stays free for everyone, no sign-in needed.</div>')
   );
-  $view.querySelectorAll("[data-menu]").forEach(b => b.addEventListener("click", () => {
-    if(b.dataset.menu === "settings") return; // already here
-    goMenu(b.dataset.menu);
-  }));
-  const rates = document.getElementById("s-go-rates");
-  if(rates) rates.addEventListener("click", () => pushScreen("settings-rates", () => renderSettings(), renderSettingsRates));
-  const hubs = document.getElementById("s-go-hubs");
-  if(hubs) hubs.addEventListener("click", () => pushScreen("settings-hubs", () => renderSettings(), renderSettingsHubs));
-  const account = document.getElementById("s-go-account");
-  if(account) account.addEventListener("click", () => pushScreen("settings-account", () => renderSettings(), renderSettingsAccount));
+  const month = document.getElementById("a-month");
+  if(month) month.addEventListener("click", () => { screenStack = []; renderCalcMonth("account"); });
+  const rates = document.getElementById("a-rates");
+  if(rates) rates.addEventListener("click", () => pushScreen("account-rates", () => renderAccount(), renderAccountRates));
+  const details = document.getElementById("a-details");
+  if(details) details.addEventListener("click", openDetails);
+  const signin = document.getElementById("a-signin");
+  if(signin) signin.addEventListener("click", calcSignInGoogle);
+  const signout = document.getElementById("a-signout");
+  if(signout) signout.addEventListener("click", calcSignOut);
 }
-function renderSettingsRates(){
-  view = "settings-rates"; setStep(0, "Rates");
-  document.getElementById("fab").style.display = "";
+function renderAccountRates(){
+  view = "account-rates"; setStep(0, "Rates");
   const rateRow = (key, label, ph) => '<div class="set-row"><span class="set-label">' + esc(label) + '</span><input type="text" inputmode="decimal" data-cfg="' + key + '" value="' + esc(calcCfg[key]) + '" placeholder="' + esc(ph) + '"></div>';
   h(
     '<div class="group-label">Rates</div><div class="list" style="padding:0 14px">' +
@@ -1956,78 +2027,11 @@ function renderSettingsRates(){
   }));
   const reset = document.getElementById("s-reset");
   if(reset) reset.addEventListener("click", () => {
-    const hubList = calcCfg.hubList;
     calcCfg = Object.assign({}, CALC_DEFAULTS);
-    calcCfg.hubList = hubList;
     calcNormalizeConfig();
     calcPersist();
-    renderSettingsRates();
+    renderAccountRates();
   });
-}
-/* v2: Hubs is a managed list of wizard locations only — no free-text
-   names. Add from the place picker (drawer), ✕ to remove. */
-function renderSettingsHubs(){
-  view = "settings-hubs"; setStep(0, "Hubs");
-  document.getElementById("fab").style.display = "";
-  const hubs = calcHubs();
-  h(
-    '<div class="sub">Pickup hubs for the calculator. Add from places, tap ✕ to remove.</div>' +
-    (hubs.length
-      ? '<div class="list">' + hubs.map((hb, i) =>
-          '<div class="row"><span>' + esc(hb) + '</span><button class="trip-x" data-hub="' + i + '" aria-label="Remove hub">✕</button></div>').join("") + "</div>"
-      : '<div class="empty">No hubs yet.</div>') +
-    '<button class="btn secondary" id="s-hub-add">Add hub</button>'
-  );
-  $view.querySelectorAll("[data-hub]").forEach(b => b.addEventListener("click", () => {
-    calcCfg.hubList = calcHubs().filter((_, i) => i !== Number(b.dataset.hub));
-    calcPersist();
-    renderSettingsHubs();
-  }));
-  const add = document.getElementById("s-hub-add");
-  if(add) add.addEventListener("click", openHubPickerDrawer);
-}
-function openHubPickerDrawer(){
-  openDrawer("Add hub",
-    '<div class="search-wrap"><input type="search" id="sh-q" placeholder="Search places" autocomplete="off"></div>' +
-    '<div id="sh-list">' + placeListHTML("", null) + "</div>");
-  const prune = () => {
-    document.querySelectorAll("#sh-list [data-place]").forEach(b => {
-      if(calcHubs().includes(b.dataset.place)) b.remove();
-    });
-  };
-  const bindRows = () => {
-    document.querySelectorAll("#sh-list [data-place]").forEach(b => b.addEventListener("click", () => {
-      const name = b.dataset.place;
-      if(!calcHubs().includes(name)){
-        calcCfg.hubList = calcHubs().concat([name]);
-        calcPersist();
-      }
-      closeDrawer();
-      renderSettingsHubs();
-    }));
-  };
-  prune(); bindRows();
-  const q = document.getElementById("sh-q");
-  if(q) q.addEventListener("input", () => {
-    document.getElementById("sh-list").innerHTML = placeListHTML(q.value, null);
-    prune(); bindRows();
-  });
-}
-function renderSettingsAccount(){
-  view = "settings-account"; setStep(0, "Account");
-  document.getElementById("fab").style.display = "";
-  h(
-    '<div class="group-label">Account</div>' +
-    (calcUser
-      ? '<div class="card"><div class="route">Signed in as ' + esc(calcUser.email || calcUser.id) + '</div><div class="change">Your rates and trips sync across devices.</div></div>' +
-        '<button class="btn secondary" id="s-signout">Sign out</button>'
-      : '<button class="btn" id="s-signin">Sign in with Google</button>' +
-        '<div class="sub" style="margin-top:10px">Sign in to sync your rates and trips across devices. The fare sheet stays free for everyone, no sign-in needed.</div>')
-  );
-  const signin = document.getElementById("s-signin");
-  if(signin) signin.addEventListener("click", calcSignInGoogle);
-  const signout = document.getElementById("s-signout");
-  if(signout) signout.addEventListener("click", calcSignOut);
 }
 
 /* ---------- trip calculator: share (amount-only) ---------- */
@@ -2062,6 +2066,7 @@ document.getElementById("nav-pending").addEventListener("click", () => {
   else renderPending();
 });
 document.getElementById("nav-back").addEventListener("click", () => {
+  if(view === "calc" && calcStep > 1){ const p = calcPrevStep(); if(p != null) calcGoStep(p); return; }
   if(isCalcViewName(view)){ goBackFromCalc(); return; }
   if(view === "quote" || view === "flatbush" || view === "notlisted"){ renderPlacePicker(2); }
   else { inFlow = false; sel = {}; renderPlacePicker(1); }
@@ -2072,7 +2077,6 @@ document.getElementById("nav-steps").addEventListener("click", e => {
 });
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
-document.getElementById("fab").addEventListener("click", openDetails);
 document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b => {
   b.innerHTML = MENU_ICONS[b.dataset.menu] || "";
   b.addEventListener("click", () => goMenu(b.dataset.menu));
@@ -2095,11 +2099,11 @@ async function init(){
     const shRow = q.get("sh") ? await sb("shares?code=eq." + encodeURIComponent(q.get("sh")) + "&select=*").catch(() => null) : null;
     const shared = shRow && shRow[0];
     const viewParam = q.get("view");
-    if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "settings"){
+    if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
       backTarget = "step1";
       if(viewParam === "calc") renderCalc();
-      else if(viewParam === "calc-month") renderCalcMonth();
-      else renderSettings();
+      else if(viewParam === "calc-month") renderCalcMonth("calc");
+      else renderAccount(); // "settings" still works as an alias for the old redirect URL
     } else if(shared){
       sel.wait = { amount: shared.wait_amount != null ? String(shared.wait_amount) : "", unit: shared.wait_unit || "hour", hours: shared.wait_hours || 1 };
       sel.addons = (shared.addons || []).map(a => ({ name: a.name, amount: String(a.amount) }));
