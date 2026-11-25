@@ -255,6 +255,7 @@
   .trip-x{ border:0; background:var(--chip); color:var(--muted); width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:13px; flex:none; margin-left:auto; }
   #c-fare-edit{ width:100%; text-align:center; font-size:52px; font-weight:700; letter-spacing:-.03em; border:0; background:transparent; color:var(--text); padding:0; margin:32px 0 4px; }
   .hidden{ display:none !important; }
+.tdhead{display:flex;align-items:center;justify-content:space-between;margin:10px 0 16px;gap:8px}.tdhead h1{font-size:30px;margin:0;letter-spacing:-.045em}.tdhead input{font-size:14px;max-width:145px;border:0;background:transparent;color:var(--muted);min-height:44px}.tdcard{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:15px;font-variant-numeric:tabular-nums}.tdmetrics{display:grid;grid-template-columns:1.18fr 1fr;gap:10px;align-items:center}.tdgauge{position:relative;aspect-ratio:1.55;text-align:center;min-width:0}.tdgauge svg{width:100%;height:100%}.tdcopy{position:absolute;inset:43% 0 auto;line-height:1.12}.tdscore{font-size:clamp(23px,6.7vw,34px);font-weight:760;letter-spacing:-.05em;white-space:nowrap}.tdscore small{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0}.tdmuted{font-size:12px;color:var(--muted);line-height:1.45}.tdnet{border-left:1px solid var(--border);padding-left:12px}.tdnet b{font-size:clamp(26px,7.3vw,38px);display:block;letter-spacing:-.05em;margin:6px 0;overflow-wrap:anywhere}.tdgap{text-align:center;font-size:12px;font-weight:650;margin:5px 0 14px}.tdhours{border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.tdhours b{font-size:19px}.tdbar{grid-column:1/-1;height:5px;border-radius:6px;background:var(--chip);overflow:hidden}.tdbar i{display:block;height:100%;background:var(--accent);border-radius:6px}.tdtabs{display:flex;gap:22px;margin-top:12px;border-bottom:1px solid var(--border)}.tdtabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:650;padding:0 3px;min-height:48px;position:relative}.tdtabs button[aria-selected=true]{color:var(--text)}.tdtabs button[aria-selected=true]:after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:3px;background:var(--accent)}.tdlist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}.tdrow{width:100%;border:0;border-bottom:1px solid var(--border);background:none;color:var(--text);font:inherit;text-align:left;padding:14px;min-height:72px;display:flex;justify-content:space-between;gap:10px;align-items:center}.tdrow:last-child{border:0}.tdrow span:first-child{min-width:0;flex:1}.tdrow span:last-child{text-align:right;flex:none}.tdrow b{display:block;font-size:15px;overflow-wrap:anywhere}.tdrow small{display:block;font-size:12px;margin-top:5px}.tdline{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);font-size:14px}.tdline:last-child{border:0}.tdlinks{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:48px}.tdlinks button{min-height:44px;color:var(--link);background:none;border:0;font:inherit;font-weight:600;font-size:14px}.tdnote{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0}
 </style>
 </head>
 <body>
@@ -271,7 +272,7 @@
   </div>
 </div>
 <div id="menu-pill" role="navigation" aria-label="Menu">
-  <button data-menu="fares" aria-label="Fare sheet"></button>
+  <button data-menu="today" aria-label="Today"></button><button data-menu="fares" aria-label="Fare sheet"></button>
   <button data-menu="calc" aria-label="Calculator"></button>
   <button data-menu="community" aria-label="Community"></button>
   <button data-menu="account" aria-label="Account"></button>
@@ -789,7 +790,7 @@ function goMode(next){
 /* Icon menu (v4.2, restored from v3): icons only, inline SVG in
    currentColor. The bottom bar is the only way between modes — the
    calculator is a top-level screen, never reached by a back link. */
-const MENU_ICONS = {
+const MENU_ICONS = {today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4m8-4v4M4 10h16m-12 4h8"/></svg>',
   fares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
   calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7.5h8M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/></svg>',
   community: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3 2.9-4.6 5.5-4.6s4.7 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.6c2.3.3 4 1.7 4.7 4.4"/></svg>',
@@ -801,12 +802,12 @@ function updateMenu(){
   // The icon bar hides wherever the loop bar shows.
   const loopViews = ["quote", "flatbush", "calc-result"];
   pill.style.display = loopViews.includes(view) ? "none" : "";
-  const section = view === "pending" ? "community"
+  const section = view === "today" ? "today" : view === "pending" ? "community"
     : view === "account" || view.indexOf("account-") === 0 ? "account"
     : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "fares";
   pill.querySelectorAll("[data-menu]").forEach(b => b.classList.toggle("on", b.dataset.menu === section));
 }
-function goMenu(section){
+function goMenu(section){if(section==="today"){screenStack=[];renderToday();return;}
   if(section === "fares" || section === "calc"){ goMode(section); return; }
   if(section === "community"){ screenStack = []; renderPending(); return; }
   if(section === "account"){
@@ -853,7 +854,7 @@ function setStep(n, label){
   // there instead, matching the wizard's From step. The calculator is
   // a top-level screen; the bottom bar is the way between modes.
   const onCalcHome = view === "calc" && calcStep === 1;
-  const onTabRoot = view === "account" || view === "pending";
+  const onTabRoot = view === "account" || view === "pending" || view === "today";
   document.getElementById("topnav").classList.toggle("in-flow", (inFlow || view !== "step1") && !onCalcHome && !noCalcResultBack && !onTabRoot);
   renderHeader();
   updateMenu();
@@ -1675,7 +1676,7 @@ function calcListFare(){
    stability; aggregates and the detail layer recompute from actuals. */
 function calcBuildTrip(r, actuals){
   const trip = { id: "t-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    date: new Date().toISOString().slice(0, 10),
+    date: todayNY(),
     from: calc.from, to: calc.to, roundTrip: calc.mode === "round",
     miles: r.miles, hours: r.hours, waitHours: r.waitHours, tolls: r.tolls, parking: r.parking,
     hubNear: r.hubNear, returnMiles: r.returnMiles, returnHours: r.returnHours, returnTolls: r.returnTolls,
@@ -2634,6 +2635,28 @@ DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
 document.getElementById("modal-close").addEventListener("click", () => closeDrawer());
 document.getElementById("modal-backdrop").addEventListener("click", () => closeDrawer());
 
+
+function todayNY(){const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const g=k=>p.find(x=>x.type===k).value;return g("year")+"-"+g("month")+"-"+g("day")}
+let tdDate=todayNY(),tdTab="trips";
+function tdMoney(n,d=0){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:d,maximumFractionDigits:2}).format(n)}
+function tdColor(n,r,g,u){return u||r==null?"var(--muted)":n<0?"#bf443a":r>=g?"#16844b":"#b27613"}
+function renderToday(){
+ view="today";inFlow=false;setStep(0,"Today");
+ const rows=calcTripsArr.filter(t=>t.date===tdDate).map(t=>({t,r:calcTripResult(t)})),sum=f=>round2(rows.reduce((a,p)=>a+f(p),0)),gross=sum(p=>p.r.fare),net=sum(p=>p.r.takeHome),hours=sum(p=>p.r.totalHours),rate=hours?net/hours:null,goal=Math.max(1,Number(calcCfg.earningsTarget)||40),month=calcMonthAgg(tdDate.slice(0,7)),estimated=rows.some(({t})=>t.actualAmount==null||t.actualMiles==null||t.actualTime==null),color=tdColor(net,rate,goal,estimated),max=goal*1.22,p=Math.max(0,Math.min(1,(rate||0)/max)),point=(f,r=77)=>[90-r*Math.cos(f*Math.PI),88-r*Math.sin(f*Math.PI)],a=point(p),b=point(goal/max,68),c=point(goal/max,86);
+ const gap=rate==null?"No saved trips":estimated?"Provisional · some actuals missing":net<0?"Operating at a loss":tdMoney(Math.abs(rate-goal),2)+"/hr "+(rate>=goal?"above":"below")+" goal";
+ const gauge='<div class="tdgauge"><svg viewBox="0 0 180 112" aria-hidden="true"><path d="M13 88 A77 77 0 0 1 167 88" fill="none" stroke="var(--chip)" stroke-width="8" stroke-linecap="round"/>'+(p?'<path d="M13 88 A77 77 0 0 1 '+a.join(" ")+'" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round"/>':'')+'<path d="M'+b.join(" ")+' L'+c.join(" ")+'" stroke="var(--muted)" stroke-width="2"/></svg><div class="tdcopy"><div class="tdscore" style="color:'+color+'">'+(rate==null?"—":tdMoney(rate,2))+'<small>/hr</small></div><div class="tdmuted" style="margin-top:5px">'+tdMoney(goal)+'/hr goal</div></div></div>';
+ const trip=rows.slice().reverse().map(({t,r})=>'<button class="tdrow" data-td-trip="'+esc(t.id)+'"><span><b>'+esc(t.from&&t.to?t.from+" → "+t.to:"Manual trip")+'</b><small class="tdmuted">'+fmtNum(r.totalHours)+'h · '+fmtNum(r.miles+r.returnMiles)+' mi</small></span><span><b>'+tdMoney(r.fare)+'</b><small style="color:'+tdColor(r.takeHome,r.effectivePerHour,goal,t.actualAmount==null||t.actualMiles==null||t.actualTime==null)+'">'+(r.effectivePerHour==null?"—":tdMoney(r.effectivePerHour,2)+"/hr")+'</small></span></button>').join("");
+ const costs=[["Fuel (estimated)",sum(p=>p.r.fuelCost)],["Tolls",sum(p=>p.r.tolls+p.r.returnTolls)],["Parking",sum(p=>p.r.parking)],["Vehicle allocation",sum(p=>p.r.recovery)]];
+ const tab=(k,l)=>'<button role="tab" data-td-tab="'+k+'" aria-selected="'+(tdTab===k)+'">'+l+'</button>';
+ h('<div class="tdhead"><h1>Today</h1><input aria-label="Business day" id="td-date" type="date" value="'+esc(tdDate)+'"></div><div class="tdcard"><div class="tdmetrics">'+gauge+'<div class="tdnet"><div class="tdmuted">Take home</div><b>'+tdMoney(net)+'</b><div class="tdmuted">of '+tdMoney(gross)+' gross</div></div></div><div class="tdgap" style="color:'+color+'">'+gap+'</div><div class="tdhours"><div><b>'+fmtNum(hours)+'h</b><div class="tdmuted">Today’s trip hours</div></div><div style="text-align:right"><b>'+fmtNum(month.hours)+' / '+fmtNum(month.targetHours)+'h</b><div class="tdmuted">Month’s hours</div></div><div class="tdbar"><i style="width:'+Math.max(0,Math.min(100,month.hours/month.targetHours*100))+'%"></i></div></div></div><div class="tdtabs" role="tablist">'+tab("trips","Trips · "+rows.length)+tab("expenses","Expenses · "+tdMoney(gross-net))+'</div><div class="tdlinks"><span class="tdmuted">'+(tdTab==="trips"?fmtNum(sum(p=>p.r.miles+p.r.returnMiles))+" mi":"Costs allocated to trips")+'</span><button id="td-add">New quote</button></div>'+(tdTab==="trips"?'<div class="tdlist">'+(trip||'<div class="empty">No saved trips for this date.</div>')+'</div>':'<div class="tdcard">'+costs.map(([l,v])=>'<div class="tdline"><span>'+l+'</span><b>'+tdMoney(v,2)+'</b></div>').join("")+'</div>')+'<div class="tdlinks"><button id="td-history">Trip history</button><button id="td-account">Rates & money</button></div><p class="tdnote">Before tax. Existing saved trips use current rates; missing actuals and estimated fuel can change results. Month hours are a planning target.</p>');
+ document.getElementById("td-date").onchange=e=>{if(e.target.value){tdDate=e.target.value;renderToday()}};
+ $view.querySelectorAll("[data-td-tab]").forEach(e=>e.onclick=()=>{tdTab=e.dataset.tdTab;renderToday()});
+ $view.querySelectorAll("[data-td-trip]").forEach(e=>e.onclick=()=>{const t=calcTripsArr.find(x=>x.id===e.dataset.tdTrip);if(t)openTripDrawer(t)});
+ document.getElementById("td-add").onclick=()=>goMode("calc");
+ document.getElementById("td-history").onclick=()=>{calcMonth=tdDate.slice(0,7);renderCalcHistory("account")};
+ document.getElementById("td-account").onclick=()=>renderAccount();
+}
+
 async function init(){
   calcHandleAuthCallback();
   if(!SB || !KEY){
@@ -2654,7 +2677,7 @@ async function init(){
       if(viewParam === "calc"){ if(!calcOpenFromShare(q)) renderCalc(); } // v4.4.2: a share link opens a new trip on the result
       else if(viewParam === "calc-month") renderCalcHistory("calc"); // "calc-month" still works as an alias
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
-    } else if(shared){
+    } else if(viewParam==="today" || !location.search){renderToday();} else if(shared){
       sel.wait = { amount: shared.wait_amount != null ? String(shared.wait_amount) : "", unit: shared.wait_unit || "hour", hours: shared.wait_hours || 1 };
       sel.addons = (shared.addons || []).map(a => ({ name: a.name, amount: String(a.amount) }));
       sel.customPrice = shared.custom_price != null ? { trip: shared.grid ? "flatbush" : (shared.trip === "round" ? "round" : "oneway"), price: Number(shared.custom_price) } : null;
