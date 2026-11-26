@@ -1294,7 +1294,7 @@ function quoteRouteHeader(route = sel){
     '<button type="button" class="route-reverse" id="route-reverse" aria-label="Swap pickup and drop-off"' +
     (route.from && route.to ? "" : " disabled") + '>⇅</button></div>';
 }
-function wireQuoteRoute(route = sel,onChange = selectQuoteRoute){
+function wireQuoteRoute(route = sel,onChange = selectQuoteRoute,options = {}){
   document.getElementById("route-from").onclick = () => openRouteStop("from",route,onChange);
   document.getElementById("route-to").onclick = () => openRouteStop("to",route,onChange);
   document.getElementById("route-reverse").onclick = () => onChange(route.to,route.from);
@@ -1333,14 +1333,15 @@ function renderPlacePicker(step){
   document.getElementById("fare-calculator").onclick = () => startCalculatedQuote(sel.from,sel.to);
   if(calcUser && !tdLedger && !tdLoading && !tdError) tdLoad();
 }
-function openRouteStop(which,route = sel,onChange = selectQuoteRoute){
+function openRouteStop(which,route = sel,onChange = selectQuoteRoute,options = {}){
   const isPickup = which === "from";
   const other = isPickup ? route.to : route.from;
   const browse = detailRow("route-browse","Browse all stops");
   openDrawer(isPickup ? "Pickup" : "Drop-off",
     '<div class="search-wrap drawer-search"><input type="search" id="route-search" maxlength="250" autocomplete="off" ' +
     'aria-label="Search stops" placeholder="Search or enter a stop"></div>' +
-    '<div id="route-results"></div>');
+    '<div id="route-results"></div>' + (options.skip ? '<button type="button" class="quiet-link" id="route-skip">Skip drop-off</button>' : ''),options.back);
+  if(options.skip) document.getElementById("route-skip").onclick = options.skip;
   const search = document.getElementById("route-search");
   const results = document.getElementById("route-results");
   let showAll = false;
@@ -2444,7 +2445,7 @@ function calcPrefillFromJobs(){
   if(!calc.from || !calc.to || !tdLedger || tdLedger.user !== calcUser?.id) return;
   const key = name => placeKey(resolvePlace(name));
   const job = tdLedger.jobs.filter(row => row.status === "completed" && row.review_state === "confirmed" &&
-    !row.return_pending && Number(row.working_minutes) > 0 &&
+    Number(row.working_minutes) > 0 &&
     key(row.pickup) === key(calc.from) && key(row.destination) === key(calc.to))
     .sort((a,b) => b.business_date.localeCompare(a.business_date))[0];
   if(!job) return;
@@ -2562,10 +2563,9 @@ function calcDerivedHtml(config = calcCfg){
   return '<div class="rate-stack">' +
     tile("Passenger & wait",money(rates.passengerPerHr) + "/hr","Rental recovery + earnings target") +
     tile("Onward driving",money(rates.vehiclePerHr) + "/hr","Rental cost ÷ planned hours") +
-    tile("Fuel","$" + rates.fuelPerMile.toFixed(3) + "/mi","Price per gallon ÷ MPG") + '</div>' +
-    '<div class="hourly-rate-value"><span>Hourly quote fee</span><strong>' +
-    (rates.hourlyFee == null ? "Set average miles" : money(rates.hourlyFee) + "/hr") +
-    '</strong><small>Passenger rate + fuel for average miles per working hour</small></div>';
+    tile("Fuel","$" + rates.fuelPerMile.toFixed(3) + "/mi","Price per gallon ÷ MPG") +
+    tile("Hourly quote fee",rates.hourlyFee == null ? "—" : money(rates.hourlyFee) + "/hr",
+      "Passenger rate + fuel for average miles") + '</div>';
 }
 function renderAccount(){
   view = "account";
@@ -2827,9 +2827,10 @@ function renderAccountRates(){
   ];
   h('<form id="rates-form" class="ledger-form"><div class="list" style="padding:0 14px">' +
     fields.map(([key,label,min]) => ledgerInput(key,label,"number",calcCfg[key],
-      'required step="any" min="' + min + '"')).join("") + '</div>' +
-    '<div class="group-label">Derived rates</div><div class="list" style="padding:0 14px">' +
+      'required step="any" min="' + min + '"')).join("") +
     ledgerInput("hourlyMiles","Average miles per working hour","number",calcCfg.hourlyMiles,'min="0" max="999.999" step="any"') +
+    '</div>' +
+    '<div class="group-label">Derived rates</div><div class="list" style="padding:0 14px">' +
     '<div id="s-derived">' + calcDerivedHtml() + '</div></div><p class="simple-caption" id="s-saved" role="status">' +
     (pendingPreferences() ? esc(preferenceStatus("pending")) : '') + '</p>' +
     '<button class="btn" id="s-save" type="submit">Save rates</button>' +
@@ -3000,7 +3001,7 @@ function tdDay(date,ledger = tdLedger){
   const hasUnmatched = ledger.segments.some(row => belongsToDay(row) && carTripNeedsReview(row));
   const operatingConfirmed = !hasUnmatched &&
     (!recordedWork || (fuelConfirmed && expenses.some(row => row.category === "toll"))) &&
-    completeFare && jobs.every(job => job.review_state === "confirmed" && !job.return_pending) &&
+    completeFare && jobs.every(job => job.review_state === "confirmed") &&
     expenses.every(row => row.review_state === "confirmed");
   const confirmed = jobs.length > 0 && operatingConfirmed && rentalKnown;
   const rent = jobs.reduce((sum, job) =>
@@ -3050,9 +3051,8 @@ function closeoutData(date,day = tdDay(date)){
   const needsMatch = tripRows.filter(row => carTripNeedsReview(row) ||
     (row.job_id && tdLedger.jobs.find(job => job.id === row.job_id)?.status !== "completed"));
   const needsJob = jobs.filter(job => job.status === "scheduled" || job.fare == null ||
-    job.working_minutes == null || job.review_state !== "confirmed" || job.return_pending);
+    job.working_minutes == null || job.review_state !== "confirmed");
   const pendingTrips = pendingSavedTrips(date);
-  const returnPending = jobs.filter(job => job.return_pending);
   const cash = tdLedger.payments.filter(row => row.received_on === date);
   const due = round2(day.jobs.reduce((total,job) => total + (job.fare == null ? 0 : Math.max(0,Number(job.fare) -
     tdSum(tdLedger.payments.filter(payment => payment.job_id === job.id),"amount"))),0));
@@ -3073,7 +3073,7 @@ function closeoutData(date,day = tdDay(date)){
   const row = tdLedger.reconciliations?.find(entry => entry.business_date === date);
   const note = parseCloseoutNote(row?.notes);
   return {
-    jobs,tripRows,aximote,needsMatch,needsJob,pendingTrips,returnPending,finance,due,received:tdSum(cash,"amount"),snapshot,row,note,
+    jobs,tripRows,aximote,needsMatch,needsJob,pendingTrips,finance,due,received:tdSum(cash,"amount"),snapshot,row,note,
     reviewed:row?.state === "reviewed" && note.snapshot === snapshot,
     changed:row?.state === "reviewed" && note.snapshot !== snapshot
   };
@@ -3122,15 +3122,11 @@ function openDayCloseout(date,data){
   reviewFlowDate = data.reviewed ? null : date;
   const back = () => openDayCloseout(date,data);
   const segmentsFor = job => tdLedger.segments.filter(row => row.job_id === job.id);
-  const items = [...data.returnPending,...data.needsJob.filter(job => !job.return_pending)].map(job => {
-    const missingReturn = job.return_pending && !dayReturnOnFile(data,job);
-    return {
-      label:ledgerJobTitle(job),
-      status:missingReturn ? "Add return" : job.status === "scheduled" ? "Confirm job" : "Check actuals",
-      action:() => missingReturn ? openCarTrip(date,null,job.id,"empty_return",back) :
-        job.status === "scheduled" ? openLedgerJobForm(job,{},back) : openJobActuals(job,segmentsFor(job),back)
-    };
-  });
+  const items = data.needsJob.map(job => ({
+    label:ledgerJobTitle(job),
+    status:job.status === "scheduled" ? "Confirm job" : "Check actuals",
+    action:() => job.status === "scheduled" ? openLedgerJobForm(job,{},back) : openJobActuals(job,segmentsFor(job),back)
+  }));
   data.pendingTrips.forEach(trip => items.push({
     label:savedTripTitle(trip),
     status:"Check saved job",action:() => openSavedTripMerge(trip,back)
@@ -3210,12 +3206,7 @@ async function saveDayReview(date,data,reference,user){
   if(!saved?.length) throw new Error("The day review changed. Refresh the day and try again.");
 }
 
-function dayReturnOnFile(data,job){
-  return data.tripRows.some(row => row.job_id === job.id && row.category === "empty_return");
-}
 function dayActions(data){
-  if(data.returnPending.some(job => !dayReturnOnFile(data,job))) return "Return trip missing";
-  if(data.returnPending.length) return "Return trip ready to check";
   const count = data.needsJob.length + data.needsMatch.length + data.pendingTrips.length;
   if(count === 1){
     const job = data.needsJob[0];
@@ -3317,8 +3308,18 @@ function wireRentalFunding(date,period){
   if(!button) return;
   const funding = rentalFunding(date,period);
   button.onclick = () => {
-    openDrawer("Rental payments",'<div class="list">' + funding.rentals.map((rental,index) =>
-      detailRow("rental-payment-" + index,homeRentalLabel(rental),"Record payment")).join("") + '</div>');
+    const cutoff = period ? period.end : date;
+    const payments = tdLedger.expenses.filter(row => row.source === RENTAL_PAYMENT &&
+      funding.rentals.some(rental => rental.id === row.notes) && (!cutoff || row.business_date <= cutoff))
+      .sort((a,b) => b.business_date.localeCompare(a.business_date));
+    const owed = funding.rentals.reduce((sum,rental) => sum + Math.max(0,Number(rental.fixed_cost) -
+      tdSum(payments.filter(row => row.notes === rental.id),"amount")),0);
+    openDrawer("Rental payments",'<div class="list">' + tdLine("Total paid",tdMoney(funding.paid,2)) +
+      tdLine("Still owed",tdMoney(owed,2)) + '</div><h2 class="section-title">Payment history</h2><div class="list">' +
+      (payments.length ? payments.map(row => tdLine(homeDateLabel(row.business_date),tdMoney(Number(row.amount),2))).join("") :
+        '<p class="simple-empty">No payments recorded.</p>') + '</div><div class="list simple-space">' +
+      funding.rentals.map((rental,index) => detailRow("rental-payment-" + index,"Record payment",
+        funding.rentals.length > 1 ? homeRentalLabel(rental) : "")).join("") + '</div>');
     funding.rentals.forEach((rental,index) => {
       document.getElementById("rental-payment-" + index).onclick = () => openRentalRepayment(rental);
     });
@@ -3327,12 +3328,6 @@ function wireRentalFunding(date,period){
 function todaySheet(day,date,period = null,due = 0){
   const rental = period ? period.rental : ledgerRental(date);
   const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
-  const target = Number(rental?.planned_hours ?? calcCfg.targetHours);
-  const periodJobs = tdLedger.jobs.filter(job => job.status === "completed" && (rental ?
-    rental.starts_on <= job.business_date && job.business_date < rental.ends_before :
-    job.business_date.slice(0,7) === date.slice(0,7)));
-  const periodHours = period ? day.hours : tdSum(periodJobs,"working_minutes") / 60;
-  const progress = Math.round(Math.min(100,Math.max(0,periodHours / Math.max(target,0.01) * 100)));
   const working = day.completeTime ? driveTimeLabel(Math.round(day.hours * 60)) : day.hours ?
     driveTimeLabel(Math.round(day.hours * 60)) + " recorded" : "Pending";
   const funding = rentalFunding(date,period);
@@ -3352,14 +3347,12 @@ function todaySheet(day,date,period = null,due = 0){
     (day.net == null ? "—" : tdMoney(day.net,2)) + '</strong><span>Take-home ›</span></button></div>' +
     '<div class="today-hours"><button type="button" class="today-metric" id="td-hourly" aria-label="Hourly earnings breakdown"><strong>' +
     (day.rate == null ? "—" : tdMoney(day.rate,2) + "/hr") + '</strong><span>' + tdMoney(goal) + '/hr goal</span>' +
-    '</button>' +
-    '<button type="button" id="td-worked"><strong>' + esc(working) + '</strong><span>Hours worked</span></button></div>' +
-    (!period || rental ? '<div class="today-hours"><button type="button" id="td-period-hours"><strong>' +
-    fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>Planned hours ›</span></button>' +
-    '<div class="today-progress" role="progressbar" aria-label="Working hours target" aria-valuenow="' +
-    progress + '"><span style="width:' + progress + '%"></span></div></div>' : '') +
-    (due ? '<button type="button" class="quiet-link collect-link" id="td-collect">' + tdMoney(due) + ' to collect ›</button>' : '') +
-    '</section></div>';
+    '</button></div><div class="today-hours"><button type="button" id="td-worked"><strong>' + esc(working) +
+    '</strong><span>Hours worked</span></button><button type="button" id="td-period-hours"><strong>' +
+    (hasRental ? fmtNum(tdSum(funding.rentals,"planned_hours")) + 'h' : '—') +
+    '</strong><span>Rental hours planned</span></button></div></section>' +
+    (due ? '<section class="list simple-space" aria-label="Outstanding payments">' +
+      detailRow("td-collect","To collect",tdMoney(due,2)) + '</section>' : '') + '</div>';
 }
 function unpaidTrips(jobs){
   return jobs.filter(job => job.status === "completed" && job.fare != null).map(job => {
@@ -3611,10 +3604,15 @@ function renderHomePeriod(){
   if(rental){
     const openRental = () => { moneyRentalId = rental.id; goMenu("money"); };
     document.getElementById("home-rental-details").onclick = openRental;
-    document.getElementById("td-period-hours").onclick = openRental;
   }
+  document.getElementById("td-period-hours").onclick = () => openPlannedHours(rentalFunding(tdDate,period));
   wireLedgerJobRows();
   wireSavedTripEntries();
+}
+function openPlannedHours(funding){
+  openDrawer("Rental hours planned",'<div class="list">' + (funding.rentals.length ?
+    funding.rentals.map(rental => tdLine(homeRentalLabel(rental),fmtNum(Number(rental.planned_hours)) + "h")).join("") :
+    '<p class="simple-empty">No rental period selected.</p>') + '</div>');
 }
 function renderToday(reload=true){
   view = "today";
@@ -3631,7 +3629,6 @@ function renderToday(reload=true){
   const active = tdLedger.jobs.filter(job => job.status === "scheduled" || job.status === "quoted").length;
   const rows = data.jobs.map(job => {
     const detail = job.status === "scheduled" ? "Scheduled" :
-      job.return_pending ? (dayReturnOnFile(data,job) ? "Check return trip" : "Return trip missing") :
       job.working_minutes == null ? "Time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked";
     return ledgerJobRow(job,detail);
   }).join("");
@@ -3664,11 +3661,7 @@ function renderToday(reload=true){
       tdLine(ledgerJobTitle(job),job.working_minutes == null ? "Pending" : driveTimeLabel(Number(job.working_minutes)))
     ).join("") : '<p class="simple-empty">No completed jobs for this day.</p>') + '</div>');
   };
-  document.getElementById("td-period-hours").onclick = () => {
-    homeRentalId = ledgerRental(date)?.id ?? null;
-    todayPeriod = "month";
-    renderToday(false);
-  };
+  document.getElementById("td-period-hours").onclick = () => openPlannedHours(rentalFunding(date,null));
   document.getElementById("home-add-toll").onclick = () => openJobToll(date);
   document.getElementById("home-add-fuel").onclick = () => openFuelPurchases(date);
   document.getElementById("home-fuel-used").onclick = () => openDailyExpense(date,"fuel",day.manualFuel);
@@ -3742,7 +3735,7 @@ function openCarTrip(date,segment = null,jobId = null,categoryChoice = null,back
   const jobOptions = (driveDate,selection) => {
     const previousDay = dateOffset(driveDate,-1);
     const jobs = tdLedger.jobs.filter(job => job.id === selection || (job.status === "completed" &&
-      (job.business_date === driveDate || (job.return_pending && job.business_date === previousDay))));
+      (job.business_date === driveDate || (job.business_date === previousDay))));
     return '<option value="">No job linked</option>' + jobs.map(job => '<option value="' + esc(job.id) + '"' +
       (job.id === selection ? ' selected' : '') + '>' + esc(ledgerJobTitle(job) +
       (job.business_date === driveDate ? "" : " · " + fmtDateShort(job.business_date))) + '</option>').join("");
@@ -3876,7 +3869,6 @@ function openLedgerJob(job,parent = null){
   const details = '<div class="list">' +
     (job.customer ? tdLine("Customer",job.customer) : "") +
     (completed ? detailRow("ledger-actual-review","Working time and fare",working) : tdLine("Working time",working)) +
-    (job.return_pending ? detailRow("ledger-return","Return trip","Pending") : "") +
     (payOpen ? detailRow("ledger-payment","Record payment") : "") +
     (payments.length ? tdLine("Payments recorded",tdMoney(tdSum(payments,"amount"),2)) : "") +
     undated.map(payment => '<button type="button" class="row" data-undated-payment="' + esc(payment.id) +
@@ -3899,12 +3891,6 @@ function openLedgerJob(job,parent = null){
   if(edit) edit.onclick = () => openLedgerJobForm(job,{},back);
   const actuals = document.getElementById("ledger-actual-review");
   if(actuals) actuals.onclick = () => openJobActuals(job,segments,back);
-  const pendingReturn = document.getElementById("ledger-return");
-  if(pendingReturn) pendingReturn.onclick = () => {
-    const recorded = segments.find(row => row.category === "empty_return");
-    if(recorded) openJobActuals(job,segments,back);
-    else openCarTrip(job.business_date,null,job.id,"empty_return",back);
-  };
   const payment = document.getElementById("ledger-payment");
   if(payment) payment.onclick = () => openLedgerPayment(job,payments,back);
   document.getElementById("sheet-body").querySelectorAll("[data-undated-payment]").forEach(button => {
@@ -3931,9 +3917,7 @@ function openJobActuals(job,segments,back = null){
   const fields = tdLine("Job",ledgerJobTitle(job)) +
     ledgerInput("fare","Fare earned ($)","number",job.fare,'min="0" max="9999999999.99" step="0.01" required') +
     ledgerInput("minutes","Total working time (min)","number",job.working_minutes,
-      'min="0" max="9999999.999" step="0.001" required') + observed +
-    '<label class="toggle-row"><input type="checkbox" name="return-pending"' + (job.return_pending ? " checked" : "") +
-    '> Return drive still missing</label>';
+      'min="0" max="9999999.999" step="0.001" required') + observed;
   openLedgerForm("Review job actuals",fields,async (data,user) => {
     const fare = data.get("fare"), minutes = data.get("minutes");
     if(fare === "" || minutes === "") throw new Error("Enter the actual fare and working time.");
@@ -3947,7 +3931,6 @@ function openJobActuals(job,segments,back = null){
       "&return_pending=eq." + !!job.return_pending,{
         method:"PATCH",headers:{Prefer:"return=representation"},
         body:JSON.stringify({fare:Number(fare),working_minutes:Number(minutes),review_state:"confirmed",
-          return_pending:data.has("return-pending"),
           rental_id:job.rental_id ?? rental?.id ?? null,rental_hourly_snapshot:snapshot})
       });
     if(!saved?.length) throw new Error("This job changed. Refresh the day and try again.");
@@ -4051,7 +4034,7 @@ function renderLedgerJobs(reload){
   const completed = jobs.filter(job => job.status === "completed")
     .sort((a,b) => b.business_date.localeCompare(a.business_date));
   const list = rows => '<div class="list">' + rows.map(job => ledgerJobRow(job,
-    [fmtDateShort(job.business_date),job.customer,job.return_pending ? "Return trip missing" : ""].filter(Boolean).join(" · ")
+    [fmtDateShort(job.business_date),job.customer].filter(Boolean).join(" · ")
   )).join("") + '</div>';
   h(head + (open.length ? '<div class="simple-section-head"><h2>Open</h2></div>' + list(open) : '') +
     (completed.length ? '<div class="simple-section-head simple-space"><h2>Completed</h2></div>' + list(completed) :
@@ -4118,18 +4101,36 @@ function ledgerWriteOnce(table,row){
     method:"POST", headers:{Prefer:"resolution=ignore-duplicates"}, body:JSON.stringify(row)
   });
 }
-function openLedgerJobForm(job = null,prefill = {},back = null){
+function openJobWizard(prefill,back){
+  const route = {from:prefill.pickup || "",to:prefill.destination || ""};
+  const pickup = () => openRouteStop("from",route,(from) => { route.from = from; dropoff(); },{back});
+  const draft = {...prefill};
+  const details = to => openLedgerJobForm(null,{...draft,pickup:route.from,destination:to},() => {
+    const data = new FormData(document.getElementById("ledger-form"));
+    Object.assign(draft,{fare:data.get("fare"),working_minutes:data.get("minutes"),
+      business_date:data.get("date"),customer:data.get("customer"),wizardStatus:data.get("status")});
+    dropoff();
+  },true);
+  const dropoff = () => openRouteStop("to",route,(_,to) => { route.to = to; details(to); },
+    {back:pickup,skip:() => { route.to = ""; details(""); }});
+  pickup();
+}
+function openLedgerJobForm(job = null,prefill = {},back = null,wizard = false){
+  if(!job && view !== "calc" && calcUser && !wizard) return openJobWizard(prefill,back);
   const initial = job || prefill;
   const key = job ? null : crypto.randomUUID();
   const fromQuote = view === "calc";
-  const status = initial.status || "quoted";
+  const status = initial.wizardStatus || initial.status || "quoted";
   const statuses = {quoted:"Quoted",scheduled:"Scheduled"};
   if(!fromQuote) statuses.completed = "Completed";
   if(job) statuses.cancelled = "Cancelled";
   const chooseStatus = !fromQuote && (job || !prefill.status);
-  const fields = stopOptionsHtml("job-stops") +
+  const fields = (wizard ? tdLine("Pickup",initial.pickup) +
+    (initial.destination ? tdLine("Drop-off",initial.destination) : "") +
+    '<input type="hidden" name="pickup" value="' + esc(initial.pickup) + '"><input type="hidden" name="destination" value="' +
+      esc(initial.destination) + '">' : stopOptionsHtml("job-stops") +
     ledgerInput("pickup","Pickup","text",initial.pickup,'maxlength="250" list="job-stops"') +
-    ledgerInput("destination","Drop-off","text",initial.destination,'maxlength="250" list="job-stops"') +
+    ledgerInput("destination","Drop-off","text",initial.destination,'maxlength="250" list="job-stops"')) +
     (chooseStatus ? '<label class="field" for="ledger-status">Status</label><select name="status" id="ledger-status">' +
       Object.entries(statuses).map(([value,label]) =>
         '<option value="' + value + '"' + (value === status ? ' selected' : '') + '>' + label + '</option>').join("") +
