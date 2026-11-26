@@ -247,6 +247,8 @@
   .ledger-date{ font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; }
   .ledger-form .ledger-date{ width:100%; }
   .ledger-form p[role=alert]{ color:var(--danger); }
+  .ledger-evidence{ margin:10px 0; font-size:14px; }
+  .ledger-evidence summary{ min-height:44px; align-content:center; cursor:pointer; }
   .closeout-card{ margin-bottom:12px; }
   .closeout-heading{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
   .closeout-heading h2{ font-size:17px; margin:0 0 3px; }
@@ -816,7 +818,7 @@ function summaryLine(withOptions){
 /* ---------- rendering helpers ---------- */
 /* Calculator + Account views (v3 layers included). The fare wizard views
    (step1/step2/quote/flatbush/notlisted/pending) are not in this list. */
-const CALC_VIEWS = ["calc", "calc-history", "account", "calc-pick", "calc-result", "account-rates", "account-aliases"];
+const CALC_VIEWS = ["calc", "account", "calc-pick", "calc-result", "account-rates", "account-aliases"];
 function isCalcViewName(v){ return CALC_VIEWS.includes(v); }
 /* Layered screens: layers pushed on top of a root calc/account
    screen; nav back pops. Root jumps (icon bar, deep links) clear it. */
@@ -925,7 +927,7 @@ function updateMenu(){
   // The icon bar hides wherever the loop bar shows.
   const loopViews = ["quote", "flatbush", "calc-result"];
   pill.style.display = loopViews.includes(view) ? "none" : "";
-  const section = ["today","jobs","money"].includes(view) ? view : view === "calc-history" ? "jobs" : view === "pending" ? "account"
+  const section = ["today","jobs","money"].includes(view) ? view : view === "pending" ? "account"
     : view === "account" || view.indexOf("account-") === 0 ? "account"
     : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "account";
   pill.querySelectorAll("[data-menu]").forEach(b => {
@@ -977,7 +979,6 @@ function setStep(n, label){
     : calcResultBack != null ? calcResultBack
     : quoteBack != null ? quoteBack
     : view === "account-rates" || view === "account-aliases" ? "Account"
-    : view === "calc-history" ? "Jobs"
     : isCalcView ? "Back"
     : (view === "notlisted" || n === 3) ? "Where to?"
     : n === 2 ? "Where from?"
@@ -1005,7 +1006,6 @@ function goBackFromCalc(){
   if(popScreen()) return;
   const t = backTarget || "step1";
   if(t === "calc") renderCalc();
-  else if(t === "calc-history") renderCalcHistory();
   else if(t === "jobs") goMenu("jobs");
   else if(t === "account") renderAccount();
   else if(t === "quote" && sel.resolved) renderQuote();
@@ -1478,9 +1478,10 @@ function calcLoadLocal(){
     if(c && typeof c === "object") calcCfg = Object.assign({}, CALC_DEFAULTS, c);
     calcNormalizeConfig();
   } catch(e){}
+  calcTripsArr = [];
   try {
     const t = JSON.parse(localStorage.getItem("fl_calc_trips") || "null");
-    if(Array.isArray(t)) calcTripsArr = t;
+    if(Array.isArray(t) && !localStorage.getItem("fl_legacy_claim_owner")) calcTripsArr = t;
   } catch(e){}
   try {
     const a = JSON.parse(localStorage.getItem("fl_aliases") || "null");
@@ -1491,7 +1492,6 @@ function calcLoadLocal(){
 }
 function calcSaveLocal(){
   localStorage.setItem("fl_calc_config", JSON.stringify(calcCfg));
-  localStorage.setItem("fl_calc_trips", JSON.stringify(calcTripsArr));
 }
 calcLoadLocal();
 
@@ -1583,6 +1583,8 @@ function calcSignOut(){
   calcUser = null;
   tdLedger=null;tdLoading=false;tdLoadToken++;
   closeoutDrafts.clear();
+  moneyRentalId = null;
+  ledgerJobsFilter = null;
   calcLoadLocal();
   renderAccount(); // sign-out only happens from the Account screen
 }
@@ -1592,16 +1594,11 @@ async function calcLoadRemote(){
   const cfgRows = await sbUser("calc_configs?select=config&user_id=eq." + calcUser.id);
   if(cfgRows && cfgRows[0] && cfgRows[0].config) calcCfg = Object.assign({}, CALC_DEFAULTS, cfgRows[0].config);
   calcNormalizeConfig();
-  const trips = await sbUser("calc_trips?select=trip&order=created_at.asc&user_id=eq." + calcUser.id);
-  if(Array.isArray(trips)) calcTripsArr = trips.map(r => r.trip);
+
 }
 async function calcSaveRemote(){
   if(!calcUser) return;
   await sbUser("calc_configs", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify({ user_id: calcUser.id, config: calcCfg }) });
-}
-async function calcDeleteTripRemote(id){
-  if(!calcUser) return;
-  await sbUser("calc_trips?user_id=eq." + calcUser.id + "&trip_id=eq." + encodeURIComponent(id), { method: "DELETE" });
 }
 /* First sign-in: upload local config/trips once when the account is empty, then the account is the source of truth. */
 async function calcSyncAfterSignIn(){
@@ -1614,10 +1611,14 @@ async function calcSyncAfterSignIn(){
   const remoteTrips = await sbUser("calc_trips?select=trip_id&user_id=eq." + calcUser.id);
   const remoteIds = new Set((remoteTrips || []).map(r => r.trip_id));
   const localTrips = JSON.parse(localStorage.getItem("fl_calc_trips") || "null");
-  if(Array.isArray(localTrips)){
+  const claimedOwner = localStorage.getItem("fl_legacy_claim_owner");
+  if(Array.isArray(localTrips) && localTrips.length && (!claimedOwner || claimedOwner === calcUser.id)){
+    localStorage.setItem("fl_legacy_claim_owner",calcUser.id);
     for(const t of localTrips){
       if(t && t.id && !remoteIds.has(t.id)){
-        await sbUser("calc_trips", { method: "POST", body: JSON.stringify({ user_id: calcUser.id, trip_id: t.id, trip: t }) });
+        await sbUser("calc_trips?on_conflict=user_id,trip_id", { method: "POST",
+          headers:{Prefer:"resolution=ignore-duplicates"},
+          body: JSON.stringify({ user_id: calcUser.id, trip_id: t.id, trip: t }) });
       }
     }
   }
@@ -1627,19 +1628,14 @@ async function calcInitStore(){
   calcLoadLocal();
   calcApplySession();
   if(calcUser){
-    try { await calcSyncAfterSignIn(); } catch(e){ /* tables not run yet or offline — stay on local data */ }
+    calcTripsArr = [];
+    try { await calcSyncAfterSignIn(); } catch(e){ /* signed-in screens retry ledger reads separately */ }
   }
 }
 function calcPersist(){
   calcSaveLocal();
   if(calcUser){ calcSaveRemote().catch(() => {}); }
 }
-function calcRemoveTrip(id){
-  calcTripsArr = calcTripsArr.filter(t => t.id !== id);
-  calcSaveLocal();
-  if(calcUser){ calcDeleteTripRemote(id).catch(() => {}); }
-}
-
 /* --- math (design §8, v2). No mileage fee: the fare is hourly + fuel at
    cost + tolls/parking. Return tolls are an expense too: tolls are a
    pass-through (§4.5) — they inflate the fare and the expenses equally. --- */
@@ -1780,32 +1776,6 @@ function calcFare(t, cfg){
     tollsParking: round2(tollsParking), returnCharge: round2(returnCharge),
     suggestedFare, fare, fuelCost, recovery, expenses, takeHome, totalHours, effectivePerHour };
 }
-
-/* v3: effective inputs for a saved trip — actuals when present, else the
-   saved estimates. Actual time is total time (driving + waiting, answer
-   4), so with actuals the wait is folded into hours and waitHours is 0.
-   The month aggregates and the trip drawer both recompute through here,
-   so a saved trip's numbers always reflect its actuals. */
-function calcTripEff(t){
-  const hasActuals = t.actualAmount != null || t.actualMiles != null || t.actualTime != null;
-  const eff = { mode: t.roundTrip ? "round" : "oneway", from: t.from, to: t.to,
-    miles: t.actualMiles != null ? t.actualMiles : t.miles,
-    tolls: t.tolls, parking: t.parking,
-    returnMiles: t.returnMiles, returnHours: t.returnHours, returnTolls: t.returnTolls,
-    adjustedFare: null };
-  if(hasActuals){
-    eff.hours = t.actualTime != null ? t.actualTime : (Number(t.hours) || 0) + (Number(t.waitHours) || 0);
-    eff.waitHours = 0;
-    eff.adjustedFare = t.actualAmount != null ? t.actualAmount : t.fareCharged;
-  } else {
-    eff.hours = t.hours; eff.waitHours = Number(t.waitHours) || 0;
-    eff.adjustedFare = t.fareCharged;
-  }
-  return eff;
-}
-/* A saved trip's numbers, recomputed from its actuals (or estimates)
-   at the current rates. */
-function calcTripResult(t){ return calcFare(calcTripEff(t), calcCfg); }
 
 /* ---------- trip calculator: screen ---------- */
 let calc = null;
@@ -2106,7 +2076,7 @@ function bindCalcPickRows(which){
     if(which === "from") calc.from = name;
     else calc.to = name;
     calc.adjustedFare = null;
-    calcPrefillFromHistory(); // v4.4: the last trip on this exact route pre-fills the inputs
+    calcPrefillFromJobs();
     if(!popScreen()) renderCalc(); // back to the form
   };
   $view.querySelectorAll("[data-place]").forEach(b => {
@@ -2116,24 +2086,27 @@ function bindCalcPickRows(which){
     b.addEventListener("click", () => pick(b.dataset.custom));
   });
 }
-/* v4.4 (N6): when From AND To are both set and a saved trip exists
-   with that exact From→To, prefill the Trip/Waiting inputs from the
-   most recent such trip — its actuals when present, else its estimate
-   (calcTripEff folds actuals the same way everywhere). Everything
-   stays editable; no saved trip on the route = no prefill. */
-function calcPrefillFromHistory(){
-  if(!calc.from || !calc.to) return;
-  let t = null;
-  for(let i = calcTripsArr.length - 1; i >= 0; i--){
-    if(calcTripsArr[i].from === calc.from && calcTripsArr[i].to === calc.to){ t = calcTripsArr[i]; break; }
-  }
-  if(!t) return;
-  const eff = calcTripEff(t);
-  calc.miles = eff.miles > 0 ? String(eff.miles) : "";
-  calc.hours = eff.hours > 0 ? String(eff.hours) : "";
-  calc.waitHours = eff.waitHours || 0;
-  calc.tolls = eff.tolls > 0 ? String(eff.tolls) : "";
-  calc.parking = eff.parking > 0 ? String(eff.parking) : "";
+function calcPrefillFromJobs(){
+  if(!calc.from || !calc.to || !tdLedger || tdLedger.user !== calcUser?.id) return;
+  const key = name => placeKey(resolvePlace(name));
+  const job = tdLedger.jobs.filter(row => row.status === "completed" && row.review_state === "confirmed" &&
+    !row.return_pending && Number(row.working_minutes) > 0 &&
+    key(row.pickup) === key(calc.from) && key(row.destination) === key(calc.to))
+    .sort((a,b) => b.business_date.localeCompare(a.business_date))[0];
+  if(!job) return;
+  const legs = tdLedger.segments.filter(row => row.job_id === job.id && isAximoteTrip(row) &&
+    row.category !== "personal" && row.category !== "unclassified" && row.category !== "waiting");
+  if(!legs.length || legs.some(row => row.distance_mi == null)) return;
+  const returnLegs = calcEndsAtHub(calc) ? [] : legs.filter(row => row.category === "empty_return");
+  if(returnLegs.some(row => row.duration_minutes == null)) return;
+  const returnMinutes = tdSum(returnLegs,"duration_minutes");
+  const miles = round3(tdSum(legs,"distance_mi") - tdSum(returnLegs,"distance_mi"));
+  if(miles <= 0 || Number(job.working_minutes) <= returnMinutes) return;
+  calc.miles = String(miles);
+  calc.hours = String(round2((Number(job.working_minutes) - returnMinutes) / 60));
+  calc.waitHours = 0;
+  calc.returnMiles = returnLegs.length ? String(tdSum(returnLegs,"distance_mi")) : "";
+  calc.returnHours = returnLegs.length ? String(round2(returnMinutes / 60)) : "";
 }
 /* v4.4.2: a calculator share link opens a NEW trip in the calculator —
    the shared inputs prefilled, the result on screen with the full
@@ -2224,161 +2197,9 @@ function openCalcFromQuote(){
   renderCalc();
 }
 
-/* ---------- trip calculator: My Month ---------- */
-let calcMonth = null; // "YYYY-MM" selected in My Month
-function calcMonthKey(d){ return String(d || "").slice(0, 7); }
-function fmtMonthLabel(ym){
-  const d = new Date(ym + "-01T12:00:00");
-  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
 function fmtDateShort(iso){
   const d = new Date(iso + "T12:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-/* v4: the month aggregates live in one helper — the Account Month
-   widget and the History screen both read through it, so the numbers
-   can never drift apart. Aggregates recompute from each trip's
-   actuals (or estimates) at the current rates, never from the stored
-   snapshot fields. */
-function calcMonthAgg(ym){
-  const trips = calcTripsArr.filter(t => calcMonthKey(t.date) === ym);
-  const paired = trips.map(t => ({ t, r: calcTripResult(t) }));
-  const recovered = round2(paired.reduce((s, p) => s + p.r.recovery, 0));
-  const hours = round2(paired.reduce((s, p) => s + p.r.totalHours, 0));
-  const revenue = round2(paired.reduce((s, p) => s + p.r.fare, 0));
-  const takeHome = round2(paired.reduce((s, p) => s + p.r.takeHome, 0));
-  const expenses = round2(revenue - takeHome);
-  const eff = hours > 0 ? round2(takeHome / hours) : null;
-  const monthlyFixed = Number(calcCfg.monthlyFixed) || 2500;
-  const targetHours = Number(calcCfg.targetHours) || 160;
-  return { trips, paired, recovered, hours, revenue, takeHome, expenses, eff, monthlyFixed, targetHours,
-    recPct: Math.max(0, Math.min(100, Math.round(recovered / monthlyFixed * 100))),
-    hrsPct: Math.max(0, Math.min(100, Math.round(hours / targetHours * 100))) };
-}
-/* Months with saved trips plus the current month, newest first —
-   the Month widget steps through exactly these. */
-function calcMonthList(){
-  const nowKey = new Date().toISOString().slice(0, 7);
-  const months = [...new Set(calcTripsArr.map(t => calcMonthKey(t.date)))];
-  if(!months.includes(nowKey)) months.push(nowKey);
-  return months.sort().reverse();
-}
-function calcEnsureMonth(){
-  const nowKey = new Date().toISOString().slice(0, 7);
-  if(!calcMonth || !calcMonthList().includes(calcMonth)) calcMonth = nowKey;
-}
-/* v4: the Month widget — the selected month's summary at a glance on
-   the Account screen, with a ‹ › picker that sets the month. No tap
-   needed to see the numbers. */
-function calcMonthWidgetHtml(){
-  calcEnsureMonth();
-  const months = calcMonthList();
-  const idx = months.indexOf(calcMonth);
-  const agg = calcMonthAgg(calcMonth);
-  const prev = idx >= 0 && idx < months.length - 1 ? months[idx + 1] : null;
-  const next = idx > 0 ? months[idx - 1] : null;
-  return '<div class="card"><div class="month-pick">' +
-      '<button class="month-nav" id="a-month-prev" aria-label="Previous month"' + (prev ? "" : " disabled") + '>‹</button>' +
-      '<span class="month-label">' + esc(fmtMonthLabel(calcMonth)) + "</span>" +
-      '<button class="month-nav" id="a-month-next" aria-label="Next month"' + (next ? "" : " disabled") + '>›</button></div>' +
-    '<div class="month-sec"><div class="route">Vehicle cost</div>' +
-      '<div class="change">Recovered ' + money(agg.recovered) + " of " + money(agg.monthlyFixed) + "</div>" +
-      '<div class="vote-row"><span class="bar"><i style="width:' + agg.recPct + '%"></i></span><span class="votes">' + agg.recPct + "%</span></div></div>" +
-    '<div class="month-sec"><div class="route">Hours ' + fmtNum(agg.hours) + " of " + fmtNum(agg.targetHours) + "</div>" +
-      '<div class="vote-row"><span class="bar"><i style="width:' + agg.hrsPct + '%"></i></span><span class="votes">' + agg.hrsPct + "%</span></div></div>" +
-    '<div class="month-sec"><div class="route">Take-home ' + money(agg.takeHome) + (agg.eff != null ? " · " + money(agg.eff) + "/hr" : "") + "</div>" +
-      '<div class="change">Calculator estimate · Revenue ' + money(agg.revenue) + " − expenses " + money(agg.expenses) + "</div></div></div>";
-}
-function renderCalcHistory(){
-  view = "calc-history";
-  backTarget = "jobs";
-  setStep(0,"Earlier calculator trips");
-  calcEnsureMonth();
-  const historyTrips = [...calcMonthAgg(calcMonth).paired].reverse();
-  h('<p class="sub">Trips saved in the original calculator.</p>' +
-    calcMonthWidgetHtml() +
-    (historyTrips.length
-      ? '<div class="tdlinks"><button id="a-month-share">Share month</button></div>' +
-        '<div class="list">' + historyTrips.map(({t,r}) => {
-          const route = [t.from,t.to].filter(Boolean).join(" → ") || "Manual trip";
-          return '<button class="row" data-trip="' + esc(t.id) + '"><span class="row-main">' +
-            esc(fmtDateShort(t.date) + " · " + route) + '<span class="row-sub">Estimated take-home ' +
-            money(r.takeHome) + (r.effectivePerHour == null ? "" : " · " + money(r.effectivePerHour) + "/hr") +
-            '</span></span><span class="row-amt">' + money(r.fare) + '</span></button>';
-        }).join("") + '</div>'
-      : '<div class="empty">No calculator trips for this month.</div>'));
-  const selectMonth = offset => {
-    const months = calcMonthList();
-    const selected = months[months.indexOf(calcMonth) + offset];
-    if(selected){ calcMonth = selected; renderCalcHistory(); }
-  };
-  document.getElementById("a-month-prev").onclick = () => selectMonth(1);
-  document.getElementById("a-month-next").onclick = () => selectMonth(-1);
-  const share = document.getElementById("a-month-share");
-  if(share) share.onclick = () => shareMonth(share);
-  $view.querySelectorAll("[data-trip]").forEach(row => row.addEventListener("click", (e) => {
-    const t = calcTripsArr.find(x => x.id === row.dataset.trip);
-    if(!t) return;
-    openTripDrawer(t);
-  }));
-}
-/* v4.4: the trip detail is a DRAWER, not a page — tapping a History
-   row opens it over the list. The detail recomputes from the trip's
-   actuals (or estimates) at the current rates, and shows the actuals
-   when the trip has them. Actions: Share (a calculator share link),
-   Reopen in calculator, Delete trip. */
-function openTripDrawer(t){
-  const saved = Object.assign({}, t);
-  const r = calcTripResult(t);
-  const res = (t.from && t.to) ? findFare(t.from, t.to) : null;
-  const listFare = res ? (t.roundTrip && res.fare.round_trip ? plainPrice(res.fare.round_trip) : plainPrice(res.fare.price)) : null;
-  const mode = t.roundTrip ? "round" : "oneway";
-  const route = [t.from,t.to].filter(Boolean).join(" → ") || "Manual trip";
-  const hasActuals = saved.actualAmount != null || saved.actualMiles != null || saved.actualTime != null;
-  const actualsLine = hasActuals
-    ? '<div class="q-summary">Actuals — ' +
-      (saved.actualAmount != null ? money(saved.actualAmount) : "—") + " · " +
-      (saved.actualMiles != null ? fmtNum(saved.actualMiles) + " mi" : "—") + " · " +
-      (saved.actualTime != null ? fmtWait(saved.actualTime) : "—") + "</div>"
-    : "";
-  openDrawer(route, '<div class="sub">' + esc(fmtDateShort(saved.date)) + "</div>" + actualsLine +
-    calcResultHtml(r, listFare, { editable: false, mode, from: t.from, to: t.to }) +
-    '<button class="btn" id="c-trip-share" style="margin-top:18px">Share trip</button>' +
-    '<button class="btn secondary" id="c-trip-reopen">Reopen as quote</button>' +
-    '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-trip-delete">Delete trip</button></div>');
-  const cmp = document.getElementById("c-cmp-card");
-  if(cmp) cmp.addEventListener("click", () => { closeDrawer(); openQuoteFromCalc(t.from, t.to, mode, () => renderCalcHistory(), "Earlier trips"); });
-  const share = document.getElementById("c-trip-share");
-  if(share) share.addEventListener("click", () => shareTrip(saved, share));
-  const reopen = document.getElementById("c-trip-reopen");
-  if(reopen) reopen.addEventListener("click", () => {
-    closeDrawer();
-    /* Fill the form from this trip's inputs (the estimates) here —
-       opening the drawer must not clobber an in-progress form. */
-    calcReset();
-    calc.from = saved.from; calc.to = saved.to;
-    calc.mode = saved.roundTrip ? "round" : "oneway";
-    calc.miles = saved.miles != null ? String(saved.miles) : "";
-    calc.hours = saved.hours != null ? String(saved.hours) : "";
-    calc.waitHours = saved.waitHours || 0;
-    calc.tolls = saved.tolls ? String(saved.tolls) : "";
-    calc.parking = saved.parking ? String(saved.parking) : "";
-    calc.returnMiles = saved.returnMiles ? String(saved.returnMiles) : "";
-    calc.returnHours = saved.returnHours ? String(saved.returnHours) : "";
-    calc.returnTolls = saved.returnTolls ? String(saved.returnTolls) : "";
-    const r2 = calcFare(calc, calcCfg);
-    calc.adjustedFare = (saved.fareCharged != null && Number(saved.fareCharged) !== r2.suggestedFare) ? Number(saved.fareCharged) : null;
-    calcStep = calcFirstIncompleteStep();
-    screenStack = [];
-    backTarget = "calc-history";
-    renderCalc();
-  });
-  const del = document.getElementById("c-trip-delete");
-  if(del) del.addEventListener("click", () => {
-    calcRemoveTrip(saved.id);
-    closeDrawer();
-    renderCalcHistory();
-  });
+  return d.toLocaleDateString("en-US", { month:"short", day:"numeric" });
 }
 
 /* ---------- trip calculator: Account ---------- */
@@ -2581,77 +2402,6 @@ async function shareCalc(btn){
   setTimeout(() => { const b = document.getElementById("c-share"); if(b) b.textContent = "Share fare"; }, 1600);
 }
 
-/* v4.4 (item 7): share a saved trip — the same amount-only calculator
-   share link as shareCalc, built from the trip's recomputed fare. */
-async function shareTrip(t, btn){
-  const r = calcTripResult(t);
-  const eff = calcTripEff(t); // actuals when present, else the estimate
-  /* Follow-up to v4.4.2: the trip's saved fare rides on the share row
-     (r.fare IS the saved fare — the actual amount, or fareCharged),
-     and so does its return leg when it has one. Same nulls rule as
-     shareCalc: no leg, no return columns. */
-  const hasReturn = r.returnMiles > 0 || r.returnHours > 0 || r.returnTolls > 0;
-  const row = { code: makeShareCode(), calc_fare: r.fare,
-    calc_route: (t.from && t.to) ? t.from + " → " + t.to : null,
-    calc_roundtrip: !!t.roundTrip,
-    /* v4.4.2: the trip's effective inputs ride on the share row (see
-       shareCalc) so the Open button can start a NEW trip with them. */
-    calc_miles: eff.miles, calc_hours: eff.hours, calc_wait_hours: eff.waitHours,
-    calc_tolls: eff.tolls, calc_parking: eff.parking,
-    calc_adjusted: r.fare,
-    calc_return_miles: hasReturn ? r.returnMiles : null,
-    calc_return_hours: hasReturn ? r.returnHours : null,
-    calc_return_tolls: hasReturn ? r.returnTolls : null };
-  let url = null;
-  try {
-    await sb("shares", { method: "POST", body: JSON.stringify(row) });
-    url = location.origin + "/s/c" + row.code;
-  } catch(e){ url = null; }
-  if(!url){
-    btn.textContent = "Couldn't share — try again";
-    setTimeout(() => { const b = document.getElementById("c-trip-share"); if(b) b.textContent = "Share trip"; }, 1600);
-    return;
-  }
-  if(navigator.share){
-    try { await navigator.share({ url: url }); } catch(e){}
-    return;
-  }
-  try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
-  catch(e){ btn.textContent = url; }
-  setTimeout(() => { const b = document.getElementById("c-trip-share"); if(b) b.textContent = "Share trip"; }, 1600);
-}
-
-/* v4.4 (N5): a point-in-time snapshot of the selected month — frozen
-   at share time, so later trips never change it. Stored as new snap_*
-   columns on the shares row (see month-snapshot-share.sql — run that
-   migration before this works live); the link is /s/m<code> and the
-   landing page shows the numbers with the take-home big. */
-async function shareMonth(btn){
-  const agg = calcMonthAgg(calcMonth);
-  const row = { code: makeShareCode(),
-    snap_month: calcMonth,
-    snap_revenue: agg.revenue, snap_expenses: agg.expenses,
-    snap_takehome: agg.takeHome, snap_hours: agg.hours,
-    snap_recovered: agg.recovered };
-  let url = null;
-  try {
-    await sb("shares", { method: "POST", body: JSON.stringify(row) });
-    url = location.origin + "/s/m" + row.code;
-  } catch(e){ url = null; }
-  if(!url){
-    btn.textContent = "Couldn't share — try again";
-    setTimeout(() => { const b = document.getElementById("a-month-share"); if(b) b.textContent = "Share " + fmtMonthLabel(calcMonth); }, 1600);
-    return;
-  }
-  if(navigator.share){
-    try { await navigator.share({ url: url }); } catch(e){}
-    return;
-  }
-  try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
-  catch(e){ btn.textContent = url; }
-  setTimeout(() => { const b = document.getElementById("a-month-share"); if(b) b.textContent = "Share " + fmtMonthLabel(calcMonth); }, 1600);
-}
-
 /* ---------- init ---------- */
 document.getElementById("nav-back").addEventListener("click", () => {
   if(view === "calc" && calcStep > 1){ const p = calcPrevStep(); if(p != null) calcGoStep(p); return; }
@@ -2712,7 +2462,8 @@ function tdRenderView(section, reload = false){
 }
 async function tdFetch(table,fields,user){
   const result = [];
-  const orders = {fl2_reconciliations:"business_date",fl2_fuel_allocations:"segment_id,purchase_id"};
+  const orders = {fl2_reconciliations:"business_date",fl2_fuel_allocations:"segment_id,purchase_id",
+    fl2_legacy_trip_links:"trip_id",calc_trips:"created_at,id"};
   const query = table + "?select=" + fields + "&user_id=eq." + encodeURIComponent(user) +
     "&order=" + (orders[table] || "id") + "&limit=500&offset=";
   for(let offset = 0; ; offset += 500){
@@ -2729,16 +2480,20 @@ async function tdLoad(){
  tdLoading = !!user;
  tdRenderView(view);
  if(!user) return;
- try{const [jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations]=await Promise.all([
- tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at",user),
+ try{const [jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations,legacyLinks,savedTrips]=await Promise.all([
+ tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at,return_pending",user),
  tdFetch("fl2_segments","id,job_id,business_date,started_at,created_at,distance_mi,duration_minutes,category,origin,destination,source",user),
  tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source",user),
  tdFetch("fl2_fuel_purchases","id,business_date,amount,gallons",user),
  tdFetch("fl2_fuel_allocations","segment_id,allocated_cost,method",user),
- tdFetch("fl2_payments","job_id,received_on,amount",user),
+ tdFetch("fl2_payments","id,job_id,received_on,amount",user),
  tdFetch("fl2_rentals","id,starts_on,ends_before,fixed_cost,planned_hours,hourly_goal",user),
- tdFetch("fl2_reconciliations","business_date,state,reviewed_at,notes",user)
- ]);if(token!==tdLoadToken||calcUser?.id!==user)return;tdLedger={user,jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations};}
+ tdFetch("fl2_reconciliations","business_date,state,reviewed_at,notes",user),
+ tdFetch("fl2_legacy_trip_links","trip_id,job_id",user),
+ tdFetch("calc_trips","trip_id,trip",user)
+ ]);if(token!==tdLoadToken||calcUser?.id!==user)return;tdLedger={user,jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations,legacyLinks};
+ calcTripsArr=savedTrips.filter(row => row.trip && typeof row.trip === "object")
+   .map(row => ({...row.trip,id:row.trip_id}));}
  catch(e){if(token!==tdLoadToken)return;tdError="Could not load your driving ledger. Try again.";}
  if(token === tdLoadToken){
    tdLoading = false;
@@ -2771,7 +2526,7 @@ function tdDay(date){
   const hasUnmatched = ledger.segments.some(row => belongsToDay(row) && carTripNeedsReview(row));
   const operatingConfirmed = !hasUnmatched &&
     (!recordedWork || (fuelConfirmed && expenses.some(row => row.category === "toll"))) &&
-    completeFare && jobs.every(job => job.review_state === "confirmed") &&
+    completeFare && jobs.every(job => job.review_state === "confirmed" && !job.return_pending) &&
     expenses.every(row => row.review_state === "confirmed");
   const confirmed = jobs.length > 0 && operatingConfirmed && rentalKnown;
   const rent = jobs.reduce((sum, job) =>
@@ -2821,7 +2576,9 @@ function closeoutData(date,day = tdDay(date)){
   const needsMatch = tripRows.filter(row => carTripNeedsReview(row) ||
     (row.job_id && tdLedger.jobs.find(job => job.id === row.job_id)?.status !== "completed"));
   const needsJob = jobs.filter(job => job.status === "scheduled" || job.fare == null ||
-    job.working_minutes == null || job.review_state !== "confirmed");
+    job.working_minutes == null || job.review_state !== "confirmed" || job.return_pending);
+  const pendingTrips = pendingSavedTrips(date);
+  const returnPending = jobs.filter(job => job.return_pending);
   const cash = tdLedger.payments.filter(row => row.received_on === date);
   const due = round2(day.jobs.reduce((total,job) => total + (job.fare == null ? 0 : Math.max(0,Number(job.fare) -
     tdSum(tdLedger.payments.filter(payment => payment.job_id === job.id),"amount"))),0));
@@ -2835,13 +2592,14 @@ function closeoutData(date,day = tdDay(date)){
   const sort = rows => [...rows].sort((a,b) => a.id.localeCompare(b.id));
   // Driving review follows source records and job actuals. Cash and costs can arrive later.
   const snapshot = JSON.stringify([
-    sort(jobs).map(j => [j.id,j.status,j.fare,j.working_minutes,j.review_state]),
-    sort(tripRows).map(s => [s.id,s.job_id,s.business_date,s.source,s.category,s.distance_mi,s.duration_minutes,s.started_at])
+    sort(jobs).map(j => [j.id,j.status,j.fare,j.working_minutes,j.review_state,!!j.return_pending]),
+    sort(tripRows).map(s => [s.id,s.job_id,s.business_date,s.source,s.category,s.distance_mi,s.duration_minutes,s.started_at]),
+    pendingTrips.map(trip => trip.id).sort()
   ]);
   const row = tdLedger.reconciliations?.find(entry => entry.business_date === date);
   const note = parseCloseoutNote(row?.notes);
   return {
-    jobs,tripRows,aximote,needsMatch,needsJob,finance,due,received:tdSum(cash,"amount"),snapshot,row,note,
+    jobs,tripRows,aximote,needsMatch,needsJob,pendingTrips,returnPending,finance,due,received:tdSum(cash,"amount"),snapshot,row,note,
     reviewed:row?.state === "reviewed" && note.snapshot === snapshot,
     changed:row?.state === "reviewed" && note.snapshot !== snapshot
   };
@@ -2882,10 +2640,11 @@ function aximoteComparisonHtml(rows,reference){
       esc(metric.differenceLabel) + '</td></tr>').join("") + '</tbody></table>';
 }
 function closeoutCard(data){
-  const count = data.needsMatch.length + data.needsJob.length;
+  const count = data.needsMatch.length + data.needsJob.length + data.pendingTrips.length;
   const detail = [
     data.needsMatch.length ? data.needsMatch.length + " driving " + (data.needsMatch.length === 1 ? "entry" : "entries") : "",
-    data.needsJob.length ? data.needsJob.length + " " + (data.needsJob.length === 1 ? "job" : "jobs") : ""
+    data.needsJob.length ? data.needsJob.length + " " + (data.needsJob.length === 1 ? "job" : "jobs") : "",
+    data.pendingTrips.length ? data.pendingTrips.length + " saved to reconcile" : ""
   ].filter(Boolean).join(" · ");
   const status = data.reviewed ? "Driving reviewed" : data.changed ? "Driving records changed" :
     count ? detail + " to review" : "Ready to compare";
@@ -2896,6 +2655,8 @@ function closeoutCard(data){
     '<button class="quiet-link" id="td-closeout">' + (data.reviewed ? "View review" : "Review day") + '</button></div>' +
     '<div class="closeout-sources">' + esc(actuals + (other ? " · " + other + " other driving " + (other === 1 ? "entry" : "entries") : "")) +
     '</div>' +
+    (data.returnPending.length ? '<div class="tdmuted">Return trip missing for ' +
+      esc(data.returnPending.map(ledgerJobTitle).join(", ")) + '</div>' : '') +
     (data.finance.length ? '<button class="quiet-link closeout-costs" id="td-costs-pending">Pending costs · ' +
       esc(data.finance.join(", ")) + '</button>' : '') +
     '<div class="tdmuted">' + tdMoney(data.received,2) + ' received this day' +
@@ -2913,8 +2674,8 @@ function openDayCloseout(date,data){
   const blockers = (data.needsMatch.length ?
     '<button type="button" class="row" id="closeout-trips"><span>Match or categorize driving entries</span>' +
     '<span class="tag">' + data.needsMatch.length + '</span><span class="chev">›</span></button>' : '') +
-    (data.needsJob.length ? '<button type="button" class="row" id="closeout-jobs"><span>Review job actuals</span>' +
-    '<span class="tag">' + data.needsJob.length + '</span><span class="chev">›</span></button>' : '');
+    (data.needsJob.length || data.pendingTrips.length ? '<button type="button" class="row" id="closeout-jobs"><span>Review job actuals</span>' +
+    '<span class="tag">' + (data.needsJob.length + data.pendingTrips.length) + '</span><span class="chev">›</span></button>' : '');
   const fields = '<p class="tdnote">' + esc(fmtDateShort(date)) +
     ' · Include all Aximote trips for the day, including personal driving.</p>' +
     '<div id="closeout-comparison" aria-live="polite">' + aximoteComparisonHtml(data.aximote,previous) + '</div>' +
@@ -2931,7 +2692,7 @@ function openDayCloseout(date,data){
       return [metric.key,value === "" ? null : Number(value)];
     }));
     if(values.get("checked") !== "on") throw new Error("Confirm that you compared the day with Aximote.");
-    if(data.needsMatch.length || data.needsJob.length) throw new Error("Review the remaining driving entries and job actuals first.");
+    if(data.needsMatch.length || data.needsJob.length || data.pendingTrips.length) throw new Error("Review the remaining driving entries and job actuals first.");
     if(aximoteComparison(data.aximote,reference).some(metric => metric.unresolved)){
       throw new Error("The Aximote totals differ. Check the entries or add the missing trips.");
     }
@@ -2992,7 +2753,7 @@ function renderToday(reload=true){
    const sourceRows = s.segments.filter(segment => segment.job_id === job.id);
    const detail = (job.working_minutes == null ? "Working time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked") +
      (sourceRows.some(row => row.distance_mi != null) ? " · " + fmtNum(miles) + " mi on file" : "") +
-     (closeout.needsJob.includes(job) ? " · Review actuals" : "");
+     (job.return_pending ? " · Return pending" : closeout.needsJob.includes(job) ? " · Review actuals" : "");
    return ledgerJobRow(job,detail);
  }).join("");
  const costs = Object.entries({toll:"Tolls",parking:"Parking",other:"Other"}).map(([key,label]) => {
@@ -3001,7 +2762,8 @@ function renderToday(reload=true){
      (entries.length ? tdMoney(tdSum(entries,"amount"),2) : "Add cost") + ' ›</b></button>';
  }).join("");
  const tab=(k,l)=>'<button role="tab" data-td-tab="'+k+'" aria-selected="'+(tdTab===k)+'">'+l+'</button>';
- const dates = [...new Set([...l.jobs,...l.segments,...l.expenses,...l.purchases,...(l.reconciliations || [])].map(row => row.business_date))].sort().reverse();
+ const dates = [...new Set([...l.jobs,...l.segments,...l.expenses,...l.purchases,...(l.reconciliations || [])]
+   .map(row => row.business_date).concat(pendingSavedTrips().map(trip => trip.date).filter(Boolean)))].sort().reverse();
  const pace = !s.jobs.length ? "No recorded jobs" : !s.confirmed ? "Pending reconciliation" :
    s.rate == null ? "No working time recorded" : s.rate === goal ? "At goal" :
    tdMoney(Math.abs(s.rate-goal),2) + "/hr " + (s.rate > goal ? "above" : "below") + " goal";
@@ -3017,7 +2779,7 @@ function renderToday(reload=true){
  const carTrips = closeout.tripRows;
  const tripsPanel = '<section id="td-day-jobs" aria-label="Recorded jobs"><div class="tdlinks"><b>Jobs · ' + closeout.jobs.length +
    '</b><button id="td-add-job">Add job</button></div><div class="tdlist">' +
-   (rows || '<div class="empty">No completed jobs recorded for this day.</div>') + '</div></section>' +
+   (rows || '<div class="empty">No completed jobs recorded for this day.</div>') + '</div>' + savedTripEntries(closeout.pendingTrips) + '</section>' +
    '<section id="td-drive-entries" aria-label="Driving entries" style="margin-top:16px"><b>Driving entries · ' + carTrips.length + '</b>' +
    renderDayCarTrips(tdDate,carTrips) + '</section>';
  h(head + closeoutCard(closeout) + '<div class="tdcard"><div class="tdmetrics">' + gauge +
@@ -3039,6 +2801,7 @@ function renderToday(reload=true){
  document.getElementById("td-date").onchange=e=>{if(e.target.value){tdDate=e.target.value;renderToday(false)}};
  $view.querySelectorAll("[data-td-tab]").forEach(e=>e.onclick=()=>{tdTab=e.dataset.tdTab;renderToday(false)});
  wireLedgerJobRows();
+ wireSavedTripEntries();
  document.getElementById("td-closeout").onclick = () => openDayCloseout(tdDate,closeout);
  const pendingCosts = document.getElementById("td-costs-pending");
  if(pendingCosts) pendingCosts.onclick = () => { tdTab = "expenses"; renderToday(false); };
@@ -3110,8 +2873,10 @@ function openCarTrip(date,segment = null){
   const key = segment ? null : crypto.randomUUID();
   const editable = !segment || segment.source === "manual_car_trip";
   const selectedJob = segment?.job_id;
-  const jobs = tdLedger.jobs.filter(job =>
-    job.id === selectedJob || (job.business_date === date && job.status === "completed"));
+  const segmentDate = segment?.business_date || date;
+  const earliest = new Date(new Date(segmentDate + "T12:00:00Z").getTime() - 86400000).toISOString().slice(0,10);
+  const jobs = tdLedger.jobs.filter(job => job.id === selectedJob || (job.status === "completed" &&
+    (job.business_date === segmentDate || (job.return_pending && job.business_date >= earliest && job.business_date < segmentDate))));
   const fields = tdLine("Business date",segment?.business_date || date) +
     (segment ? tdLine("Source",CAR_SOURCE_LABELS[segment.source] || "Other source") : "") +
     (editable ? stopOptionsHtml("car-stops") +
@@ -3126,7 +2891,8 @@ function openCarTrip(date,segment = null){
     '</select><div id="car-job-field"><label class="field" for="ledger-car-job">Match to job</label>' +
     '<select id="ledger-car-job" name="job"><option value="">Unmatched</option>' +
     jobs.map(job => '<option value="' + esc(job.id) + '"' + (job.id === selectedJob ? ' selected' : '') + '>' +
-      esc(ledgerJobTitle(job) + (job.fare == null ? "" : " · " + tdMoney(Number(job.fare)))) + '</option>').join("") +
+      esc(ledgerJobTitle(job) + (job.business_date === segmentDate ? "" : " · " + fmtDateShort(job.business_date)) +
+      (job.fare == null ? "" : " · " + tdMoney(Number(job.fare)))) + '</option>').join("") +
     '</select></div>';
   openLedgerForm(segment ? carTripTitle(segment) : "Add Aximote trip",fields,async (data,user) => {
     const category = data.get("category");
@@ -3197,6 +2963,9 @@ function openLedgerJob(job){
   const payments = tdLedger.payments.filter(row => row.job_id === job.id);
   const segments = tdLedger.segments.filter(row => row.job_id === job.id);
   const active = job.status === "quoted" || job.status === "scheduled";
+  const undated = payments.filter(row => row.received_on == null);
+  const canRecordPayment = job.status === "completed" &&
+    (job.fare == null || round2(tdSum(payments,"amount")) < Number(job.fare));
   openDrawer(ledgerJobTitle(job),
     tdLine("Date",job.business_date) +
     (job.customer ? tdLine("Customer",job.customer) : "") +
@@ -3204,13 +2973,16 @@ function openLedgerJob(job){
     tdLine(job.status === "completed" ? "Earned fare" : "Quoted fare",
       job.fare == null ? "Pending" : tdMoney(Number(job.fare),2)) +
     tdLine("Payments recorded",payments.length ? tdMoney(tdSum(payments,"amount"),2) : "Pending entry") +
+    undated.map(payment => '<button class="tdrow tdexpense" data-undated-payment="' + esc(payment.id) +
+      '"><span>Set payment date</span><b>' + tdMoney(Number(payment.amount),2) + ' ›</b></button>').join("") +
+    (job.return_pending ? tdLine("Return trip","Still missing") : "") +
     tdLine("Working time",job.working_minutes == null ? "Pending" : fmtNum(Number(job.working_minutes)/60) + "h") +
     segments.map(row => tdLine([row.origin,row.destination].filter(Boolean).join(" → ") || row.category,
       row.distance_mi == null ? "Mileage pending" : fmtNum(Number(row.distance_mi)) + " mi")).join("") +
-    (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : "") +
+    (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : "") + linkedEvidence(job) +
     (active ? '<button class="btn" id="ledger-edit">Update job</button>' : "") +
-    (job.status === "completed" ? '<button class="btn" id="ledger-actual-review">Review job actuals</button>' +
-      '<button class="btn secondary" id="ledger-payment">Record payment</button>' : "") +
+    (job.status === "completed" ? '<button class="btn" id="ledger-actual-review">Review job actuals</button>' : "") +
+    (canRecordPayment ? '<button class="btn secondary" id="ledger-payment">Record payment</button>' : "") +
     (job.status === "completed" && view === "jobs" ?
       '<button class="btn secondary" id="ledger-review">Review this day</button>' : ""));
   const edit = document.getElementById("ledger-edit");
@@ -3219,6 +2991,12 @@ function openLedgerJob(job){
   if(actuals) actuals.onclick = () => openJobActuals(job,segments);
   const payment = document.getElementById("ledger-payment");
   if(payment) payment.onclick = () => openLedgerPayment(job,payments);
+  document.getElementById("sheet-body").querySelectorAll("[data-undated-payment]").forEach(button => {
+    button.onclick = () => {
+      const row = undated.find(payment => payment.id === button.dataset.undatedPayment);
+      if(row) openPaymentDate(row);
+    };
+  });
   const review = document.getElementById("ledger-review");
   if(review) review.onclick = () => {
     closeDrawer();
@@ -3239,6 +3017,8 @@ function openJobActuals(job,segments){
     ledgerInput("fare","Actual fare ($)","number",job.fare,'min="0" max="9999999999.99" step="0.01" required') +
     ledgerInput("minutes","Total working minutes","number",job.working_minutes,
       'min="0" max="9999999.999" step="0.001" required') + useDriveTime +
+    '<label class="closeout-check"><input type="checkbox" name="return-pending"' +
+    (job.return_pending ? ' checked' : '') + '> Return trip still needs recording</label>' +
     '<p class="tdnote">Include driving to the pickup, job-related waiting, and the return. Enter the fare earned even if payment is still due.</p>';
   openLedgerForm("Review job actuals",fields,async (data,user) => {
     const fare = data.get("fare"), minutes = data.get("minutes");
@@ -3249,9 +3029,11 @@ function openJobActuals(job,segments){
     const equal = value => value == null ? "is.null" : "eq." + encodeURIComponent(value);
     const saved = await sbUser("fl2_jobs?id=eq." + encodeURIComponent(job.id) +
       "&user_id=eq." + encodeURIComponent(user) + "&status=eq.completed&fare=" + equal(job.fare) +
-      "&working_minutes=" + equal(job.working_minutes) + "&review_state=eq." + job.review_state,{
+      "&working_minutes=" + equal(job.working_minutes) + "&review_state=eq." + job.review_state +
+      "&return_pending=eq." + !!job.return_pending,{
         method:"PATCH",headers:{Prefer:"return=representation"},
         body:JSON.stringify({fare:Number(fare),working_minutes:Number(minutes),review_state:"confirmed",
+          return_pending:data.get("return-pending") === "on",
           rental_id:job.rental_id ?? rental?.id ?? null,rental_hourly_snapshot:snapshot})
       });
     if(!saved?.length) throw new Error("This job changed. Refresh the day and try again.");
@@ -3266,42 +3048,114 @@ function openJobActuals(job,segments){
   };
 }
 
-let ledgerJobsFilter = "active";
+function pendingSavedTrips(date){
+  const linked = new Set((tdLedger.legacyLinks || []).map(row => row.trip_id));
+  return calcTripsArr.filter(trip => trip?.id && !linked.has(trip.id) && (!date || trip.date === date));
+}
+function savedTripTitle(trip){
+  return [trip.from,trip.to].filter(Boolean).join(" → ") || "Saved trip";
+}
+function savedTripEntries(trips){
+  if(!trips.length) return "";
+  return '<div class="group-label">Saved jobs to reconcile</div><div class="tdlist">' + trips.map(trip =>
+    '<button class="tdrow" data-saved-trip="' + esc(trip.id) + '"><span><b>' + esc(savedTripTitle(trip)) +
+    '</b><small class="tdmuted">' + esc(trip.date || "Date unavailable") + '</small></span><span>Review ›</span></button>'
+  ).join("") + '</div>';
+}
+function wireSavedTripEntries(){
+  $view.querySelectorAll("[data-saved-trip]").forEach(button => button.onclick = () => {
+    const trip = calcTripsArr.find(entry => entry.id === button.dataset.savedTrip);
+    if(trip) openSavedTripMerge(trip);
+  });
+}
+function openSavedTripMerge(trip){
+  const matchingDay = tdLedger.jobs.filter(job => job.business_date === trip.date && job.status === "completed");
+  const savedFare = trip.actualAmount ?? trip.fareCharged;
+  const info = tdLine("Date",trip.date) + tdLine("Route",savedTripTitle(trip)) +
+    (savedFare == null ? "" : tdLine("Saved fare",tdMoney(Number(savedFare),2)));
+  openDrawer("Reconcile saved job",info +
+    (matchingDay.length ? '<button class="btn" id="saved-trip-link">Link to a completed job</button>' : "") +
+    '<button class="btn secondary" id="saved-trip-add">Add as a separate job</button>');
+  const link = document.getElementById("saved-trip-link");
+  if(link) link.onclick = () => openLedgerForm("Link saved job",info +
+    '<label class="field" for="saved-job-select">Existing job</label>' +
+    '<select id="saved-job-select" name="job" required><option value="">Choose a job</option>' + matchingDay.map(job =>
+      '<option value="' + esc(job.id) + '">' + esc(ledgerJobTitle(job) +
+        (job.fare == null ? "" : " · " + tdMoney(Number(job.fare)))) + '</option>').join("") +
+    '</select><p class="tdnote">This attaches the saved record to the selected job and keeps that job’s fare and payments.</p>',
+    data => saveTripMerge(trip.id,data.get("job"),null,null),null,"Link job");
+  document.getElementById("saved-trip-add").onclick = () => openLedgerForm("Add saved job",info +
+    ledgerInput("fare","Actual fare ($)","number","",'min="0" max="9999999999.99" step="0.01" required') +
+    ledgerInput("minutes","Actual working minutes (if known)","number","",'min="0" max="9999999.999" step="0.001"'),
+    data => {
+      const minutes = data.get("minutes");
+      return saveTripMerge(trip.id,null,Number(data.get("fare")),minutes === "" ? null : Number(minutes));
+    },null,"Add completed job");
+}
+async function saveTripMerge(tripId,jobId,fare,minutes){
+  const linked = await sbUser("rpc/fl2_merge_saved_trip",{
+    method:"POST",body:JSON.stringify({p_trip_id:tripId,p_job_id:jobId,p_fare:fare,p_working_minutes:minutes})
+  });
+  if(!linked) throw new Error("The saved job could not be merged. Refresh the ledger and try again.");
+}
+function linkedEvidence(job){
+  const ids = new Set((tdLedger.legacyLinks || []).filter(row => row.job_id === job.id).map(row => row.trip_id));
+  const trips = calcTripsArr.filter(trip => ids.has(trip.id));
+  return trips.length ? '<details class="ledger-evidence"><summary>Saved trip details</summary>' +
+    trips.map(trip => {
+      const amount = trip.actualAmount ?? trip.fareCharged;
+      const aximote = trip.reconciliation?.aximote;
+      const wait = trip.reconciliation?.job?.waitingMinutes;
+      return tdLine(savedTripTitle(trip),amount == null ? "Fare unavailable" : tdMoney(Number(amount),2)) +
+        (wait == null ? "" : tdLine("Saved waiting time",driveTimeLabel(Number(wait)))) +
+        (aximote?.recordedGallons == null ? "" : tdLine("Aximote fuel used",fmtNum(Number(aximote.recordedGallons)) + " gal")) +
+        (aximote?.reportedEstimatedCost == null ? "" :
+          tdLine("Aximote fuel estimate",tdMoney(Number(aximote.reportedEstimatedCost),2)));
+    }).join("") + '</details>' : "";
+}
+function openPaymentDate(payment){
+  openLedgerForm("Set payment date",tdLine("Confirmed received",tdMoney(Number(payment.amount),2)) +
+    ledgerInput("date","Date received","date","",'required max="' + todayNY() + '"'),async (data,user) => {
+      const result = await sbUser("fl2_payments?id=eq." + encodeURIComponent(payment.id) +
+        "&user_id=eq." + encodeURIComponent(user) + "&received_on=is.null",{
+          method:"PATCH",headers:{Prefer:"return=representation"},
+          body:JSON.stringify({received_on:data.get("date")})
+        });
+      if(!result?.length) throw new Error("This payment date changed. Refresh the ledger.");
+    },null,"Save receipt date");
+}
+
+let ledgerJobsFilter = null;
 function renderLedgerJobs(reload){
   view = "jobs";
   inFlow = false;
   setStep(0,"Jobs");
   if(reload){ tdLoad(); return; }
   const head = '<div class="tdhead"><h1>Jobs</h1></div>';
-  const archiveLink = calcTripsArr.length ? '<div class="tdlinks"><button id="jobs-archive">Earlier calculator trips</button></div>' : "";
-  if(ledgerLoading(head)){
-    $view.insertAdjacentHTML("beforeend",archiveLink);
-    const archive = document.getElementById("jobs-archive");
-    if(archive) archive.onclick = renderCalcHistory;
-    return;
-  }
+  if(ledgerLoading(head)) return;
+  const pendingTrips = pendingSavedTrips();
   const allJobs = tdLedger.jobs;
   const quotes = allJobs.filter(job => job.status === "quoted").sort((a,b) => b.business_date.localeCompare(a.business_date));
   const scheduled = allJobs.filter(job => job.status === "scheduled").sort((a,b) => a.business_date.localeCompare(b.business_date));
   const completed = allJobs.filter(job => job.status === "completed").sort((a,b) => b.business_date.localeCompare(a.business_date));
+  ledgerJobsFilter ??= quotes.length || scheduled.length ? "active" : "completed";
   const tab = (key,label) => '<button data-jobs-filter="' + key + '" aria-pressed="' +
     (ledgerJobsFilter === key) + '">' + label + '</button>';
   const group = (label,jobs) => jobs.length ? (label ? '<div class="group-label">' + label + '</div>' : '') +
     '<div class="tdlist">' + jobs.map(job => ledgerJobRow(job,[fmtDateShort(job.business_date),job.customer].filter(Boolean).join(" · "))).join("") + '</div>' : "";
-  const result = ledgerJobsFilter === "completed" ? group("",completed) : group("Scheduled",scheduled) + group("Quotes",quotes);
+  const result = ledgerJobsFilter === "completed" ? group("",completed) + savedTripEntries(pendingTrips) :
+    group("Scheduled",scheduled) + group("Quotes",quotes);
   h(head + '<div class="tdtabs" aria-label="Job status">' + tab("active","Open · " + (quotes.length + scheduled.length)) +
-    tab("completed","Completed · " + completed.length) + '</div>' +
+    tab("completed","Completed · " + completed.length + (pendingTrips.length ? " · " + pendingTrips.length + " to review" : "")) + '</div>' +
     '<div class="tdlinks"><button id="jobs-quote">New quote</button><button id="jobs-add">Add job</button></div>' +
-    (result || '<div class="empty">' + (ledgerJobsFilter === "active" ? "No open jobs." : "No completed jobs.") + '</div>') +
-    archiveLink);
+    (result || '<div class="empty">' + (ledgerJobsFilter === "active" ? "No open jobs." : "No completed jobs.") + '</div>'));
   $view.querySelectorAll("[data-jobs-filter]").forEach(button => {
     button.onclick = () => { ledgerJobsFilter = button.dataset.jobsFilter; renderLedgerJobs(false); };
   });
   document.getElementById("jobs-quote").onclick = () => goMode("calc");
   document.getElementById("jobs-add").onclick = () => openLedgerJobForm();
-  const archive = document.getElementById("jobs-archive");
-  if(archive) archive.onclick = renderCalcHistory;
   wireLedgerJobRows();
+  wireSavedTripEntries();
 }
 function ledgerInput(name,label,type,value,attributes=""){
   return '<label class="field" for="ledger-' + name + '">' + label + '</label><input id="ledger-' + name +
@@ -3478,48 +3332,66 @@ function renderLedgerMoney(reload){
   setStep(0,"Money");
   if(reload){ tdLoad(); return; }
   const head = '<div class="tdhead"><h1>Money</h1></div>';
-  const addRental = '<div class="tdlinks"><button id="money-add">Add rental period</button></div>';
   if(ledgerLoading(head)) return;
-  const rentals = [...tdLedger.rentals].sort((a,b) => b.starts_on.localeCompare(a.starts_on));
-  const rental = rentals.find(row => row.id === moneyRentalId) || ledgerRental(tdDate) || rentals[0];
-  if(!rental){
-    h(head + '<div class="tdcard"><p class="tdnote">No rental period recorded.</p></div>' + addRental);
-    document.getElementById("money-add").onclick = openLedgerRental;
-    return;
-  }
-  const inPeriod = date => rental.starts_on <= date && date < rental.ends_before;
-  const jobs = tdLedger.jobs.filter(job => job.status === "completed" && inPeriod(job.business_date));
+  const ledger = tdLedger;
+  const rentals = [...ledger.rentals].sort((a,b) => b.starts_on.localeCompare(a.starts_on));
+  const months = [...new Set([tdDate,...ledger.jobs.map(row => row.business_date),
+    ...ledger.expenses.map(row => row.business_date),...ledger.purchases.map(row => row.business_date),
+    ...ledger.payments.map(row => row.received_on)].filter(Boolean).map(date => date.slice(0,7)))].sort().reverse();
+  const rental = rentals.find(row => row.id === moneyRentalId) || (!moneyRentalId ? ledgerRental(tdDate) : null);
+  const month = months.includes(moneyRentalId) ? moneyRentalId : tdDate.slice(0,7);
+  const inPeriod = date => !!date && (rental ? rental.starts_on <= date && date < rental.ends_before : date.startsWith(month + "-"));
+  const jobs = ledger.jobs.filter(job => job.status === "completed" && inPeriod(job.business_date));
   const jobIds = new Set(jobs.map(job => job.id));
-  const payments = tdLedger.payments.filter(payment => jobIds.has(payment.job_id));
+  const payments = ledger.payments.filter(payment => jobIds.has(payment.job_id));
+  const expectedDates = pendingSavedTrips().filter(trip => inPeriod(trip.date));
   const dates = new Set(jobs.map(job => job.business_date));
-  tdLedger.expenses.filter(row => !row.job_id && inPeriod(row.business_date))
+  ledger.expenses.filter(row => !row.job_id && inPeriod(row.business_date))
     .forEach(row => dates.add(row.business_date));
-  tdLedger.segments.filter(row => !row.job_id && row.category !== "personal" && inPeriod(row.business_date))
+  ledger.segments.filter(row => !row.job_id && row.category !== "personal" && inPeriod(row.business_date))
     .forEach(row => dates.add(row.business_date));
   const days = [...dates].map(tdDay);
-  const complete = days.length > 0 && days.every(day => day.operatingConfirmed);
+  const complete = days.length > 0 && !expectedDates.length && days.every(day => day.operatingConfirmed);
   const earned = tdSum(jobs,"fare");
   const operating = tdSum(days,"operatingCost");
-  const fixedCost = Number(rental.fixed_cost);
+  const fixedCost = Number(rental?.fixed_cost);
   const remaining = Math.max(0,fixedCost - (earned - operating));
-  const purchases = tdLedger.purchases.filter(row => inPeriod(row.business_date));
-  h(head + '<label class="field" for="money-period">Rental period (end date exclusive)</label>' +
-    '<select id="money-period">' + rentals.map(row => '<option value="' + esc(row.id) + '"' +
-      (row.id === rental.id ? ' selected' : '') + '>' + esc(row.starts_on + " to " + row.ends_before) + '</option>').join("") +
-    '</select><div class="tdcard" style="margin-top:12px">' +
-    tdLine("Earned fare" + (jobs.some(job => job.fare == null) ? " recorded" : ""),tdMoney(earned,2)) +
-    tdLine("Payments recorded for these jobs",tdMoney(tdSum(payments,"amount"),2)) +
-    tdLine("Recorded working hours",fmtNum(tdSum(jobs,"working_minutes")/60) + " / " + fmtNum(Number(rental.planned_hours)) + "h") +
+  const purchases = ledger.purchases.filter(row => inPeriod(row.business_date));
+  const outstanding = jobs.reduce((sum,job) => sum + (job.fare == null ? 0 : Math.max(0,Number(job.fare) -
+    tdSum(payments.filter(payment => payment.job_id === job.id),"amount"))),0);
+  const undated = payments.filter(payment => !payment.received_on);
+  const periodOption = (value,label,selected) => '<option value="' + esc(value) + '"' + (selected ? " selected" : "") +
+    ">" + esc(label) + "</option>";
+  const rentalOptions = rentals.map(row => periodOption(row.id,"Rental · " + row.starts_on + " to " + row.ends_before,row.id === rental?.id));
+  const monthOptions = months.map(key => periodOption(key,new Date(key + "-01T12:00:00").toLocaleDateString("en-US",{
+    year:"numeric",month:"long"}),!rental && month === key));
+  h(head + '<label class="field" for="money-period">Period</label><select id="money-period">' +
+    rentalOptions.join("") + monthOptions.join("") + '</select><div class="tdcard" style="margin-top:12px">' +
+    tdLine("Earned fare" + (expectedDates.length || jobs.some(job => job.fare == null) ? " recorded" : ""),tdMoney(earned,2)) +
+    tdLine("Payments confirmed for these jobs",tdMoney(tdSum(payments,"amount"),2)) +
+    tdLine("Still due on these jobs",tdMoney(outstanding,2)) +
+    tdLine("Cash received on dates in this period",tdMoney(tdSum(ledger.payments.filter(row => inPeriod(row.received_on)),"amount"),2)) +
+    (undated.length ? tdLine("Confirmed payments awaiting receipt dates",tdMoney(tdSum(undated,"amount"),2)) : "") +
+    tdLine("Recorded working hours",fmtNum(tdSum(jobs,"working_minutes")/60) +
+      (rental ? " / " + fmtNum(Number(rental.planned_hours)) : "") + "h") +
     tdLine("Operating costs",complete ? tdMoney(operating,2) : "Pending reconciliation") +
-    tdLine("Full rental cost",tdMoney(fixedCost,2)) +
-    tdLine("Rental cost remaining",complete ? tdMoney(remaining,2) : "Pending reconciliation") +
-    tdLine("Period take-home before tax",complete ? tdMoney(earned - operating - fixedCost,2) : "Pending reconciliation") +
-    tdLine("Fuel purchased (cash)",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchases recorded") +
-    '</div>' + addRental);
+    (rental ? tdLine("Full rental cost",tdMoney(fixedCost,2)) +
+      tdLine("Rental cost remaining",complete ? tdMoney(remaining,2) : "Pending reconciliation") +
+      tdLine("Period take-home before tax",complete ? tdMoney(earned - operating - fixedCost,2) : "Pending reconciliation") :
+      tdLine("Rental costs","Select a rental period")) +
+    tdLine("Fuel purchased",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchases recorded") +
+    (expectedDates.length ? '<button class="tdrow tdexpense" id="money-saved"><span>Reconcile saved jobs</span><b>' +
+      expectedDates.length + ' ›</b></button>' : "") + '</div>' +
+    '<div class="tdlinks"><button id="money-add">Add rental period</button></div>');
   document.getElementById("money-add").onclick = openLedgerRental;
   document.getElementById("money-period").onchange = event => {
     moneyRentalId = event.target.value;
     renderLedgerMoney(false);
+  };
+  const pending = document.getElementById("money-saved");
+  if(pending) pending.onclick = () => {
+    ledgerJobsFilter = "completed";
+    goMenu("jobs");
   };
 }
 
@@ -3553,7 +3425,10 @@ async function init(){
     } else if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
       backTarget = "step1";
       if(viewParam === "calc"){ if(!calcOpenFromShare(q)) renderCalc(); } // v4.4.2: a share link opens a new trip on the result
-      else if(viewParam === "calc-month") renderCalcHistory(); // "calc-month" still works as an alias
+      else if(viewParam === "calc-month"){
+        ledgerJobsFilter = "completed";
+        renderLedgerJobs(true);
+      }
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
     } else if(LEDGER_VIEWS.includes(viewParam) || [...q.keys()].every(key => key.startsWith("utm_"))){
       tdRenderView(viewParam || "today",true);
