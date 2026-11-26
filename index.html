@@ -347,12 +347,110 @@ function zoneLabel(base){
 function isZoneLabel(p){ return bases.some(b => gridFor(b) && zoneLabel(b) === p); }
 function zoneBaseOf(p){ return bases.find(b => gridFor(b) && zoneLabel(b) === p); }
 
-/* v4.4 aliases: a name that means the same place (e.g. "White Planes"
-   = "White Plains"). Stored locally only, never a fare-row rename.
-   resolvePlace() maps an alias to its canonical place wherever a
-   name is looked up; pickers match on either name. */
-let placeAliases = {}; // alias name -> canonical fare-sheet place
-function resolvePlace(name){ return (name && placeAliases[name]) || name; }
+// Printed spellings remain available because rates can vary by origin.
+const FARE_ALIAS_GROUPS = [
+  [["Borough Park"],["Boro Park","BoroPk","BP"]],
+  [["JFK"],["JFK Airport","Kennedy Airport","John F Kennedy International Airport"]],
+  [["LaGuardia"],["LGA","LGA Airport","La Guardia","LaGuardia Airport"]],
+  [["Newark"],["EWR","EWR Airport","Newark Airport","Newark Liberty","Newark Liberty International Airport"]],
+  [["Islip"],["ISP","Islip Airport","MacArthur Airport","Long Island MacArthur Airport"]],
+  [["Teterboro"],["TEB","Teterboro Airport"]],
+  [["Philadefiphia (PHL)"],["PHL","Philadelphia Airport","Philadelphia International Airport"]],
+  [["Monsey"],["Monsey NY"]],
+  [["Monroe"],["Monroe NY"]],
+  [["Lakewood"],["Lakewood NJ"]],
+  [["New Square"],["New Square NY","Skver"]],
+  [["Monsey / New Square"],["Monsey","New Square"]],
+  [["Lakewood / Toms river / Howell"],["Toms River","Howell"]],
+  [["NYC"],["New York City"]],
+  [["Williamsburg"],["Williamsburg Brooklyn"]],
+  [["Long Island City"],["LIC"]],
+  [["Green Point"],["Greenpoint"]],
+  [["Down Town B'klyn"],["Downtown Brooklyn","Downtown BK","Downtown Bklyn"]],
+  [["Lower Eastside / Westside","Lower Westside/Eastside"],["Lower East Side","Lower West Side","LES"]],
+  [["Washngtn Heights"],["Washington Heights"]],
+  [["Wall Street area"],["Wall Street","Financial District","FiDi"]],
+  [["Red Hook/ Ikea"],["Red Hook","IKEA Brooklyn","Brooklyn IKEA"]],
+  [["Seagate"],["Sea Gate"]],
+  [["Floyd Bennet Field"],["Floyd Bennett Field"]],
+  [["1st Ave. & 69 Strt."],["1st Avenue and 69th Street","1st Ave 69th St"]],
+  [["40 8th Ave."],["40 8th Avenue"]],
+  [["6740 4th Ave."],["6740 4th Avenue"]],
+  [["80th Strett"],["80th St","80th Street"]],
+  [["West 8 Street."],["West 8th Street","W 8th St"]],
+  [["Palisades Mall","Palisiades Mall"],["Palisades Center"]],
+  [["Garden St Mall","Garden state mall (RT. 4)"],["Garden State Plaza","Garden State Mall"]],
+  [["American Drea Mall"],["American Dream","American Dream Mall"]],
+  [["Jersy Garden"],["Jersey Gardens","The Mills at Jersey Gardens"]],
+  [["White Plains","White Planes"],[]],
+  [["Passaic","Possiac NJ"],["Passaic NJ"]],
+  [["Columbia Presb.","Colubia Presbyterian"],["Columbia Presbyterian","NewYork-Presbyterian Columbia"]],
+  [["Westchester Medical","Westchester Medical Center"],["WMC Valhalla"]],
+  [["Kasho","Kiryas Kasho (Bedford Hills NY)"],["Kiryas Kasho"]],
+  [["Sufferen"],["Suffern"]],
+  [["Good Samaritan (Sufferen NY)"],["Good Samaritan Hospital Suffern"]],
+  [["L.I.C.H."],["Long Island College Hospital"]],
+  [["L.I.J. / Northshore"],["LIJ","Long Island Jewish","North Shore LIJ"]],
+  [["NY Cornell"],["Weill Cornell","Weill Cornell Medical Center"]],
+  [["Beth David"],["Beth David Cemetery"]],
+  [["Beth Israel (Cemetery)"],["Beth Israel Cemetery"]],
+  [["Beth Israel (Hospital)"],["Beth Israel Hospital"]],
+  [["Ohel Chabad (Queens)"],["The Ohel","Chabad Ohel","Ohel Chabad"]],
+  [["Engelwood"],["Englewood","Englewood NJ"]],
+  [["Newburg"],["Newburgh"]],
+  [["New Winsor"],["New Windsor"]],
+  [["West Havestraw"],["West Haverstraw"]],
+  [["Perl Rive"],["Pearl River"]],
+  [["Montgomrery"],["Montgomery"]],
+  [["Napanach"],["Napanoch"]],
+  [["Mount Kisko"],["Mt Kisco"]],
+  [["Hopewell Jnct."],["Hopewell Junction"]],
+  [["Fleishmman's"],["Fleischmanns"]],
+  [["Platsburg (City)"],["Plattsburgh","Plattsburgh City"]],
+  [["Platsburg (Exit 42 on I87)"],["Plattsburgh Exit 42","I-87 Exit 42"]],
+  [["Jersey city"],["Jersey City NJ"]]
+];
+
+let placeAliases = Object.create(null); // User aliases stay on this device.
+let fareAliasIndex = new Map();
+
+function placeKey(name){
+  return String(name ?? "").normalize("NFKD").toLowerCase()
+    .replace(/\p{M}/gu,"").replace(/[^\p{L}\p{N}]/gu,"");
+}
+function seedFareAliases(){
+  fareAliasIndex = new Map(places.map(place => [place,[]]));
+  for(const [stops,names] of FARE_ALIAS_GROUPS){
+    for(const stop of stops){
+      if(fareAliasIndex.has(stop)) fareAliasIndex.set(stop,[...names,...stops.filter(name => name !== stop)]);
+    }
+  }
+}
+function aliasesForPlace(place){
+  return [...(fareAliasIndex.get(place) || []),...Object.entries(placeAliases)
+    .filter(([,target]) => target === place).map(([alias]) => alias)];
+}
+function resolvePlace(name){
+  const key = placeKey(name);
+  if(!key || places.includes(name)) return name;
+  const custom = Object.entries(placeAliases).find(([alias]) => placeKey(alias) === key);
+  if(custom) return custom[1];
+  const exact = places.filter(place => placeKey(place) === key);
+  if(exact.length === 1) return exact[0];
+  if(exact.length > 1) return name;
+  const matches = places.filter(place => (fareAliasIndex.get(place) || []).some(alias => placeKey(alias) === key));
+  return matches.length === 1 ? matches[0] : name;
+}
+function routePlaceOptions(name){
+  const place = resolvePlace(name);
+  const key = placeKey(place);
+  if(!key) return [];
+  const group = FARE_ALIAS_GROUPS.find(([stops]) => stops.includes(place));
+  if(group) return [...new Set([place,...group[0].filter(stop => fareAliasIndex.has(stop))])];
+  if(fareAliasIndex.has(place)) return [place];
+  const candidates = places.filter(stop => aliasesForPlace(stop).some(alias => placeKey(alias) === key));
+  return candidates.length ? candidates : [place];
+}
 function calcSaveAliases(){ try{ localStorage.setItem("fl_aliases", JSON.stringify(placeAliases)); }catch(e){} }
 
 const cfg = window.FL_CONFIG || {};
@@ -436,18 +534,24 @@ async function loadData(){
   const set = new Set(topPlaces);
   fares.forEach(r => { set.add(r.from_place); set.add(r.to_place); });
   places = [...set];
+  seedFareAliases();
   const badge = document.getElementById("community-count");
   if(badge){ badge.textContent = proposals.length; badge.classList.toggle("hidden", proposals.length === 0); }
 }
 
 /* ---------- fare resolution & pricing ---------- */
-function findFare(from, to){
-  from = resolvePlace(from); to = resolvePlace(to);
-  let f = fares.find(r => r.from_place === from && r.to_place === to);
-  if(f) return { fare: f, reversed: false };
-  f = fares.find(r => r.from_place === to && r.to_place === from);
-  if(f) return { fare: f, reversed: true };
-  return null;
+function exactFare(from,to){
+  const forward = fares.find(row => row.from_place === from && row.to_place === to);
+  if(forward) return {fare:forward,reversed:false};
+  const reverse = fares.find(row => row.from_place === to && row.to_place === from);
+  return reverse ? {fare:reverse,reversed:true} : null;
+}
+function findFare(from,to){
+  const direct = exactFare(resolvePlace(from),resolvePlace(to));
+  if(direct) return direct;
+  const pairs = routePlaceOptions(from).flatMap(start => routePlaceOptions(to).map(end => exactFare(start,end)));
+  const matches = pairs.filter(Boolean);
+  return matches.length === 1 ? matches[0] : null;
 }
 function miniVanAddition(oneWay, base, trip){
   const rules = rulesByBase[base];
@@ -809,7 +913,7 @@ function updateMenu(){
   // The icon bar hides wherever the loop bar shows.
   const loopViews = ["quote", "flatbush", "calc-result"];
   pill.style.display = loopViews.includes(view) ? "none" : "";
-  const section = ["today","jobs","money"].includes(view) ? view : view === "pending" ? "account"
+  const section = ["today","jobs","money"].includes(view) ? view : view === "calc-history" ? "jobs" : view === "pending" ? "account"
     : view === "account" || view.indexOf("account-") === 0 ? "account"
     : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "account";
   pill.querySelectorAll("[data-menu]").forEach(b => {
@@ -861,7 +965,7 @@ function setStep(n, label){
     : calcResultBack != null ? calcResultBack
     : quoteBack != null ? quoteBack
     : view === "account-rates" || view === "account-aliases" ? "Account"
-    : view === "calc-history" ? (screenStack.length > 0 ? "My fare" : (backTarget === "account" ? "Account" : "Back"))
+    : view === "calc-history" ? "Jobs"
     : isCalcView ? "Back"
     : (view === "notlisted" || n === 3) ? "Where to?"
     : n === 2 ? "Where from?"
@@ -890,6 +994,7 @@ function goBackFromCalc(){
   const t = backTarget || "step1";
   if(t === "calc") renderCalc();
   else if(t === "calc-history") renderCalcHistory();
+  else if(t === "jobs") goMenu("jobs");
   else if(t === "account") renderAccount();
   else if(t === "quote" && sel.resolved) renderQuote();
   else if(t === "flatbush" && sel.fb) renderFlatbush(sel.fb.base);
@@ -902,38 +1007,44 @@ function h(html){ $view.innerHTML = html; }
 
 /* custom: a typed name to offer as "Use '…'" when nothing matches —
    calculator pickers only (the wizard is fare-sheet-only). */
-function placeListHTML(query, exclude, extra, custom){
-  const q = (query || "").trim().toLowerCase();
-  const aliasFor = p => Object.keys(placeAliases).find(a => placeAliases[a] === p && a.toLowerCase().includes(q)) || null;
-  const match = p => !q || p.toLowerCase().includes(q) || !!aliasFor(p);
-  const row = p => {
-    const a = q && !p.toLowerCase().includes(q) ? aliasFor(p) : null;
-    return '<button class="row" data-place="' + esc(p) + '">' + esc(p) + (a ? '<span class="tag">also \u201C' + esc(a) + '\u201D</span>' : '') + '<span class="chev">›</span></button>';
+function placeListHTML(query,exclude,extra,custom){
+  const key = placeKey(query);
+  const matchFor = place => {
+    const names = [place,...aliasesForPlace(place)];
+    const exact = names.find(name => placeKey(name) === key);
+    if(exact) return {name:exact,score:0};
+    const prefix = names.find(name => placeKey(name).startsWith(key));
+    if(prefix) return {name:prefix,score:1};
+    const partial = names.find(name => placeKey(name).includes(key));
+    return partial ? {name:partial,score:2} : null;
   };
-  const top = topPlaces.filter(p => p !== exclude && match(p));
-  const rest = places.filter(p => !topPlaces.includes(p) && p !== exclude && match(p)).sort();
-  /* v4.3: previously used names from saved trips, after the fare-sheet
-     places — calculator pickers only (the wizard passes no extra). */
-  const hist = (extra || []).filter(p => p !== exclude && match(p));
-  let out = "";
-  if(top.length){
-    out += '<div class="group-label">Top 4</div><div class="list">' +
-      top.map(row).join("") + "</div>";
+  const row = (place,matchedName) => '<button class="row" data-place="' + esc(place) + '"><span class="row-main">' +
+    esc(place) + (matchedName && place !== matchedName ? '<span class="row-sub">' + esc(matchedName) + '</span>' : '') +
+    '</span><span class="chev">›</span></button>';
+  const allowed = name => name !== exclude;
+  const saved = (extra || []).filter(allowed);
+  const group = (label,rows) => rows.length ? '<div class="group-label">' + label +
+    '</div><div class="list">' + rows.join("") + '</div>' : "";
+  if(key){
+    const matches = [...new Set([...places.filter(allowed),...saved])].map(place => {
+      const match = matchFor(place);
+      if(!match) return null;
+      return {place,...match,hasFare:!!(exclude && exactFare(exclude,place))};
+    }).filter(Boolean).sort((a,b) => a.score - b.score || Number(b.hasFare) - Number(a.hasFare) ||
+      a.place.localeCompare(b.place));
+    const rows = matches.map(hit => row(hit.place,hit.name));
+    const typed = (custom || "").trim();
+    if(typed && !matches.some(hit => hit.score === 0)){
+      rows.push('<button class="row" data-custom="' + esc(typed) + '">Use “' + esc(typed) +
+        '”<span class="chev">›</span></button>');
+    }
+    return rows.length ? '<div class="list">' + rows.join("") + '</div>' : '<div class="empty">No places match.</div>';
   }
-  if(rest.length){
-    out += '<div class="group-label">All places</div><div class="list">' +
-      rest.map(row).join("") + "</div>";
-  }
-  if(hist.length){
-    out += '<div class="group-label">From your trips</div><div class="list">' +
-      hist.map(row).join("") + "</div>";
-  }
-  if(!top.length && !rest.length && !hist.length){
-    out = '<div class="empty">No places match.</div>';
-    const c = (custom || "").trim();
-    if(c) out += '<div class="list"><button class="row" data-custom="' + esc(c) + '">Use \u201C' + esc(c) + '\u201D<span class="chev">›</span></button></div>';
-  }
-  return out;
+  const top = topPlaces.filter(allowed);
+  const other = places.filter(place => allowed(place) && !topPlaces.includes(place)).sort();
+  return group("Most used on the fare sheet",top.map(place => row(place))) +
+    group("From your trips",saved.map(place => row(place))) +
+    group("All fare stops",other.map(place => row(place)));
 }
 
 function renderPlacePicker(step){
@@ -1361,7 +1472,9 @@ function calcLoadLocal(){
   } catch(e){}
   try {
     const a = JSON.parse(localStorage.getItem("fl_aliases") || "null");
-    if(a && typeof a === "object") placeAliases = a;
+    if(a && typeof a === "object" && !Array.isArray(a)){
+      placeAliases = Object.assign(Object.create(null),a);
+    }
   } catch(e){}
 }
 function calcSaveLocal(){
@@ -1445,7 +1558,10 @@ async function sbUser(path, opts){
   return t ? JSON.parse(t) : null;
 }
 function calcSignInGoogle(){
-  const target = LEDGER_VIEWS.includes(view) ? view : "account";
+  const resumeQuote = view === "calc-result" && calc;
+  const target = resumeQuote ? "resume-quote" : LEDGER_VIEWS.includes(view) ? view : "account";
+  if(resumeQuote) sessionStorage.setItem("fl_signin_quote",JSON.stringify({calc,step:calcStep}));
+  else sessionStorage.removeItem("fl_signin_quote");
   sessionStorage.setItem("fl_signin_destination",target);
   const redirect = location.origin + "/?view=account";
   location.href = SB + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(redirect);
@@ -1469,10 +1585,6 @@ async function calcLoadRemote(){
 async function calcSaveRemote(){
   if(!calcUser) return;
   await sbUser("calc_configs", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify({ user_id: calcUser.id, config: calcCfg }) });
-}
-async function calcSaveTripRemote(trip){
-  if(!calcUser) return;
-  await sbUser("calc_trips", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify({ user_id: calcUser.id, trip_id: trip.id, trip: trip }) });
 }
 async function calcDeleteTripRemote(id){
   if(!calcUser) return;
@@ -1508,10 +1620,6 @@ async function calcInitStore(){
 function calcPersist(){
   calcSaveLocal();
   if(calcUser){ calcSaveRemote().catch(() => {}); }
-}
-function calcPersistTrip(trip){
-  calcSaveLocal();
-  if(calcUser){ calcSaveTripRemote(trip).catch(() => {}); }
 }
 function calcRemoveTrip(id){
   calcTripsArr = calcTripsArr.filter(t => t.id !== id);
@@ -1603,21 +1711,32 @@ function bindTimeField(prefix, set){
 function calcEndsAtHub(t){
   return !!t.to && places.includes(resolvePlace(t.to));
 }
-/* v4.3: names used in saved trips, newest first — for the From/To pick
-   lists only. Derived from the same store History reads (calcTripsArr);
-   no separate list is kept. Fare-sheet names are excluded (they are
-   already in the list above); a custom name here is a list entry ONLY
-   — it never becomes a hub (see calcEndsAtHub). */
 function calcHistoryPlaces(){
-  const seen = new Set();
-  const out = [];
-  for(let i = calcTripsArr.length - 1; i >= 0; i--){
-    const t = calcTripsArr[i];
-    [t.from, t.to].forEach(n => {
-      if(n && !seen.has(n) && !places.includes(n)){ seen.add(n); out.push(n); }
-    });
+  const seen = new Set(places.map(placeKey));
+  const stops = [];
+  const add = name => {
+    const stop = resolvePlace(name);
+    const key = placeKey(stop);
+    if(!key || seen.has(key)) return;
+    seen.add(key);
+    stops.push(stop);
+  };
+  const jobs = tdLedger?.user && tdLedger.user === calcUser?.id ? tdLedger.jobs : [];
+  [...jobs].sort((a,b) => b.business_date.localeCompare(a.business_date)).forEach(job => {
+    add(job.pickup);
+    add(job.destination);
+  });
+  for(const trip of [...calcTripsArr].reverse()){
+    add(trip.from);
+    add(trip.to);
   }
-  return out;
+  return stops;
+}
+function stopOptionsHtml(id){
+  const builtIns = [...fareAliasIndex.values()].flat();
+  const names = [...new Set([...places,...calcHistoryPlaces(),...builtIns,...Object.keys(placeAliases)])];
+  return '<datalist id="' + id + '">' + names.map(name => '<option value="' + esc(name) + '"></option>').join("") +
+    '</datalist>';
 }
 function calcFare(t, cfg){
   const r = calcRates(cfg);
@@ -1690,30 +1809,6 @@ function calcListFare(){
   const f = res.fare;
   if(calc.mode === "round" && f.round_trip) return plainPrice(f.round_trip);
   return plainPrice(f.price);
-}
-/* v3: actuals are stored on the trip when the save layer supplies them
-   (design §14). fareCharged is the actual amount when one was entered,
-   else the fare shown on the result. The estimate-derived snapshot
-   fields (fuelCost, recovery, takeHome, ...) are kept for shape
-   stability; aggregates and the detail layer recompute from actuals. */
-function calcBuildTrip(r, actuals){
-  const trip = { id: "t-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    date: todayNY(),
-    from: calc.from, to: calc.to, roundTrip: calc.mode === "round",
-    miles: r.miles, hours: r.hours, waitHours: r.waitHours, tolls: r.tolls, parking: r.parking,
-    hubNear: r.hubNear, returnMiles: r.returnMiles, returnHours: r.returnHours, returnTolls: r.returnTolls,
-    suggestedFare: r.suggestedFare, listFare: calcListFare(), fareCharged: r.fare,
-    fuelCost: r.fuelCost, recovery: r.recovery, takeHome: r.takeHome, totalHours: r.totalHours, effectivePerHour: r.effectivePerHour };
-  if(actuals){
-    if(actuals.amount != null){ trip.actualAmount = actuals.amount; trip.fareCharged = actuals.amount; }
-    if(actuals.miles != null) trip.actualMiles = actuals.miles;
-    if(actuals.time != null) trip.actualTime = actuals.time;
-    /* v4.2: the name typed/picked in the save form wins over the
-       calculator's From/To; blank means no name ("Manual trip"). */
-    if("from" in actuals) trip.from = actuals.from;
-    if("to" in actuals) trip.to = actuals.to;
-  }
-  return trip;
 }
 /* ---------- trip calculator: multi-step form (v3) ---------- */
 /* One topic per screen, wizard-style. Step 1 choices decide the later
@@ -1872,7 +1967,6 @@ function renderCalcResult(){
   const listFare = calcListFare();
   h('<div id="calc-result">' + calcResultHtml(r0, listFare, { editable: true, mode: calc.mode, from: calc.from, to: calc.to }) + "</div>" +
     '<button class="btn secondary" id="c-job" style="margin-top:18px">Save quote to Jobs</button>' +
-    '<button class="btn secondary" id="c-save">Save trip to calculator history</button>' +
     '<div class="loop-bar" id="c-loop"><button class="btn" id="c-share">Share fare</button>' +
     '<button class="btn secondary" id="c-new">New rate</button></div>');
   wireCalcResult();
@@ -1923,17 +2017,6 @@ function wireCalcResult(){
   box.addEventListener("keydown", (e) => {
     if(e.target && e.target.id === "c-fare-edit" && e.key === "Enter"){ e.target.blur(); }
   });
-  /* Answer 3: "Save trip" opens the History view with the new trip's
-     actuals fields at the top; Save stores it and leaves the History
-     list showing the new trip. Back from History returns here. */
-  const save = document.getElementById("c-save");
-  if(save) save.addEventListener("click", () => {
-    const r = calcFare(calc, calcCfg);
-    if(!(r.miles > 0 && r.hours > 0)) return;
-    calcPendingSave = r;
-    calcMonth = new Date().toISOString().slice(0, 7);
-    pushScreen("calc-history", () => renderCalcResult(), () => renderCalcHistory("calc"));
-  });
   document.getElementById("c-job").onclick = () => {
     const quote = calcFare(calc, calcCfg);
     openLedgerJobForm(null, {pickup:calc.from, destination:calc.to, fare:quote.fare});
@@ -1942,60 +2025,6 @@ function wireCalcResult(){
   if(share) share.addEventListener("click", (e) => shareCalc(e.target));
   const nw = document.getElementById("c-new");
   if(nw) nw.addEventListener("click", () => { calcReset(); screenStack = []; renderCalc(); });
-}
-/* v3 save flow (answers 3 + 4): the actuals fields live at the top of
-   the History screen while a trip is being saved — prefilled with the
-   estimate, so an untouched save equals the old estimate-only save.
-   Actual time is driving + waiting (total time). The fields live in
-   calcActualsFieldsHtml so they can move as one piece if the placement
-   decision ever changes. v4: same control rule as the form — Actual
-   miles is a stepper, Actual time is a time selector. */
-function calcActualsFieldsHtml(prefill){
-  /* v4.2: From/To name the trip. The datalist offers the fare-sheet
-     places (same list the wizard/calculator pickers draw from) plus
-     names from saved trips (v4.3); typing a name not in the list keeps
-     it as a custom name. Blank From/To keeps the "Manual trip"
-     fallback in History. */
-  const placeOpts = places.concat(calcHistoryPlaces()).map(p => '<option value="' + esc(p) + '">').join("");
-  return '<input type="text" id="c-act-from" list="c-act-places" placeholder="From" value="' + esc(prefill.from || "") + '">' +
-    '<input type="text" id="c-act-to" list="c-act-places" placeholder="To" style="margin-top:12px" value="' + esc(prefill.to || "") + '">' +
-    '<datalist id="c-act-places">' + placeOpts + '</datalist>' +
-    '<input type="text" id="c-act-amount" inputmode="decimal" placeholder="Actual amount ($)" style="margin-top:12px" value="' + esc(prefill.amount) + '">' +
-    '<div class="stepper" style="margin-top:12px"><button id="c-act-miles-minus" aria-label="Fewer miles">−</button>' +
-      '<input id="c-act-miles" inputmode="decimal" placeholder="Actual miles" value="' + esc(prefill.miles) + '">' +
-      '<button id="c-act-miles-plus" aria-label="More miles">+</button></div>' +
-    '<div style="margin-top:12px">' + timeFieldHtml("c-act-t", prefill.time) + "</div>";
-}
-function calcSaveActuals(){
-  const num = (id) => {
-    const el = document.getElementById(id);
-    if(!el) return null;
-    const v = parseFloat(String(el.value).replace(/[$,]/g, ""));
-    return (isNaN(v) || v < 0) ? null : v;
-  };
-  const hEl = document.getElementById("c-act-t-h"), mEl = document.getElementById("c-act-t-m");
-  let time = null;
-  if(hEl && mEl && hEl.value !== ""){
-    time = round2((parseInt(hEl.value, 10) || 0) + (parseInt(mEl.value, 10) || 0) / 60);
-  }
-  const str = (id) => {
-    const el = document.getElementById(id);
-    const v = el ? el.value.trim() : "";
-    return v || null;
-  };
-  return { amount: num("c-act-amount"), miles: num("c-act-miles"), time: time,
-    from: str("c-act-from"), to: str("c-act-to") };
-}
-/* The pending-save form, shown at the top of the History screen while
-   calcPendingSave holds the result being saved. */
-function calcPendingSaveHtml(){
-  const r = calcPendingSave;
-  const routeLine = (calc.from && calc.to) ? esc(calc.from) + " → " + esc(calc.to) + " · " : "";
-  return '<div class="card"><div class="route">Save this trip</div>' +
-    '<div class="change">' + routeLine + (calc.mode === "round" ? "Round trip" : "One way") + " · suggested " + money(r.suggestedFare) + "</div>" +
-    calcActualsFieldsHtml({ amount: r.fare, miles: r.miles, time: round2(r.hours + r.waitHours), from: calc.from, to: calc.to }) +
-    '<button class="btn" id="c-act-save">Save trip</button>' +
-    '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-act-cancel">Cancel</button></div></div>';
 }
 function wireCalc(){
   const modeBtns = $view.querySelectorAll("#calc-mode button");
@@ -2046,14 +2075,18 @@ function renderCalc(){
 function renderCalcPicker(which){
   view = "calc-pick"; setStep(0, which === "from" ? "Where from?" : "Where to?");
   const other = which === "to" ? calc.from : null;
-  h('<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
-    '<div id="plist">' + placeListHTML("", other, calcHistoryPlaces(), "") + "</div>");
+  h('<div class="search-wrap"><input type="search" id="q" aria-label="Search places" placeholder="Search places" autocomplete="off"></div>' +
+    '<div id="plist"></div>');
   const input = document.getElementById("q");
-  input.addEventListener("input", () => {
-    document.getElementById("plist").innerHTML = placeListHTML(input.value, other, calcHistoryPlaces(), input.value);
+  const list = document.getElementById("plist");
+  const update = () => {
+    if(!list.isConnected) return;
+    list.innerHTML = placeListHTML(input.value,other,calcHistoryPlaces(),input.value);
     bindCalcPickRows(which);
-  });
-  bindCalcPickRows(which);
+  };
+  input.addEventListener("input",update);
+  update();
+  if(calcUser && tdLedger?.user !== calcUser.id) tdLoad().then(update);
 }
 function bindCalcPickRows(which){
   const pick = name => {
@@ -2180,7 +2213,6 @@ function openCalcFromQuote(){
 
 /* ---------- trip calculator: My Month ---------- */
 let calcMonth = null; // "YYYY-MM" selected in My Month
-let calcPendingSave = null; // v3: the fare result being saved; its actuals form sits at the top of History
 function calcMonthKey(d){ return String(d || "").slice(0, 7); }
 function fmtMonthLabel(ym){
   const d = new Date(ym + "-01T12:00:00");
@@ -2242,59 +2274,36 @@ function calcMonthWidgetHtml(){
     '<div class="month-sec"><div class="route">Hours ' + fmtNum(agg.hours) + " of " + fmtNum(agg.targetHours) + "</div>" +
       '<div class="vote-row"><span class="bar"><i style="width:' + agg.hrsPct + '%"></i></span><span class="votes">' + agg.hrsPct + "%</span></div></div>" +
     '<div class="month-sec"><div class="route">Take-home ' + money(agg.takeHome) + (agg.eff != null ? " · " + money(agg.eff) + "/hr" : "") + "</div>" +
-      '<div class="change">Revenue ' + money(agg.revenue) + " − expenses " + money(agg.expenses) + "</div></div></div>";
+      '<div class="change">Calculator estimate · Revenue ' + money(agg.revenue) + " − expenses " + money(agg.expenses) + "</div></div></div>";
 }
-/* v4: the trips list is its own screen, reached from the Account
-   History row only. The month summary lives on the Account screen as
-   the Month widget; this screen shows the saved trips for the
-   selected month, newest first. The pending-save form (actuals) still
-   sits at the top while a trip is being saved. */
-function renderCalcHistory(from){
+function renderCalcHistory(){
   view = "calc-history";
-  if(from) backTarget = from; // before setStep — the back label reads it
-  setStep(0, "History");
+  backTarget = "jobs";
+  setStep(0,"Earlier calculator trips");
   calcEnsureMonth();
-  const agg = calcMonthAgg(calcMonth);
-  const historyTrips = [...agg.paired].reverse(); // newest first
-  h('<div class="sub">' + esc(fmtMonthLabel(calcMonth)) + "</div>" +
-    (calcPendingSave ? calcPendingSaveHtml() : "") +
+  const historyTrips = [...calcMonthAgg(calcMonth).paired].reverse();
+  h('<p class="sub">Trips saved in the original calculator.</p>' +
+    calcMonthWidgetHtml() +
     (historyTrips.length
-      ? '<div class="group-label">Saved trips</div><div class="list">' + historyTrips.map(p => {
-          const t = p.t, r = p.r;
-          const route = (t.from && t.to) ? t.from + " → " + t.to : "Manual trip";
-          return '<div class="row" data-trip="' + esc(t.id) + '"><span class="row-main">' + esc(fmtDateShort(t.date)) + " · " + esc(route) + '<span class="row-sub">take-home ' + money(r.takeHome) + (r.effectivePerHour != null ? " · " + money(r.effectivePerHour) + "/hr" : "") + "</span></span>" +
-            '<span class="row-amt">' + money(r.fare) + '</span>' +
-            '<button class="trip-x" data-trip="' + esc(t.id) + '" aria-label="Delete trip">✕</button></div>';
-        }).join("") + "</div>"
-      : '<div class="empty">No trips saved this month yet.</div>')
-  );
-  const actMiles = document.getElementById("c-act-miles");
-  if(actMiles) bindMilesField("c-act-miles", () => actMiles.value, v => { actMiles.value = v; });
-  const actSave = document.getElementById("c-act-save");
-  if(actSave) actSave.addEventListener("click", () => {
-    const trip = calcBuildTrip(calcPendingSave, calcSaveActuals());
-    calcTripsArr.push(trip);
-    calcPersistTrip(trip);
-    calcPendingSave = null;
-    calcMonth = trip.date.slice(0, 7);
-    renderCalcHistory();
-  });
-  const actCancel = document.getElementById("c-act-cancel");
-  /* v4.2: Cancel goes back to the fare just calculated, not to History.
-     The save flow was pushed with renderCalcResult as its back render,
-     so popScreen re-renders the result with the fare intact; the direct
-     render is the fallback if the stack is empty. */
-  if(actCancel) actCancel.addEventListener("click", () => {
-    calcPendingSave = null;
-    if(!popScreen()) renderCalcResult();
-  });
-  $view.querySelectorAll(".trip-x").forEach(b => b.addEventListener("click", (e) => {
-    e.stopPropagation();
-    calcRemoveTrip(b.dataset.trip);
-    renderCalcHistory();
-  }));
+      ? '<div class="tdlinks"><button id="a-month-share">Share month</button></div>' +
+        '<div class="list">' + historyTrips.map(({t,r}) => {
+          const route = [t.from,t.to].filter(Boolean).join(" → ") || "Manual trip";
+          return '<button class="row" data-trip="' + esc(t.id) + '"><span class="row-main">' +
+            esc(fmtDateShort(t.date) + " · " + route) + '<span class="row-sub">Estimated take-home ' +
+            money(r.takeHome) + (r.effectivePerHour == null ? "" : " · " + money(r.effectivePerHour) + "/hr") +
+            '</span></span><span class="row-amt">' + money(r.fare) + '</span></button>';
+        }).join("") + '</div>'
+      : '<div class="empty">No calculator trips for this month.</div>'));
+  const selectMonth = offset => {
+    const months = calcMonthList();
+    const selected = months[months.indexOf(calcMonth) + offset];
+    if(selected){ calcMonth = selected; renderCalcHistory(); }
+  };
+  document.getElementById("a-month-prev").onclick = () => selectMonth(1);
+  document.getElementById("a-month-next").onclick = () => selectMonth(-1);
+  const share = document.getElementById("a-month-share");
+  if(share) share.onclick = () => shareMonth(share);
   $view.querySelectorAll("[data-trip]").forEach(row => row.addEventListener("click", (e) => {
-    if(e.target.closest(".trip-x")) return;
     const t = calcTripsArr.find(x => x.id === row.dataset.trip);
     if(!t) return;
     openTripDrawer(t);
@@ -2311,7 +2320,7 @@ function openTripDrawer(t){
   const res = (t.from && t.to) ? findFare(t.from, t.to) : null;
   const listFare = res ? (t.roundTrip && res.fare.round_trip ? plainPrice(res.fare.round_trip) : plainPrice(res.fare.price)) : null;
   const mode = t.roundTrip ? "round" : "oneway";
-  const route = (t.from && t.to) ? t.from + " → " + t.to : "Manual trip";
+  const route = [t.from,t.to].filter(Boolean).join(" → ") || "Manual trip";
   const hasActuals = saved.actualAmount != null || saved.actualMiles != null || saved.actualTime != null;
   const actualsLine = hasActuals
     ? '<div class="q-summary">Actuals — ' +
@@ -2322,10 +2331,10 @@ function openTripDrawer(t){
   openDrawer(route, '<div class="sub">' + esc(fmtDateShort(saved.date)) + "</div>" + actualsLine +
     calcResultHtml(r, listFare, { editable: false, mode, from: t.from, to: t.to }) +
     '<button class="btn" id="c-trip-share" style="margin-top:18px">Share trip</button>' +
-    '<button class="btn secondary" id="c-trip-reopen">Reopen in calculator</button>' +
+    '<button class="btn secondary" id="c-trip-reopen">Reopen as quote</button>' +
     '<div style="text-align:center;margin-top:14px"><button class="quiet-link" id="c-trip-delete">Delete trip</button></div>');
   const cmp = document.getElementById("c-cmp-card");
-  if(cmp) cmp.addEventListener("click", () => { closeDrawer(); openQuoteFromCalc(t.from, t.to, mode, () => renderCalcHistory(), "History"); });
+  if(cmp) cmp.addEventListener("click", () => { closeDrawer(); openQuoteFromCalc(t.from, t.to, mode, () => renderCalcHistory(), "Earlier trips"); });
   const share = document.getElementById("c-trip-share");
   if(share) share.addEventListener("click", () => shareTrip(saved, share));
   const reopen = document.getElementById("c-trip-reopen");
@@ -2370,27 +2379,15 @@ function calcDerivedHtml(){
     '<div class="set-row"><span class="set-label">Fuel cost</span><span class="set-val">$' + r.fuelPerMile.toFixed(3) + "/mi = " + money(Number(calcCfg.gasPrice) || 0) + " ÷ " + fmtNum(Number(calcCfg.mpg) || 0) + " MPG</span></div>" +
     '<div class="set-row"><span class="set-label">Return hourly</span><span class="set-val">' + money(r.vehiclePerHr) + " — cost only, no earnings</span></div>";
 }
-/* v4: the Account screen carries the month at a glance — a Month
-   widget at the top (this month's summary + ‹ › picker, no tap
-   needed), then History / Rates / Details rows, then sign-in.
-   The My Month button and the Month/History tabs are gone; the
-   trips list is its own screen (renderCalcHistory). */
 function renderAccount(){
-  view = "account"; setStep(0, "Account");
-  calcEnsureMonth();
-  const agg = calcMonthAgg(calcMonth);
-  const n = agg.trips.length;
-  const countLabel = n === 0 ? "No trips" : n === 1 ? "1 trip" : n + " trips";
-  const aliasCount = Object.keys(placeAliases).length;
+  view = "account";
+  setStep(0,"Account");
   h(
-    calcMonthWidgetHtml() +
-    '<button class="btn secondary" id="a-month-share" style="margin-top:14px">Share ' + esc(fmtMonthLabel(calcMonth)) + '</button>' +
-    '<div class="list" style="margin-top:14px">' +
+    '<div class="tdhead"><h1>Account</h1></div><div class="list">' +
       '<button class="row" id="a-fares"><span>Fare sheet</span><span class="chev">›</span></button>' +
       '<button class="row" id="a-community"><span>Community</span>' + (proposals.length ? '<span class="tag" id="community-count">' + proposals.length + '</span>' : '') + '<span class="chev">›</span></button>' +
-      '<button class="row" id="a-history"><span>History</span><span class="tag">' + esc(countLabel) + '</span><span class="chev">›</span></button>' +
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev">›</span></button>' +
-      '<button class="row" id="a-aliases"><span>Aliases</span>' + (aliasCount > 0 ? '<span class="tag">' + aliasCount + '</span>' : "") + '<span class="chev">›</span></button>' +
+      '<button class="row" id="a-aliases"><span>Stops &amp; aliases</span><span class="chev">›</span></button>' +
       '<button class="row" id="a-details"><span>Details</span><span class="chev">›</span></button>' +
     "</div>" +
     (calcUser
@@ -2399,73 +2396,100 @@ function renderAccount(){
       : '<button class="btn secondary" id="a-signin" style="margin-top:18px">Sign in with Google</button>' +
         '<div class="sub" style="margin-top:10px">Sign in to sync your rates and trips across devices. The fare sheet stays free for everyone, no sign-in needed.</div>')
   );
-  const prev = document.getElementById("a-month-prev");
-  if(prev) prev.addEventListener("click", () => {
-    const m = calcMonthList(); const i = m.indexOf(calcMonth);
-    if(i >= 0 && i < m.length - 1){ calcMonth = m[i + 1]; renderAccount(); }
-  });
-  const next = document.getElementById("a-month-next");
-  if(next) next.addEventListener("click", () => {
-    const m = calcMonthList(); const i = m.indexOf(calcMonth);
-    if(i > 0){ calcMonth = m[i - 1]; renderAccount(); }
-  });
   document.getElementById("a-fares").onclick = () => goMenu("fares");
   document.getElementById("a-community").onclick = () => goMenu("community");
-  const hist = document.getElementById("a-history");
-  if(hist) hist.addEventListener("click", () => { screenStack = []; renderCalcHistory("account"); });
   const rates = document.getElementById("a-rates");
   if(rates) rates.addEventListener("click", () => pushScreen("account-rates", () => renderAccount(), renderAccountRates));
   const aliases = document.getElementById("a-aliases");
   if(aliases) aliases.addEventListener("click", () => pushScreen("account-aliases", () => renderAccount(), renderAliases));
   const details = document.getElementById("a-details");
   if(details) details.addEventListener("click", openDetails);
-  const mshare = document.getElementById("a-month-share");
-  if(mshare) mshare.addEventListener("click", () => shareMonth(mshare));
   const signin = document.getElementById("a-signin");
   if(signin) signin.addEventListener("click", calcSignInGoogle);
   const signout = document.getElementById("a-signout");
   if(signout) signout.addEventListener("click", calcSignOut);
 }
-/* v4.4 (item 16): Aliases — a name that means the same place. No
-   fare row is ever renamed; the alias lives locally (fl_aliases) and
-   pickers + fare lookups resolve through it. */
-function renderAliases(){
-  view = "account-aliases"; setStep(0, "Aliases");
-  const entries = Object.keys(placeAliases).sort();
-  const dl = '<datalist id="aliases-places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
-  h('<div class="sub">A name that means the same place — searching either finds it, and fares resolve through the alias.</div>' + dl +
-    '<div class="list">' +
-      (entries.length ? entries.map(a =>
-        '<div class="row"><span class="row-main">' + esc(a) + '<span class="row-sub">same as ' + esc(placeAliases[a]) + '</span></span>' +
-        '<button class="trip-x alias-x" data-alias="' + esc(a) + '" aria-label="Remove alias">✕</button></div>'
-      ).join("") : '<div class="empty">No aliases yet.</div>') +
-    '</div>' +
-    '<div class="group-label">Add an alias</div>' +
-    '<input type="text" id="al-alias" placeholder="Also known as (e.g. White Planes)">' +
-    '<input type="text" id="al-canon" list="aliases-places-dl" placeholder="Same as (pick a place)" style="margin-top:10px">' +
-    '<div class="error hidden" id="al-err"></div>' +
-    '<button class="btn" id="al-add">Add alias</button>');
-  $view.querySelectorAll(".alias-x").forEach(b => b.addEventListener("click", () => {
-    delete placeAliases[b.dataset.alias];
-    calcSaveAliases();
-    renderAliases();
+function renderAliases(query = "",load = true){
+  view = "account-aliases";
+  setStep(0,"Stops & aliases");
+  const index = [...new Set([...places,...calcHistoryPlaces()])].sort((a,b) => a.localeCompare(b));
+  const stops = index.map(place => ({
+    place, defaults:fareAliasIndex.get(place) || [],
+    custom:Object.entries(placeAliases).filter(([,target]) => target === place).map(([alias]) => alias)
   }));
-  const add = document.getElementById("al-add");
-  if(add) add.addEventListener("click", () => {
-    const alias = document.getElementById("al-alias").value.trim();
-    const canon = document.getElementById("al-canon").value.trim();
-    const err = document.getElementById("al-err");
-    err.classList.add("hidden");
-    if(!alias || !canon){ err.textContent = "Both names are needed."; err.classList.remove("hidden"); return; }
-    if(!places.includes(canon)){ err.textContent = "Pick a place from the list for \u201CSame as\u201D."; err.classList.remove("hidden"); return; }
-    if(places.includes(alias)){ err.textContent = "\u201C" + alias + "\u201D is already a place name."; err.classList.remove("hidden"); return; }
-    if(placeAliases[alias]){ err.textContent = "\u201C" + alias + "\u201D is already an alias."; err.classList.remove("hidden"); return; }
-    if(alias === canon){ err.textContent = "The alias and the place are the same."; err.classList.remove("hidden"); return; }
-    placeAliases[alias] = canon;
+  h('<div class="search-wrap"><input type="search" id="alias-search" aria-label="Search stops and aliases" ' +
+    'placeholder="Search stops and aliases" autocomplete="off"></div>' +
+    '<div class="tdlinks"><span class="tdmuted" id="alias-count"></span><button id="alias-add">Add alias</button></div>' +
+    '<div id="alias-results"></div>');
+  const update = () => {
+    const key = placeKey(document.getElementById("alias-search").value);
+    const rows = stops.filter(stop => [stop.place,...stop.defaults,...stop.custom].some(name => placeKey(name).includes(key)));
+    document.getElementById("alias-count").textContent = rows.length + (rows.length === 1 ? " stop" : " stops");
+    document.getElementById("alias-results").innerHTML = rows.length ? '<div class="list">' + rows.map(stop =>
+      '<button class="row" data-edit-aliases="' + esc(stop.place) + '"><span class="row-main">' + esc(stop.place) +
+      (stop.defaults.length || stop.custom.length ? '<span class="row-sub">' +
+        esc([...stop.defaults,...stop.custom].join(" · ")) + '</span>' : '') +
+      '</span><span class="chev">›</span></button>').join("") + '</div>' : '<div class="empty">No matching stops.</div>';
+    $view.querySelectorAll("[data-edit-aliases]").forEach(button => button.onclick = () =>
+      openAliasEditor(index,button.dataset.editAliases));
+  };
+  const search = document.getElementById("alias-search");
+  search.value = query;
+  search.oninput = update;
+  document.getElementById("alias-add").onclick = () => openAliasEditor(index);
+  update();
+  if(load && calcUser && tdLedger?.user !== calcUser.id){
+    tdLoad().then(() => {
+      if(view === "account-aliases" && search.isConnected && $modal.classList.contains("hidden") && tdLedger){
+        renderAliases(search.value,false);
+      }
+    });
+  }
+}
+function openAliasEditor(index,target = ""){
+  const defaults = fareAliasIndex.get(target) || [];
+  const saved = Object.entries(placeAliases).filter(([,place]) => place === target);
+  const savedRows = saved.map(([alias]) => '<div class="row"><span class="row-main">' + esc(alias) +
+    '</span><button class="trip-x" aria-label="Remove ' + esc(alias) + '" data-remove-alias="' + esc(alias) + '">✕</button></div>');
+  openDrawer(target || "Add alias",
+    (defaults.length ? '<p class="sub">' + esc(defaults.join(" · ")) + '</p>' : '') +
+    (savedRows.length ? '<div class="list">' + savedRows.join("") + '</div>' : '') +
+    '<form id="alias-form" class="ledger-form">' +
+    ledgerInput("alias","Alias","text","",'required maxlength="250"') +
+    (target ? "" : ledgerInput("target","Stop","text","",'required list="alias-targets"') +
+      '<datalist id="alias-targets">' + index.map(place => '<option value="' + esc(place) + '"></option>').join("") + '</datalist>') +
+    '<p role="alert" hidden></p><button class="btn" type="submit">Add alias</button></form>');
+  const form = document.getElementById("alias-form");
+  form.onsubmit = event => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const alias = data.get("alias").trim();
+    const key = placeKey(alias);
+    const stop = target || index.find(place => placeKey(place) === placeKey(data.get("target")));
+    const error = form.querySelector("[role=alert]");
+    if(!stop || !key || index.some(place => placeKey(place) === key) ||
+       Object.keys(placeAliases).some(name => placeKey(name) === key) ||
+       [...fareAliasIndex.values()].some(names => names.some(name => placeKey(name) === key))){
+      error.textContent = !stop ? "Choose an existing stop." : !key ? "Enter a name for the alias." :
+        "That name is already used for a stop or alias.";
+      error.hidden = false;
+      return;
+    }
+    placeAliases[alias] = stop;
     calcSaveAliases();
+    closeDrawer();
     renderAliases();
+  };
+  document.getElementById("sheet-body").querySelectorAll("[data-remove-alias]").forEach(button => {
+    button.onclick = () => {
+      delete placeAliases[button.dataset.removeAlias];
+      calcSaveAliases();
+      closeDrawer();
+      renderAliases();
+    };
   });
 }
+
 function renderAccountRates(){
   view = "account-rates"; setStep(0, "Rates");
   const rateRow = (key, label, ph) => '<div class="set-row"><span class="set-label">' + esc(label) + '</span><input type="text" inputmode="decimal" data-cfg="' + key + '" value="' + esc(calcCfg[key]) + '" placeholder="' + esc(ph) + '"></div>';
@@ -2685,7 +2709,7 @@ async function tdLoad(){
  if(!user) return;
  try{const [jobs,segments,expenses,purchases,allocations,payments,rentals]=await Promise.all([
  tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at",user),
- tdFetch("fl2_segments","id,job_id,business_date,distance_mi,duration_minutes,category,origin,destination,source",user),
+ tdFetch("fl2_segments","id,job_id,business_date,started_at,created_at,distance_mi,duration_minutes,category,origin,destination,source",user),
  tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source",user),
  tdFetch("fl2_fuel_purchases","id,business_date,amount,gallons",user),
  tdFetch("fl2_fuel_allocations","segment_id,allocated_cost,method",user),
@@ -2721,8 +2745,8 @@ function tdDay(date){
   const completeFare = jobs.every(job => job.fare != null);
   const rentalKnown = completeTime && jobs.every(job => job.rental_hourly_snapshot != null);
   const recordedWork = jobs.length > 0 || segments.length > 0;
-  const hasUnclassified = ledger.segments.some(row => belongsToDay(row) && row.category === "unclassified");
-  const operatingConfirmed = !hasUnclassified &&
+  const hasUnmatched = ledger.segments.some(row => belongsToDay(row) && carTripNeedsReview(row));
+  const operatingConfirmed = !hasUnmatched &&
     (!recordedWork || (fuelConfirmed && expenses.some(row => row.category === "toll"))) &&
     completeFare && jobs.every(job => job.review_state === "confirmed") &&
     expenses.every(row => row.review_state === "confirmed");
@@ -2781,7 +2805,7 @@ function renderToday(reload=true){
      (entries.length ? tdMoney(tdSum(entries,"amount"),2) : "Add cost") + ' ›</b></button>';
  }).join("");
  const tab=(k,l)=>'<button role="tab" data-td-tab="'+k+'" aria-selected="'+(tdTab===k)+'">'+l+'</button>';
- const dates = [...new Set([...l.jobs,...l.expenses,...l.purchases].map(row => row.business_date))].sort().reverse();
+ const dates = [...new Set([...l.jobs,...l.segments,...l.expenses,...l.purchases].map(row => row.business_date))].sort().reverse();
  const pace = !s.jobs.length ? "No recorded jobs" : !s.confirmed ? "Pending reconciliation" :
    s.rate == null ? "No working time recorded" : s.rate === goal ? "At goal" :
    tdMoney(Math.abs(s.rate-goal),2) + "/hr " + (s.rate > goal ? "above" : "below") + " goal";
@@ -2794,7 +2818,12 @@ function renderToday(reload=true){
    tdLine("Rental allocation",s.jobs.length && s.rentalKnown ? tdMoney(s.rent,2) : "Pending") +
    tdLine("Fuel purchased (cash)",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchase recorded") +
    '</div>';
- const tripsPanel = '<div class="tdlist">' + (rows || '<div class="empty">No jobs recorded for this date.</div>') + '</div>';
+ const carTrips = l.segments.filter(row => row.business_date === tdDate);
+ const tripsPanel = '<section aria-label="Recorded jobs"><div class="tdlinks"><b>Jobs · ' + s.jobs.length +
+   '</b><button id="td-add-job">Add job</button></div><div class="tdlist">' +
+   (rows || '<div class="empty">No completed jobs recorded for this day.</div>') + '</div></section>' +
+   '<section aria-label="Recorded car trips" style="margin-top:16px"><b>Car trips · ' + carTrips.length + '</b>' +
+   renderDayCarTrips(tdDate,carTrips) + '</section>';
  h(head + '<div class="tdcard"><div class="tdmetrics">' + gauge +
    '<button class="tdnet tdplain" id="td-net"><div class="tdmuted">Take home</div><b>' +
    (s.net == null ? "—" : tdMoney(s.net)) + '</b><div class="tdmuted">of ' +
@@ -2808,13 +2837,22 @@ function renderToday(reload=true){
    '<div class="tdtabs" role="tablist" aria-label="Daily ledger">' + tab("trips","Trips · " + s.jobs.length) +
    tab("expenses","Expenses · " + (s.confirmed ? tdMoney(s.cost) : "Pending")) + '</div>' +
    '<div class="tdlinks"><span class="tdmuted">' + fmtNum(s.miles) + ' recorded business mi</span>' +
-   '<button id="td-add">New quote</button></div>' + (tdTab === "trips" ? tripsPanel : expensePanel) +
-   '<div class="tdlinks"><button id="td-history">History · ' + tdMoney(tdSum(month,"fare")) +
-   '</button><button id="td-refresh">Refresh</button></div>');
+   '<button id="td-history">Past days</button></div>' + (tdTab === "trips" ? tripsPanel : expensePanel) +
+   '<div class="tdlinks"><button id="td-add">New quote</button><button id="td-refresh">Refresh</button></div>');
 
  document.getElementById("td-date").onchange=e=>{if(e.target.value){tdDate=e.target.value;renderToday(false)}};
  $view.querySelectorAll("[data-td-tab]").forEach(e=>e.onclick=()=>{tdTab=e.dataset.tdTab;renderToday(false)});
  wireLedgerJobRows();
+ if(tdTab === "trips"){
+   document.getElementById("td-add-job").onclick = () => openLedgerJobForm(null,{business_date:tdDate,status:"completed"});
+   document.getElementById("td-add-car").onclick = () => openCarTrip(tdDate);
+   $view.querySelectorAll("[data-car-trip]").forEach(button => {
+     button.onclick = () => {
+       const segment = carTrips.find(row => row.id === button.dataset.carTrip);
+       if(segment) openCarTrip(tdDate,segment);
+     };
+   });
+ }
  $view.querySelectorAll("[data-td-expense]").forEach(button => {
    const category = button.dataset.tdExpense;
    button.onclick = () => openDailyExpense(tdDate,category,
@@ -2827,8 +2865,94 @@ function renderToday(reload=true){
  document.getElementById("td-hours").onclick=()=>openDrawer("Working hours",tdLine("Recorded hours",fmtNum(periodHours)+"h")+tdLine("Planned hours",fmtNum(target)+"h")+'<p class="tdnote">Working hours include recorded drive and wait time.</p>');
  document.getElementById("td-add").onclick=()=>goMode("calc");
  document.getElementById("td-refresh").onclick=()=>tdLoad();
- document.getElementById("td-history").onclick=()=>{openDrawer("Recorded history",dates.map(d=>{const x=tdDay(d);return '<button class="tdrow" data-td-day="'+esc(d)+'"><span>'+esc(d)+'</span><b>'+tdMoney(x.gross)+'</b></button>'}).join("")||'<p>No records</p>');document.querySelectorAll("[data-td-day]").forEach(e=>e.onclick=()=>{tdDate=e.dataset.tdDay;closeDrawer();renderToday(false)})};
+ document.getElementById("td-history").onclick=()=>{openDrawer("Past days",dates.map(d=>{const x=tdDay(d);return '<button class="tdrow" data-td-day="'+esc(d)+'"><span>'+esc(d)+'</span><b>'+tdMoney(x.gross)+'</b></button>'}).join("")||'<p>No records</p>');document.querySelectorAll("[data-td-day]").forEach(e=>e.onclick=()=>{tdDate=e.dataset.tdDay;closeDrawer();renderToday(false)})};
 }
+
+const CAR_CATEGORIES = {
+  unclassified:"Unclassified",pickup:"Drive to pickup",passenger:"Passenger trip",
+  waiting:"Waiting",empty_return:"Empty return",business_other:"Other business driving",personal:"Personal"
+};
+function carTripNeedsReview(segment){
+  return segment.category === "unclassified" ||
+    (!segment.job_id && ["pickup","passenger","waiting","empty_return"].includes(segment.category));
+}
+function carTripTitle(segment){
+  return [segment.origin,segment.destination].filter(Boolean).join(" → ") || "Car trip";
+}
+function carTripFacts(segment){
+  return [
+    segment.distance_mi == null ? null : fmtNum(Number(segment.distance_mi)) + " mi",
+    segment.duration_minutes == null ? null : fmtNum(Number(segment.duration_minutes)) + " min"
+  ].filter(Boolean).join(" · ") || "Mileage and time pending";
+}
+function renderDayCarTrips(date,segments){
+  const byJob = new Map(tdLedger.jobs.map(job => [job.id,job]));
+  const rows = [...segments].sort((a,b) =>
+    Number(carTripNeedsReview(b)) - Number(carTripNeedsReview(a)) ||
+    (a.started_at || a.created_at || "").localeCompare(b.started_at || b.created_at || "") || a.id.localeCompare(b.id));
+  const pending = rows.filter(carTripNeedsReview).length;
+  const status = pending ? pending + " to review" : rows.length ? "Matched or categorized" : "";
+  return '<div class="tdlinks"><span class="tdmuted">' + (status ? esc(status) : '') +
+    '</span><button id="td-add-car">Add car trip</button></div><div class="tdlist">' +
+    (rows.length ? rows.map(segment => {
+      const job = byJob.get(segment.job_id);
+      const label = CAR_CATEGORIES[segment.category];
+      const detail = job ? label + " · " + ledgerJobTitle(job) : label;
+      const title = carTripTitle(segment);
+      return '<button class="tdrow" data-car-trip="' + esc(segment.id) + '"><span><b>' + esc(title) +
+        '</b><small class="tdmuted">' + esc(detail) + '</small></span><span><b>' +
+        esc(carTripFacts(segment)) + '</b><small class="tdmuted">' +
+        (carTripNeedsReview(segment) ? "Review" : "›") + '</small></span></button>';
+    }).join("") : '<div class="empty">No car trips recorded for ' + esc(fmtDateShort(date)) + '.</div>') + '</div>';
+}
+function openCarTrip(date,segment = null){
+  const key = segment ? null : crypto.randomUUID();
+  const selectedJob = segment?.job_id;
+  const jobs = tdLedger.jobs.filter(job =>
+    job.id === selectedJob || (job.business_date === date && job.status === "completed"));
+  const fields = tdLine("Business date",date) + (segment ? tdLine("Recorded trip",carTripFacts(segment)) :
+    stopOptionsHtml("car-stops") +
+    ledgerInput("origin","From","text","",'list="car-stops" maxlength="250"') +
+    ledgerInput("destination","To","text","",'list="car-stops" maxlength="250"') +
+    ledgerInput("miles","Recorded miles","number","",'min="0" max="999999999.999" step="0.001"') +
+    ledgerInput("minutes","Recorded minutes","number","",'min="0" max="9999999.999" step="0.001"')) +
+    '<label class="field" for="ledger-car-category">Trip type</label><select id="ledger-car-category" name="category">' +
+    Object.entries(CAR_CATEGORIES).map(([category,label]) => '<option value="' + category + '"' +
+      (segment?.category === category ? ' selected' : '') + '>' + esc(label) + '</option>').join("") +
+    '</select><div id="car-job-field"><label class="field" for="ledger-car-job">Match to job</label>' +
+    '<select id="ledger-car-job" name="job"><option value="">Unmatched</option>' +
+    jobs.map(job => '<option value="' + esc(job.id) + '"' + (job.id === selectedJob ? ' selected' : '') + '>' +
+      esc(ledgerJobTitle(job) + (job.fare == null ? "" : " · " + tdMoney(Number(job.fare)))) + '</option>').join("") +
+    '</select></div>';
+  openLedgerForm(segment ? carTripTitle(segment) : "Add car trip",fields,async (data,user) => {
+    const category = data.get("category");
+    const row = {category,job_id:category === "personal" ? null : data.get("job") || null};
+    if(segment){
+      const jobFilter = selectedJob ? "eq." + encodeURIComponent(selectedJob) : "is.null";
+      const result = await sbUser("fl2_segments?id=eq." + encodeURIComponent(segment.id) +
+        "&user_id=eq." + encodeURIComponent(user) + "&category=eq." + segment.category + "&job_id=" + jobFilter,{
+          method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(row)
+        });
+      if(!result?.length) throw new Error("This car trip changed. Close the form and refresh the day.");
+      return;
+    }
+    const miles = data.get("miles"), minutes = data.get("minutes");
+    if(miles === "" && minutes === "") throw new Error("Enter the miles or minutes shown in the car app.");
+    await ledgerWriteOnce("fl2_segments",{
+      ...row,user_id:user,business_date:date,source:"manual_car_trip",source_key:key,
+      origin:resolvePlace(data.get("origin").trim()) || null,
+      destination:resolvePlace(data.get("destination").trim()) || null,
+      distance_mi:miles === "" ? null : Number(miles),
+      duration_minutes:minutes === "" ? null : Number(minutes)
+    });
+  });
+  const category = document.getElementById("ledger-car-category");
+  if(category){
+    category.onchange = () => { document.getElementById("car-job-field").hidden = category.value === "personal"; };
+    category.onchange();
+  }
+}
+
 
 function ledgerRental(date){
   return tdLedger?.rentals.find(rental => rental.starts_on <= date && date < rental.ends_before);
@@ -2873,11 +2997,20 @@ function openLedgerJob(job){
       row.distance_mi == null ? "Mileage pending" : fmtNum(Number(row.distance_mi)) + " mi")).join("") +
     (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : "") +
     (active ? '<button class="btn" id="ledger-edit">Update job</button>' : "") +
-    (job.status === "completed" ? '<button class="btn" id="ledger-payment">Record payment</button>' : ""));
+    (job.status === "completed" ? '<button class="btn" id="ledger-payment">Record payment</button>' : "") +
+    (job.status === "completed" && view === "jobs" ?
+      '<button class="btn secondary" id="ledger-review">Review this day</button>' : ""));
   const edit = document.getElementById("ledger-edit");
   if(edit) edit.onclick = () => openLedgerJobForm(job);
   const payment = document.getElementById("ledger-payment");
   if(payment) payment.onclick = () => openLedgerPayment(job,payments);
+  const review = document.getElementById("ledger-review");
+  if(review) review.onclick = () => {
+    closeDrawer();
+    tdDate = job.business_date;
+    tdTab = "trips";
+    goMenu("today");
+  };
 }
 let ledgerJobsFilter = "active";
 function renderLedgerJobs(reload){
@@ -2886,22 +3019,34 @@ function renderLedgerJobs(reload){
   setStep(0,"Jobs");
   if(reload){ tdLoad(); return; }
   const head = '<div class="tdhead"><h1>Jobs</h1></div>';
-  if(ledgerLoading(head)) return;
-  const jobs = tdLedger.jobs.filter(job => ledgerJobsFilter === "active"
-    ? job.status === "quoted" || job.status === "scheduled"
-    : job.status === "completed");
-  jobs.sort((a,b) => b.business_date.localeCompare(a.business_date));
+  const archiveLink = calcTripsArr.length ? '<div class="tdlinks"><button id="jobs-archive">Earlier calculator trips</button></div>' : "";
+  if(ledgerLoading(head)){
+    $view.insertAdjacentHTML("beforeend",archiveLink);
+    const archive = document.getElementById("jobs-archive");
+    if(archive) archive.onclick = renderCalcHistory;
+    return;
+  }
+  const allJobs = tdLedger.jobs;
+  const quotes = allJobs.filter(job => job.status === "quoted").sort((a,b) => b.business_date.localeCompare(a.business_date));
+  const scheduled = allJobs.filter(job => job.status === "scheduled").sort((a,b) => a.business_date.localeCompare(b.business_date));
+  const completed = allJobs.filter(job => job.status === "completed").sort((a,b) => b.business_date.localeCompare(a.business_date));
   const tab = (key,label) => '<button data-jobs-filter="' + key + '" aria-pressed="' +
     (ledgerJobsFilter === key) + '">' + label + '</button>';
-  h(head + '<div class="tdtabs" aria-label="Job status">' + tab("active","Open") + tab("completed","Completed") +
-    '</div><div class="tdlinks"><button id="jobs-quote">New quote</button><button id="jobs-add">Add job</button></div>' +
-    '<div class="tdlist">' + (jobs.length ? jobs.map(job => ledgerJobRow(job,job.business_date)).join("") :
-      '<div class="empty">' + (ledgerJobsFilter === "active" ? "No open jobs." : "No completed jobs.") + '</div>') + '</div>');
+  const group = (label,jobs) => jobs.length ? (label ? '<div class="group-label">' + label + '</div>' : '') +
+    '<div class="tdlist">' + jobs.map(job => ledgerJobRow(job,[fmtDateShort(job.business_date),job.customer].filter(Boolean).join(" · "))).join("") + '</div>' : "";
+  const result = ledgerJobsFilter === "completed" ? group("",completed) : group("Scheduled",scheduled) + group("Quotes",quotes);
+  h(head + '<div class="tdtabs" aria-label="Job status">' + tab("active","Open · " + (quotes.length + scheduled.length)) +
+    tab("completed","Completed · " + completed.length) + '</div>' +
+    '<div class="tdlinks"><button id="jobs-quote">New quote</button><button id="jobs-add">Add job</button></div>' +
+    (result || '<div class="empty">' + (ledgerJobsFilter === "active" ? "No open jobs." : "No completed jobs.") + '</div>') +
+    archiveLink);
   $view.querySelectorAll("[data-jobs-filter]").forEach(button => {
     button.onclick = () => { ledgerJobsFilter = button.dataset.jobsFilter; renderLedgerJobs(false); };
   });
   document.getElementById("jobs-quote").onclick = () => goMode("calc");
   document.getElementById("jobs-add").onclick = () => openLedgerJobForm();
+  const archive = document.getElementById("jobs-archive");
+  if(archive) archive.onclick = renderCalcHistory;
   wireLedgerJobRows();
 }
 function ledgerInput(name,label,type,value,attributes=""){
@@ -2911,6 +3056,7 @@ function ledgerInput(name,label,type,value,attributes=""){
 }
 function openLedgerForm(title,fields,save,onSaved){
   const user = calcUser?.id;
+  const startingView = view, startingScroll = $scroll.scrollTop;
   if(!user){
     openDrawer(title,'<p>Sign in to save to your driving ledger.</p><button class="btn" id="ledger-form-login">Sign in with Google</button>');
     document.getElementById("ledger-form-login").onclick = calcSignInGoogle;
@@ -2945,7 +3091,10 @@ function openLedgerForm(title,fields,save,onSaved){
     }
     closeDrawer();
     if(onSaved) onSaved();
-    if(LEDGER_VIEWS.includes(view)) tdLoad();
+    if(LEDGER_VIEWS.includes(view)){
+      await tdLoad();
+      if(view === startingView) $scroll.scrollTop = startingScroll;
+    }
   };
 }
 function ledgerWriteOnce(table,row){
@@ -2962,8 +3111,9 @@ function openLedgerJobForm(job = null,prefill = {}){
   if(!fromQuote) statuses.completed = "Completed";
   const fields = ledgerInput("date","Business date","date",initial.business_date || todayNY(),
       initial.started_at ? 'readonly required' : 'required') +
-    ledgerInput("pickup","Pickup","text",initial.pickup,'maxlength="250"') +
-    ledgerInput("destination","Destination","text",initial.destination,'maxlength="250"') +
+    stopOptionsHtml("job-stops") +
+    ledgerInput("pickup","Pickup","text",initial.pickup,'maxlength="250" list="job-stops"') +
+    ledgerInput("destination","Destination","text",initial.destination,'maxlength="250" list="job-stops"') +
     ledgerInput("customer","Customer","text",initial.customer,'maxlength="250"') +
     '<label class="field" for="ledger-status">Status</label><select name="status" id="ledger-status">' +
     Object.entries(statuses).map(([value,label]) =>
@@ -2979,8 +3129,8 @@ function openLedgerJobForm(job = null,prefill = {}){
     const minutes = data.get("minutes");
     const rental = ledgerRental(businessDate);
     const row = {
-      business_date:businessDate, pickup:data.get("pickup").trim() || null,
-      destination:data.get("destination").trim() || null, customer:data.get("customer").trim() || null,
+      business_date:businessDate, pickup:resolvePlace(data.get("pickup").trim()) || null,
+      destination:resolvePlace(data.get("destination").trim()) || null, customer:data.get("customer").trim() || null,
       status:jobStatus, fare:fare === "" ? null : Number(fare),
       rental_id:rental?.id ?? (businessDate === job?.business_date ? job.rental_id : null)
     };
@@ -3135,10 +3285,20 @@ async function init(){
     const shRow = q.get("sh") ? await sb("shares?code=eq." + encodeURIComponent(q.get("sh")) + "&select=*").catch(() => null) : null;
     const shared = shRow && shRow[0];
     const viewParam = signInDestination || q.get("view");
-    if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
+    if(viewParam === "resume-quote" && restoredSession && calcUser){
+      const quote = JSON.parse(sessionStorage.getItem("fl_signin_quote") || "null");
+      sessionStorage.removeItem("fl_signin_quote");
+      if(quote?.calc){
+        calcReset();
+        Object.assign(calc,quote.calc);
+        calcStep = calcStepList().includes(quote.step) ? quote.step : calcFirstIncompleteStep();
+        renderCalcResult();
+        document.getElementById("c-job")?.click();
+      } else renderCalc();
+    } else if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
       backTarget = "step1";
       if(viewParam === "calc"){ if(!calcOpenFromShare(q)) renderCalc(); } // v4.4.2: a share link opens a new trip on the result
-      else if(viewParam === "calc-month") renderCalcHistory("calc"); // "calc-month" still works as an alias
+      else if(viewParam === "calc-month") renderCalcHistory(); // "calc-month" still works as an alias
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
     } else if(LEDGER_VIEWS.includes(viewParam) || [...q.keys()].every(key => key.startsWith("utm_"))){
       tdRenderView(viewParam || "today",true);
