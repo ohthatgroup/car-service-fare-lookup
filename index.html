@@ -247,6 +247,18 @@
   .ledger-date{ font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; }
   .ledger-form .ledger-date{ width:100%; }
   .ledger-form p[role=alert]{ color:var(--danger); }
+  .closeout-card{ margin-bottom:12px; }
+  .closeout-heading{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .closeout-heading h2{ font-size:17px; margin:0 0 3px; }
+  .closeout-heading button,.closeout-costs{ min-height:44px; }
+  .closeout-sources{ margin:10px 0 4px; font-size:14px; }
+  .closeout-costs{ text-align:left; font-size:13px; }
+  .closeout-table{ width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
+  .closeout-table td,.closeout-table th{ text-align:left; padding:8px 4px; border-bottom:1px solid var(--border); }
+  .closeout-check{ display:flex; align-items:center; gap:8px; min-height:44px; margin:10px 0; font-size:14px; }
+  .closeout-check input{ width:19px; height:19px; flex:none; }
+  .drive-row .tdmuted{ overflow-wrap:anywhere; }
+  .drive-row > span:last-child{ max-width:44%; }
   .tdrow.tdexpense{ min-height:44px; border:0; padding:10px 0; color:var(--link); }
   .tdlist + .tdlist{ margin-top:12px; }
   #menu-pill button.on{ background:var(--surface); color:var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.12); }
@@ -1570,6 +1582,7 @@ function calcSignOut(){
   calcClearSession();
   calcUser = null;
   tdLedger=null;tdLoading=false;tdLoadToken++;
+  closeoutDrafts.clear();
   calcLoadLocal();
   renderAccount(); // sign-out only happens from the Account screen
 }
@@ -2698,7 +2711,16 @@ function tdRenderView(section, reload = false){
   else if(section === "money") renderLedgerMoney(reload);
 }
 async function tdFetch(table,fields,user){
- const result=[];for(let offset=0;;offset+=500){const rows=await sbUser(table+"?select="+fields+"&user_id=eq."+encodeURIComponent(user)+"&order="+(table==="fl2_fuel_allocations"?"segment_id,purchase_id":"id")+"&limit=500&offset="+offset);if(!Array.isArray(rows))throw Error("Invalid ledger response");result.push(...rows);if(rows.length<500)return result;}
+  const result = [];
+  const orders = {fl2_reconciliations:"business_date",fl2_fuel_allocations:"segment_id,purchase_id"};
+  const query = table + "?select=" + fields + "&user_id=eq." + encodeURIComponent(user) +
+    "&order=" + (orders[table] || "id") + "&limit=500&offset=";
+  for(let offset = 0; ; offset += 500){
+    const rows = await sbUser(query + offset);
+    if(!Array.isArray(rows)) throw new Error("Invalid ledger response");
+    result.push(...rows);
+    if(rows.length < 500) return result;
+  }
 }
 async function tdLoad(){
  const token = ++tdLoadToken, user = calcUser?.id;
@@ -2707,15 +2729,16 @@ async function tdLoad(){
  tdLoading = !!user;
  tdRenderView(view);
  if(!user) return;
- try{const [jobs,segments,expenses,purchases,allocations,payments,rentals]=await Promise.all([
+ try{const [jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations]=await Promise.all([
  tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at",user),
  tdFetch("fl2_segments","id,job_id,business_date,started_at,created_at,distance_mi,duration_minutes,category,origin,destination,source",user),
  tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source",user),
  tdFetch("fl2_fuel_purchases","id,business_date,amount,gallons",user),
  tdFetch("fl2_fuel_allocations","segment_id,allocated_cost,method",user),
  tdFetch("fl2_payments","job_id,received_on,amount",user),
- tdFetch("fl2_rentals","id,starts_on,ends_before,fixed_cost,planned_hours,hourly_goal",user)
- ]);if(token!==tdLoadToken||calcUser?.id!==user)return;tdLedger={user,jobs,segments,expenses,purchases,allocations,payments,rentals};}
+ tdFetch("fl2_rentals","id,starts_on,ends_before,fixed_cost,planned_hours,hourly_goal",user),
+ tdFetch("fl2_reconciliations","business_date,state,reviewed_at,notes",user)
+ ]);if(token!==tdLoadToken||calcUser?.id!==user)return;tdLedger={user,jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations};}
  catch(e){if(token!==tdLoadToken)return;tdError="Could not load your driving ledger. Try again.";}
  if(token === tdLoadToken){
    tdLoading = false;
@@ -2757,7 +2780,7 @@ function tdDay(date){
   const cost = operatingCost + rent;
   const net = confirmed ? gross - cost : null;
   return {jobs,segments,expenses,fuel,manualFuel,fuelCost,operatingCost,operatingConfirmed,gross,hours,
-    completeTime,completeFare,confirmed,rentalKnown,rent,cost,net,
+    recordedWork,fuelConfirmed,completeTime,completeFare,confirmed,rentalKnown,rent,cost,net,
     rate:net != null && hours > 0 ? net / hours : null,miles:tdSum(segments,"distance_mi")};
 }
 function ledgerLoading(head){
@@ -2774,12 +2797,181 @@ function ledgerLoading(head){
   if(retry) retry.onclick = tdLoad;
   return true;
 }
+const CLOSEOUT_PREFIX = "farelookup-closeout-v1\n";
+const closeoutDrafts = new Map();
+const CAR_SOURCE_LABELS = {
+  aximote:"Aximote",manual_car_trip:"Aximote · entered manually",
+  google_timeline:"Google Timeline",route_estimate_user_accepted:"Route estimate"
+};
+function isAximoteTrip(segment){
+  return segment.source === "aximote" || segment.source === "manual_car_trip";
+}
+function driveTimeLabel(minutes){
+  const rounded = Math.round(minutes);
+  const hours = Math.floor(rounded / 60), rest = rounded % 60;
+  return hours ? hours + "h" + (rest ? " " + rest + "m" : "") : rest + " min";
+}
+function closeoutData(date,day = tdDay(date)){
+  const jobs = tdLedger.jobs.filter(job => job.business_date === date && ["scheduled","completed"].includes(job.status));
+  const ids = new Set(jobs.map(job => job.id));
+  const driveRows = tdLedger.segments.filter(row => row.business_date === date);
+  const linkedElsewhere = tdLedger.segments.filter(row => row.business_date !== date && ids.has(row.job_id));
+  const tripRows = [...driveRows,...linkedElsewhere];
+  const aximote = driveRows.filter(isAximoteTrip);
+  const needsMatch = tripRows.filter(row => carTripNeedsReview(row) ||
+    (row.job_id && tdLedger.jobs.find(job => job.id === row.job_id)?.status !== "completed"));
+  const needsJob = jobs.filter(job => job.status === "scheduled" || job.fare == null ||
+    job.working_minutes == null || job.review_state !== "confirmed");
+  const cash = tdLedger.payments.filter(row => row.received_on === date);
+  const due = round2(day.jobs.reduce((total,job) => total + (job.fare == null ? 0 : Math.max(0,Number(job.fare) -
+    tdSum(tdLedger.payments.filter(payment => payment.job_id === job.id),"amount"))),0));
+  const finance = [];
+  if(day.recordedWork && !day.fuelConfirmed) finance.push("Fuel");
+  if(day.recordedWork && (!day.expenses.some(row => row.category === "toll") ||
+      day.expenses.some(row => row.category === "toll" && row.review_state !== "confirmed"))) finance.push("Tolls");
+  if(day.expenses.some(row => row.category !== "toll" && row.review_state !== "confirmed")) finance.push("Other expenses");
+  if(day.jobs.length && !day.rentalKnown) finance.push("Rental allocation");
+
+  const sort = rows => [...rows].sort((a,b) => a.id.localeCompare(b.id));
+  // Driving review follows source records and job actuals. Cash and costs can arrive later.
+  const snapshot = JSON.stringify([
+    sort(jobs).map(j => [j.id,j.status,j.fare,j.working_minutes,j.review_state]),
+    sort(tripRows).map(s => [s.id,s.job_id,s.business_date,s.source,s.category,s.distance_mi,s.duration_minutes,s.started_at])
+  ]);
+  const row = tdLedger.reconciliations?.find(entry => entry.business_date === date);
+  const note = parseCloseoutNote(row?.notes);
+  return {
+    jobs,tripRows,aximote,needsMatch,needsJob,finance,due,received:tdSum(cash,"amount"),snapshot,row,note,
+    reviewed:row?.state === "reviewed" && note.snapshot === snapshot,
+    changed:row?.state === "reviewed" && note.snapshot !== snapshot
+  };
+}
+function parseCloseoutNote(notes){
+  if(notes?.startsWith(CLOSEOUT_PREFIX)){
+    try { return JSON.parse(notes.slice(CLOSEOUT_PREFIX.length)) || {}; } catch(e){}
+  }
+  return {previousNotes:notes || null};
+}
+const AXIMOTE_METRICS = [
+  {key:"count",label:"Trips",step:1,tolerance:0,max:99999, total:rows => rows.length,format:String},
+  {key:"miles",label:"Miles",step:0.001,tolerance:0.1,max:999999, total:rows =>
+    rows.some(row => row.distance_mi == null) ? null : tdSum(rows,"distance_mi"),
+    format:n => Number(n.toFixed(2)) + " mi"},
+  {key:"minutes",label:"Driving minutes",step:0.001,tolerance:1,max:999999, total:rows =>
+    rows.some(row => row.duration_minutes == null) ? null : tdSum(rows,"duration_minutes"),
+    format:n => Number(n.toFixed(2)) + " min"}
+];
+function aximoteComparison(rows,reference){
+  return AXIMOTE_METRICS.map(metric => {
+    const expected = reference[metric.key];
+    const recorded = metric.total(rows);
+    const difference = expected == null || recorded == null ? null : round3(expected - recorded);
+    const differenceLabel = expected == null ? "—" : recorded == null ? "Incomplete" :
+      Math.abs(difference) <= metric.tolerance ? "Matches" :
+      metric.format(Math.abs(difference)) + (difference > 0 ? " missing" : " extra");
+    return {...metric,expected,recorded,differenceLabel,unresolved:expected != null &&
+      (difference == null || Math.abs(difference) > metric.tolerance)};
+  });
+}
+function aximoteComparisonHtml(rows,reference){
+  return '<table class="closeout-table"><thead><tr><th scope="col">Aximote</th><th scope="col">In FareLookup</th>' +
+    '<th scope="col">In car app</th><th scope="col">Difference</th></tr></thead><tbody>' +
+    aximoteComparison(rows,reference).map(metric => '<tr><th scope="row">' + esc(metric.label) + '</th><td>' +
+      (metric.recorded == null ? "Incomplete" : esc(metric.format(metric.recorded))) + '</td><td>' +
+      (metric.expected == null ? "—" : esc(metric.format(metric.expected))) + '</td><td>' +
+      esc(metric.differenceLabel) + '</td></tr>').join("") + '</tbody></table>';
+}
+function closeoutCard(data){
+  const count = data.needsMatch.length + data.needsJob.length;
+  const detail = [
+    data.needsMatch.length ? data.needsMatch.length + " driving " + (data.needsMatch.length === 1 ? "entry" : "entries") : "",
+    data.needsJob.length ? data.needsJob.length + " " + (data.needsJob.length === 1 ? "job" : "jobs") : ""
+  ].filter(Boolean).join(" · ");
+  const status = data.reviewed ? "Driving reviewed" : data.changed ? "Driving records changed" :
+    count ? detail + " to review" : "Ready to compare";
+  const actuals = data.aximote.length + " Aximote " + (data.aximote.length === 1 ? "trip" : "trips");
+  const other = data.tripRows.filter(row => !isAximoteTrip(row)).length;
+  return '<section class="tdcard closeout-card" aria-label="Day closeout"><div class="closeout-heading">' +
+    '<div><h2>Day closeout</h2><span class="tdmuted">' + esc(status) + '</span></div>' +
+    '<button class="quiet-link" id="td-closeout">' + (data.reviewed ? "View review" : "Review day") + '</button></div>' +
+    '<div class="closeout-sources">' + esc(actuals + (other ? " · " + other + " other driving " + (other === 1 ? "entry" : "entries") : "")) +
+    '</div>' +
+    (data.finance.length ? '<button class="quiet-link closeout-costs" id="td-costs-pending">Pending costs · ' +
+      esc(data.finance.join(", ")) + '</button>' : '') +
+    '<div class="tdmuted">' + tdMoney(data.received,2) + ' received this day' +
+    (data.due ? ' · ' + tdMoney(data.due,2) + ' still due on these jobs' : '') + '</div></section>';
+}
+function jumpToCloseoutSection(id){
+  closeDrawer();
+  tdTab = "trips";
+  renderToday(false);
+  document.getElementById(id)?.scrollIntoView({block:"start"});
+}
+function openDayCloseout(date,data){
+  const draftKey = calcUser?.id + ":" + date;
+  const previous = closeoutDrafts.get(draftKey) || data.note.reference || {};
+  const blockers = (data.needsMatch.length ?
+    '<button type="button" class="row" id="closeout-trips"><span>Match or categorize driving entries</span>' +
+    '<span class="tag">' + data.needsMatch.length + '</span><span class="chev">›</span></button>' : '') +
+    (data.needsJob.length ? '<button type="button" class="row" id="closeout-jobs"><span>Review job actuals</span>' +
+    '<span class="tag">' + data.needsJob.length + '</span><span class="chev">›</span></button>' : '');
+  const fields = '<p class="tdnote">' + esc(fmtDateShort(date)) +
+    ' · Include all Aximote trips for the day, including personal driving.</p>' +
+    '<div id="closeout-comparison" aria-live="polite">' + aximoteComparisonHtml(data.aximote,previous) + '</div>' +
+    AXIMOTE_METRICS.map(metric => ledgerInput(metric.key,metric.label + " shown in Aximote (optional)",
+      "number",previous[metric.key],'min="0" step="' + metric.step + '" max="' + metric.max + '"')).join("") +
+    '<label class="closeout-check"><input name="checked" type="checkbox" required' +
+    (data.reviewed ? ' checked' : '') + '> I compared this day’s trips with Aximote.</label>' +
+    (blockers ? '<div class="list">' + blockers + '</div>' : '') +
+    (data.finance.length ? '<p class="tdnote">You can review driving now and return for ' +
+      esc(data.finance.join(", ").toLowerCase()) + '.</p>' : '');
+  openLedgerForm("Review driving day",fields,async (values,user) => {
+    const reference = Object.fromEntries(AXIMOTE_METRICS.map(metric => {
+      const value = values.get(metric.key);
+      return [metric.key,value === "" ? null : Number(value)];
+    }));
+    if(values.get("checked") !== "on") throw new Error("Confirm that you compared the day with Aximote.");
+    if(data.needsMatch.length || data.needsJob.length) throw new Error("Review the remaining driving entries and job actuals first.");
+    if(aximoteComparison(data.aximote,reference).some(metric => metric.unresolved)){
+      throw new Error("The Aximote totals differ. Check the entries or add the missing trips.");
+    }
+
+    const notes = CLOSEOUT_PREFIX + JSON.stringify({
+      reference,snapshot:data.snapshot,previousNotes:data.note.previousNotes || null
+    });
+    const row = {user_id:user,business_date:date,state:"reviewed",reviewed_at:new Date().toISOString(),notes};
+    const base = "fl2_reconciliations?user_id=eq." + encodeURIComponent(user) + "&business_date=eq." + encodeURIComponent(date);
+    const saved = data.row ? await sbUser(base + "&state=eq." + data.row.state + "&reviewed_at=" +
+      (data.row.reviewed_at == null ? "is.null" : "eq." + encodeURIComponent(data.row.reviewed_at)),{
+        method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(row)
+      }) : await sbUser("fl2_reconciliations?on_conflict=user_id,business_date",{
+        method:"POST",headers:{Prefer:"resolution=ignore-duplicates,return=representation"},body:JSON.stringify(row)
+      });
+    if(!saved?.length) throw new Error("The day review changed. Refresh the day and try again.");
+    closeoutDrafts.delete(draftKey);
+  },null,"Mark driving reviewed");
+  const form = document.getElementById("ledger-form");
+  if(!form) return;
+  const tripButton = document.getElementById("closeout-trips");
+  if(tripButton) tripButton.onclick = () => jumpToCloseoutSection("td-drive-entries");
+  const jobButton = document.getElementById("closeout-jobs");
+  if(jobButton) jobButton.onclick = () => jumpToCloseoutSection("td-day-jobs");
+  form.addEventListener("input",() => {
+    const values = new FormData(form);
+    const reference = Object.fromEntries(AXIMOTE_METRICS.map(metric => [
+      metric.key,values.get(metric.key) === "" ? null : Number(values.get(metric.key))
+    ]));
+    closeoutDrafts.set(draftKey,reference);
+    document.getElementById("closeout-comparison").innerHTML = aximoteComparisonHtml(data.aximote,reference);
+  });
+}
+
 function renderToday(reload=true){
  view="today";inFlow=false;setStep(0,"Today");
  if(reload){tdLoad();return;}
  const head='<div class="tdhead"><h1>Today</h1><input id="td-date" aria-label="Business date" type="date" value="'+esc(tdDate)+'"></div>';
  if(ledgerLoading(head)) return;
- const s = tdDay(tdDate), l = tdLedger;
+ const s = tdDay(tdDate), l = tdLedger, closeout = closeoutData(tdDate,s);
  const month = l.jobs.filter(job => job.business_date.slice(0,7) === tdDate.slice(0,7) && job.status === "completed");
  const rental = ledgerRental(tdDate);
  const periodJobs = rental ? l.jobs.filter(job => job.business_date >= rental.starts_on &&
@@ -2793,10 +2985,14 @@ function renderToday(reload=true){
  const point = (fraction,radius=77) => [90-radius*Math.cos(fraction*Math.PI),88-radius*Math.sin(fraction*Math.PI)];
  const a = point(p), b = point(goal/max,68), c = point(goal/max,86);
  const gauge='<button class="tdgauge tdplain" id="td-gauge" aria-label="Hourly performance details"><svg viewBox="0 0 180 112" aria-hidden="true"><path d="M13 88 A77 77 0 0 1 167 88" fill="none" stroke="var(--chip)" stroke-width="8" stroke-linecap="round"/>'+(p?'<path d="M13 88 A77 77 0 0 1 '+a.join(" ")+'" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round"/>':'')+'<path d="M'+b.join(" ")+' L'+c.join(" ")+'" stroke="var(--muted)" stroke-width="2"/></svg><div class="tdcopy"><div class="tdscore" style="color:'+color+'">'+(s.rate==null?"—":tdMoney(s.rate,2))+'<small>/hr</small></div><div class="tdmuted">'+tdMoney(goal)+'/hr goal</div></div></button>';
- const rows = s.jobs.map(job => {
+ const rows = [...closeout.jobs].sort((a,b) =>
+   Number(closeout.needsJob.includes(b)) - Number(closeout.needsJob.includes(a))).map(job => {
+   if(job.status === "scheduled") return ledgerJobRow(job,"Confirm whether this job took place");
    const miles = tdSum(s.segments.filter(segment => segment.job_id === job.id),"distance_mi");
-   const detail = (job.working_minutes == null ? "Time pending" : fmtNum(Number(job.working_minutes)/60) + "h") +
-     " · " + fmtNum(miles) + " recorded mi";
+   const sourceRows = s.segments.filter(segment => segment.job_id === job.id);
+   const detail = (job.working_minutes == null ? "Working time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked") +
+     (sourceRows.some(row => row.distance_mi != null) ? " · " + fmtNum(miles) + " mi on file" : "") +
+     (closeout.needsJob.includes(job) ? " · Review actuals" : "");
    return ledgerJobRow(job,detail);
  }).join("");
  const costs = Object.entries({toll:"Tolls",parking:"Parking",other:"Other"}).map(([key,label]) => {
@@ -2805,7 +3001,7 @@ function renderToday(reload=true){
      (entries.length ? tdMoney(tdSum(entries,"amount"),2) : "Add cost") + ' ›</b></button>';
  }).join("");
  const tab=(k,l)=>'<button role="tab" data-td-tab="'+k+'" aria-selected="'+(tdTab===k)+'">'+l+'</button>';
- const dates = [...new Set([...l.jobs,...l.segments,...l.expenses,...l.purchases].map(row => row.business_date))].sort().reverse();
+ const dates = [...new Set([...l.jobs,...l.segments,...l.expenses,...l.purchases,...(l.reconciliations || [])].map(row => row.business_date))].sort().reverse();
  const pace = !s.jobs.length ? "No recorded jobs" : !s.confirmed ? "Pending reconciliation" :
    s.rate == null ? "No working time recorded" : s.rate === goal ? "At goal" :
    tdMoney(Math.abs(s.rate-goal),2) + "/hr " + (s.rate > goal ? "above" : "below") + " goal";
@@ -2818,13 +3014,13 @@ function renderToday(reload=true){
    tdLine("Rental allocation",s.jobs.length && s.rentalKnown ? tdMoney(s.rent,2) : "Pending") +
    tdLine("Fuel purchased (cash)",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchase recorded") +
    '</div>';
- const carTrips = l.segments.filter(row => row.business_date === tdDate);
- const tripsPanel = '<section aria-label="Recorded jobs"><div class="tdlinks"><b>Jobs · ' + s.jobs.length +
+ const carTrips = closeout.tripRows;
+ const tripsPanel = '<section id="td-day-jobs" aria-label="Recorded jobs"><div class="tdlinks"><b>Jobs · ' + closeout.jobs.length +
    '</b><button id="td-add-job">Add job</button></div><div class="tdlist">' +
    (rows || '<div class="empty">No completed jobs recorded for this day.</div>') + '</div></section>' +
-   '<section aria-label="Recorded car trips" style="margin-top:16px"><b>Car trips · ' + carTrips.length + '</b>' +
+   '<section id="td-drive-entries" aria-label="Driving entries" style="margin-top:16px"><b>Driving entries · ' + carTrips.length + '</b>' +
    renderDayCarTrips(tdDate,carTrips) + '</section>';
- h(head + '<div class="tdcard"><div class="tdmetrics">' + gauge +
+ h(head + closeoutCard(closeout) + '<div class="tdcard"><div class="tdmetrics">' + gauge +
    '<button class="tdnet tdplain" id="td-net"><div class="tdmuted">Take home</div><b>' +
    (s.net == null ? "—" : tdMoney(s.net)) + '</b><div class="tdmuted">of ' +
    tdMoney(s.gross) + (s.completeFare ? " gross" : " recorded gross") + '</div></button></div>' +
@@ -2843,6 +3039,9 @@ function renderToday(reload=true){
  document.getElementById("td-date").onchange=e=>{if(e.target.value){tdDate=e.target.value;renderToday(false)}};
  $view.querySelectorAll("[data-td-tab]").forEach(e=>e.onclick=()=>{tdTab=e.dataset.tdTab;renderToday(false)});
  wireLedgerJobRows();
+ document.getElementById("td-closeout").onclick = () => openDayCloseout(tdDate,closeout);
+ const pendingCosts = document.getElementById("td-costs-pending");
+ if(pendingCosts) pendingCosts.onclick = () => { tdTab = "expenses"; renderToday(false); };
  if(tdTab === "trips"){
    document.getElementById("td-add-job").onclick = () => openLedgerJobForm(null,{business_date:tdDate,status:"completed"});
    document.getElementById("td-add-car").onclick = () => openCarTrip(tdDate);
@@ -2893,29 +3092,34 @@ function renderDayCarTrips(date,segments){
   const pending = rows.filter(carTripNeedsReview).length;
   const status = pending ? pending + " to review" : rows.length ? "Matched or categorized" : "";
   return '<div class="tdlinks"><span class="tdmuted">' + (status ? esc(status) : '') +
-    '</span><button id="td-add-car">Add car trip</button></div><div class="tdlist">' +
+    '</span><button id="td-add-car">Add Aximote trip</button></div><div class="tdlist">' +
     (rows.length ? rows.map(segment => {
       const job = byJob.get(segment.job_id);
       const label = CAR_CATEGORIES[segment.category];
-      const detail = job ? label + " · " + ledgerJobTitle(job) : label;
+      const source = CAR_SOURCE_LABELS[segment.source] || "Other source";
+      const detail = [source,label,job ? ledgerJobTitle(job) : null,
+        date === segment.business_date ? null : fmtDateShort(segment.business_date)].filter(Boolean).join(" · ");
       const title = carTripTitle(segment);
-      return '<button class="tdrow" data-car-trip="' + esc(segment.id) + '"><span><b>' + esc(title) +
+      return '<button class="tdrow drive-row" data-car-trip="' + esc(segment.id) + '"><span><b>' + esc(title) +
         '</b><small class="tdmuted">' + esc(detail) + '</small></span><span><b>' +
         esc(carTripFacts(segment)) + '</b><small class="tdmuted">' +
-        (carTripNeedsReview(segment) ? "Review" : "›") + '</small></span></button>';
-    }).join("") : '<div class="empty">No car trips recorded for ' + esc(fmtDateShort(date)) + '.</div>') + '</div>';
+        (carTripNeedsReview(segment) || (job && job.status !== "completed") ? "Review" : "›") + '</small></span></button>';
+    }).join("") : '<div class="empty">No driving entries for ' + esc(fmtDateShort(date)) + '.</div>') + '</div>';
 }
 function openCarTrip(date,segment = null){
   const key = segment ? null : crypto.randomUUID();
+  const editable = !segment || segment.source === "manual_car_trip";
   const selectedJob = segment?.job_id;
   const jobs = tdLedger.jobs.filter(job =>
     job.id === selectedJob || (job.business_date === date && job.status === "completed"));
-  const fields = tdLine("Business date",date) + (segment ? tdLine("Recorded trip",carTripFacts(segment)) :
-    stopOptionsHtml("car-stops") +
-    ledgerInput("origin","From","text","",'list="car-stops" maxlength="250"') +
-    ledgerInput("destination","To","text","",'list="car-stops" maxlength="250"') +
-    ledgerInput("miles","Recorded miles","number","",'min="0" max="999999999.999" step="0.001"') +
-    ledgerInput("minutes","Recorded minutes","number","",'min="0" max="9999999.999" step="0.001"')) +
+  const fields = tdLine("Business date",segment?.business_date || date) +
+    (segment ? tdLine("Source",CAR_SOURCE_LABELS[segment.source] || "Other source") : "") +
+    (editable ? stopOptionsHtml("car-stops") +
+      ledgerInput("origin","From","text",segment?.origin,'list="car-stops" maxlength="250"') +
+      ledgerInput("destination","To","text",segment?.destination,'list="car-stops" maxlength="250"') +
+      ledgerInput("miles","Recorded miles","number",segment?.distance_mi,'min="0" max="999999999.999" step="0.001"') +
+      ledgerInput("minutes","Recorded minutes","number",segment?.duration_minutes,'min="0" max="9999999.999" step="0.001"') :
+      tdLine("Recorded trip",carTripFacts(segment))) +
     '<label class="field" for="ledger-car-category">Trip type</label><select id="ledger-car-category" name="category">' +
     Object.entries(CAR_CATEGORIES).map(([category,label]) => '<option value="' + category + '"' +
       (segment?.category === category ? ' selected' : '') + '>' + esc(label) + '</option>').join("") +
@@ -2924,26 +3128,33 @@ function openCarTrip(date,segment = null){
     jobs.map(job => '<option value="' + esc(job.id) + '"' + (job.id === selectedJob ? ' selected' : '') + '>' +
       esc(ledgerJobTitle(job) + (job.fare == null ? "" : " · " + tdMoney(Number(job.fare)))) + '</option>').join("") +
     '</select></div>';
-  openLedgerForm(segment ? carTripTitle(segment) : "Add car trip",fields,async (data,user) => {
+  openLedgerForm(segment ? carTripTitle(segment) : "Add Aximote trip",fields,async (data,user) => {
     const category = data.get("category");
     const row = {category,job_id:category === "personal" ? null : data.get("job") || null};
+    if(editable){
+      const miles = data.get("miles"), minutes = data.get("minutes");
+      if(miles === "" && minutes === "") throw new Error("Enter the miles or minutes shown in Aximote.");
+      Object.assign(row,{
+        origin:resolvePlace(data.get("origin").trim()) || null,
+        destination:resolvePlace(data.get("destination").trim()) || null,
+        distance_mi:miles === "" ? null : Number(miles),
+        duration_minutes:minutes === "" ? null : Number(minutes)
+      });
+    }
     if(segment){
       const jobFilter = selectedJob ? "eq." + encodeURIComponent(selectedJob) : "is.null";
+      const equal = value => value == null ? "is.null" : "eq." + encodeURIComponent(value);
+      const checkMetrics = editable ? "&distance_mi=" + equal(segment.distance_mi) +
+        "&duration_minutes=" + equal(segment.duration_minutes) : "";
       const result = await sbUser("fl2_segments?id=eq." + encodeURIComponent(segment.id) +
-        "&user_id=eq." + encodeURIComponent(user) + "&category=eq." + segment.category + "&job_id=" + jobFilter,{
+        "&user_id=eq." + encodeURIComponent(user) + "&category=eq." + segment.category + "&job_id=" + jobFilter + checkMetrics,{
           method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(row)
         });
       if(!result?.length) throw new Error("This car trip changed. Close the form and refresh the day.");
       return;
     }
-    const miles = data.get("miles"), minutes = data.get("minutes");
-    if(miles === "" && minutes === "") throw new Error("Enter the miles or minutes shown in the car app.");
     await ledgerWriteOnce("fl2_segments",{
-      ...row,user_id:user,business_date:date,source:"manual_car_trip",source_key:key,
-      origin:resolvePlace(data.get("origin").trim()) || null,
-      destination:resolvePlace(data.get("destination").trim()) || null,
-      distance_mi:miles === "" ? null : Number(miles),
-      duration_minutes:minutes === "" ? null : Number(minutes)
+      ...row,user_id:user,business_date:date,source:"manual_car_trip",source_key:key
     });
   });
   const category = document.getElementById("ledger-car-category");
@@ -2962,6 +3173,7 @@ function ledgerJobTitle(job){
 }
 function ledgerPaymentLabel(job, payments){
   if(job.status !== "completed") return {quoted:"Quoted",scheduled:"Scheduled",cancelled:"Cancelled"}[job.status];
+  if(Number(job.fare) === 0 && job.fare != null && !payments.length) return "No payment due";
   if(!payments.length) return "No payment recorded";
   if(job.fare == null) return "Payment recorded";
   return round2(tdSum(payments,"amount")) >= Number(job.fare) ? "Paid" : "Partially paid";
@@ -2997,11 +3209,14 @@ function openLedgerJob(job){
       row.distance_mi == null ? "Mileage pending" : fmtNum(Number(row.distance_mi)) + " mi")).join("") +
     (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : "") +
     (active ? '<button class="btn" id="ledger-edit">Update job</button>' : "") +
-    (job.status === "completed" ? '<button class="btn" id="ledger-payment">Record payment</button>' : "") +
+    (job.status === "completed" ? '<button class="btn" id="ledger-actual-review">Review job actuals</button>' +
+      '<button class="btn secondary" id="ledger-payment">Record payment</button>' : "") +
     (job.status === "completed" && view === "jobs" ?
       '<button class="btn secondary" id="ledger-review">Review this day</button>' : ""));
   const edit = document.getElementById("ledger-edit");
   if(edit) edit.onclick = () => openLedgerJobForm(job);
+  const actuals = document.getElementById("ledger-actual-review");
+  if(actuals) actuals.onclick = () => openJobActuals(job,segments);
   const payment = document.getElementById("ledger-payment");
   if(payment) payment.onclick = () => openLedgerPayment(job,payments);
   const review = document.getElementById("ledger-review");
@@ -3012,6 +3227,45 @@ function openLedgerJob(job){
     goMenu("today");
   };
 }
+function openJobActuals(job,segments){
+  const measured = segments.filter(row => isAximoteTrip(row) && row.category !== "personal" && row.category !== "waiting");
+  const measuredMinutes = measured.length && measured.every(row => row.duration_minutes != null)
+    ? tdSum(measured,"duration_minutes") : null;
+  const observed = measuredMinutes == null ? "" : tdLine("Linked Aximote drive time",driveTimeLabel(measuredMinutes));
+  const useDriveTime = measuredMinutes == null ? "" :
+    ledgerInput("wait","Waiting minutes to add","number","",'min="0" max="9999999.999" step="0.001"') +
+    '<button type="button" class="quiet-link" id="use-aximote-duration">Use linked drive time plus waiting</button>';
+  const fields = tdLine("Job",ledgerJobTitle(job)) + observed +
+    ledgerInput("fare","Actual fare ($)","number",job.fare,'min="0" max="9999999999.99" step="0.01" required') +
+    ledgerInput("minutes","Total working minutes","number",job.working_minutes,
+      'min="0" max="9999999.999" step="0.001" required') + useDriveTime +
+    '<p class="tdnote">Include driving to the pickup, job-related waiting, and the return. Enter the fare earned even if payment is still due.</p>';
+  openLedgerForm("Review job actuals",fields,async (data,user) => {
+    const fare = data.get("fare"), minutes = data.get("minutes");
+    if(fare === "" || minutes === "") throw new Error("Enter the actual fare and working time.");
+    const rental = ledgerRental(job.business_date);
+    const snapshot = job.rental_hourly_snapshot ??
+      (rental ? Number((rental.fixed_cost / rental.planned_hours).toFixed(4)) : null);
+    const equal = value => value == null ? "is.null" : "eq." + encodeURIComponent(value);
+    const saved = await sbUser("fl2_jobs?id=eq." + encodeURIComponent(job.id) +
+      "&user_id=eq." + encodeURIComponent(user) + "&status=eq.completed&fare=" + equal(job.fare) +
+      "&working_minutes=" + equal(job.working_minutes) + "&review_state=eq." + job.review_state,{
+        method:"PATCH",headers:{Prefer:"return=representation"},
+        body:JSON.stringify({fare:Number(fare),working_minutes:Number(minutes),review_state:"confirmed",
+          rental_id:job.rental_id ?? rental?.id ?? null,rental_hourly_snapshot:snapshot})
+      });
+    if(!saved?.length) throw new Error("This job changed. Refresh the day and try again.");
+  },null,"Confirm actuals");
+  const use = document.getElementById("use-aximote-duration");
+  if(use) use.onclick = () => {
+    const input = document.getElementById("ledger-minutes");
+    const wait = document.getElementById("ledger-wait");
+    if(!wait.reportValidity()) return;
+    input.value = round3(measuredMinutes + Number(wait.value || 0));
+    input.focus();
+  };
+}
+
 let ledgerJobsFilter = "active";
 function renderLedgerJobs(reload){
   view = "jobs";
@@ -3054,7 +3308,7 @@ function ledgerInput(name,label,type,value,attributes=""){
     '" name="' + name + '" type="' + type + '"' + (type === "date" ? ' class="ledger-date"' : '') +
     ' value="' + esc(value ?? "") + '" ' + attributes + '>';
 }
-function openLedgerForm(title,fields,save,onSaved){
+function openLedgerForm(title,fields,save,onSaved,submitLabel = "Save"){
   const user = calcUser?.id;
   const startingView = view, startingScroll = $scroll.scrollTop;
   if(!user){
@@ -3063,7 +3317,7 @@ function openLedgerForm(title,fields,save,onSaved){
     return;
   }
   openDrawer(title,'<form class="ledger-form" id="ledger-form">' + fields +
-    '<p role="alert" hidden></p><button class="btn" type="submit">Save</button></form>');
+    '<p role="alert" hidden></p><button class="btn" type="submit">' + esc(submitLabel) + '</button></form>');
   const form = document.getElementById("ledger-form");
   const submit = form.querySelector('button[type="submit"]');
   const error = form.querySelector("[role=alert]");
@@ -3081,7 +3335,7 @@ function openLedgerForm(title,fields,save,onSaved){
         "Could not save to your ledger. Try again." : errorValue.message;
       error.hidden = false;
       submit.disabled = false;
-      submit.textContent = "Save";
+      submit.textContent = submitLabel;
       return;
     }
     tdLedger = null;
@@ -3109,6 +3363,7 @@ function openLedgerJobForm(job = null,prefill = {}){
   const status = initial.status || "quoted";
   const statuses = {quoted:"Quoted",scheduled:"Scheduled"};
   if(!fromQuote) statuses.completed = "Completed";
+  if(job) statuses.cancelled = "Cancelled";
   const fields = ledgerInput("date","Business date","date",initial.business_date || todayNY(),
       initial.started_at ? 'readonly required' : 'required') +
     stopOptionsHtml("job-stops") +
@@ -3182,7 +3437,7 @@ function openDailyExpense(date,category,previous){
   const labels = {fuel:"Fuel consumed",toll:"Tolls",parking:"Parking",other:"Other expenses"};
   const source = fuel ? MANUAL_FUEL : "manual_day_" + category;
   const fields = '<p class="tdnote">' + esc(date) + (fuel
-    ? " · This amount will be used for the day’s fuel consumption." : " · Enter the day’s costs that haven’t been recorded on a job.") +
+    ? " · This amount will be used for the day’s fuel consumption." : " · Enter costs still missing from the ledger. Enter $0 if there were none.") +
     '</p>' + ledgerInput("amount","Amount ($)","number",previous?.amount,
     'required min="0" max="9999999999.99" step="0.01"');
   openLedgerForm(labels[category],fields,(data,user) =>
