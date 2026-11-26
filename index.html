@@ -133,15 +133,6 @@
   .btn.small{ width:auto; display:inline-block; padding:9px 18px; font-size:15px; margin-top:0; }
   :focus-visible{ outline:2px solid var(--link); outline-offset:2px; }
   .quiet-link{ display:inline-block; background:none; border:0; color:var(--link); font-size:15px; padding:10px 0; cursor:pointer; }
-  .loop-bar{
-    position:fixed; left:0; right:0; bottom:0; z-index:20;
-    background:var(--bg); border-top:1px solid var(--border);
-    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
-    display:flex; gap:10px; /* v4.2: Share + New rate side by side, never stacked */
-  }
-  .loop-bar .btn{ margin-top:0; min-height:52px; flex:1; min-width:0; }
-  .loop-bar #share{ font-weight:600; }
-  .propose-link{ display:block; margin:20px auto 0; background:none; border:0; color:var(--muted); font-size:14px; padding:12px 8px; cursor:pointer; text-align:center; }
   .seg{ display:flex; background:var(--chip); border-radius:12px; padding:2px; gap:2px; }
   .seg button{
     flex:1; border:0; background:transparent; color:var(--text); font-size:14px;
@@ -235,9 +226,8 @@
   .simple-action p{ margin:8px 0 0; }
   .simple-section-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
   .simple-section-head h2{ font-size:16px; margin:0; }
+  #community-count{ margin-left:5px; color:var(--muted); }
   .simple-section-head .quiet-link,.simple-head .quiet-link{ min-height:44px; margin:0; font-size:14px; }
-  .simple-details{ margin-top:12px; border-top:1px solid var(--border); }
-  .simple-details summary{ min-height:44px; align-content:center; cursor:pointer; font-size:14px; font-weight:600; }
   .simple-fields{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
   .simple-field{ display:grid; gap:6px; font-size:14px; color:var(--muted); }
   .simple-field input{ min-height:46px; }
@@ -253,8 +243,6 @@
   .ledger-date{ font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; }
   .ledger-form .ledger-date{ width:100%; }
   .ledger-form p[role=alert]{ color:var(--danger); }
-  .ledger-evidence{ margin:10px 0; font-size:14px; }
-  .ledger-evidence summary{ min-height:44px; align-content:center; cursor:pointer; }
   .closeout-table{ width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
   .closeout-table td,.closeout-table th{ text-align:left; padding:8px 4px; border-bottom:1px solid var(--border); }
   .closeout-check{ display:flex; align-items:center; gap:8px; min-height:44px; margin:10px 0; font-size:14px; }
@@ -290,6 +278,7 @@
 </div>
 <div id="menu-pill" role="navigation" aria-label="Main">
   <button data-menu="today">Today</button>
+  <button data-menu="fares">Fare Sheet</button>
   <button data-menu="calc">Quote</button>
   <button data-menu="money">Money</button>
 </div>
@@ -538,8 +527,8 @@ async function loadData(){
   (r || []).forEach(x => rulesByBase[x.base] = x);
   const counts = {};
   fares.forEach(row => { if(row.origin === "sheet") counts[row.from_place] = (counts[row.from_place] || 0) + 1; });
-  bases = Object.keys(counts);
-  topPlaces = [...bases].sort((a, b) => counts[b] - counts[a]);
+  bases = [...new Set([...Object.keys(counts),...gridCells.map(cell => cell.base)])];
+  topPlaces = [...bases].sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
   const set = new Set(topPlaces);
   fares.forEach(r => { set.add(r.from_place); set.add(r.to_place); });
   places = [...set];
@@ -813,7 +802,7 @@ function summaryLine(withOptions){
 /* ---------- rendering helpers ---------- */
 /* Calculator + Account views (v3 layers included). The fare wizard views
    (step1/step2/quote/flatbush/notlisted/pending) are not in this list. */
-const CALC_VIEWS = ["calc", "account", "calc-pick", "account-rates", "account-aliases"];
+const CALC_VIEWS = ["calc", "account", "account-rates", "account-aliases"];
 function isCalcViewName(v){ return CALC_VIEWS.includes(v); }
 /* Layered screens: layers pushed on top of a root calc/account
    screen; nav back pops. Root jumps (icon bar, deep links) clear it. */
@@ -905,15 +894,21 @@ function goMode(next){
 }
 function updateMenu(){
   const pill = document.getElementById("menu-pill");
+  const faresView = ["step1","step2","quote","flatbush","notlisted","pending"].includes(view);
   const section = view === "jobs" ? "today" : view.startsWith("account") ? "money" :
-    view.startsWith("calc") ? "calc" : view;
-  pill.style.display = LOOP_VIEWS.includes(view) ? "none" : "";
+    faresView ? "fares" : view;
   pill.querySelectorAll("[data-menu]").forEach(button => {
     if(button.dataset.menu === section) button.setAttribute("aria-current","page");
     else button.removeAttribute("aria-current");
   });
 }
 function goMenu(section){
+  if(section === "fares" && view === "pending"){
+    inFlow = false;
+    sel = {};
+    renderPlacePicker(1);
+    return;
+  }
   if(["today","jobs","money"].includes(section)){
     screenStack = [];
     tdRenderView(section, !tdLoading && (!tdLedger || tdLedger.user !== calcUser?.id));
@@ -929,18 +924,18 @@ function goMenu(section){
 let currentStep = 1;
 function setStep(n,label){
   currentStep = n;
-  const simpleRoot = ["today","calc","money"].includes(view);
+  const simpleRoot = ["today","calc","money","step1"].includes(view);
   const title = document.getElementById("nav-title");
   const nav = document.getElementById("topnav");
   title.style.display = simpleRoot || !isCalcViewName(view) ? "none" : "";
   title.textContent = label || "Fare Lookup";
   const back = view === "jobs" ? "Today" : view === "account" ? "Money" :
     view === "account-rates" || view === "account-aliases" ? "Account" :
-    view === "calc-pick" ? "Quote" : view === "quote" && quoteFromCalc ? quoteFromCalcBack :
+    view === "pending" ? "Fare Sheet" : view === "quote" && quoteFromCalc ? quoteFromCalcBack :
     (view === "notlisted" || n === 3) ? "Where to?" : n === 2 ? "Where from?" : "Start over";
   document.getElementById("nav-back").textContent = "‹ " + back;
   nav.classList.toggle("simple-root",simpleRoot);
-  nav.classList.toggle("in-flow",!simpleRoot && view !== "step1" && view !== "pending");
+  nav.classList.toggle("in-flow",!simpleRoot);
   renderHeader();
   updateMenu();
   $scroll.scrollTop = 0;
@@ -1019,8 +1014,8 @@ function renderPlacePicker(step){
   const other = isFrom ? null : sel.from;
   const showFlatbush = !isFrom && !!gridFor(sel.from);
   h(
-    (isFrom ? "" : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
-    '<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
+    (isFrom ? '<header class="simple-head"><h1>Fare Sheet</h1><button class="quiet-link" id="fares-community">Community<span class="tag' + (proposals.length ? '' : ' hidden') + '" id="community-count" aria-hidden="true">' + proposals.length + '</span></button></header>' : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
+    '<div class="search-wrap"><input type="search" id="q" aria-label="' + (isFrom ? "Search pickup" : "Search destination") + '" placeholder="' + (isFrom ? "Search pickup" : "Search destination") + '" autocomplete="off"></div>' +
     (showFlatbush
       ? '<div class="list"><button class="row" data-place="' + esc(zoneLabel(sel.from)) + '">' + esc(sel.from + " zone fare") + '<span class="chev" aria-hidden="true">›</span></button></div>'
       : "") +
@@ -1028,6 +1023,8 @@ function renderPlacePicker(step){
     '<button class="quiet-link" id="add-link">Add a price</button>'
   );
   const input = document.getElementById("q");
+  const community = document.getElementById("fares-community");
+  if(community) community.onclick = () => goMenu("community");
   input.addEventListener("input", () => {
     document.getElementById("plist").innerHTML = placeListHTML(input.value, other);
     bindPlaceRows(step);
@@ -1129,9 +1126,9 @@ function renderQuote(){
     '<div class="route-line">' + esc(sel.from) + " → " + esc(sel.to) + "</div>" +
     '<button class="price-big fare-edit-btn" id="q-price" aria-live="polite"></button>' +
     '<div class="q-summary" id="q-summary"></div>' +
-    '<div class="seg" id="seg-trip" role="group" aria-label="Trip type" style="margin-top:20px' + (o.hasRT ? "" : ";visibility:hidden") + '">' +
-      '<button data-trip="oneway" class="on" aria-pressed="true">One way</button>' +
-      '<button data-trip="round" aria-pressed="false">Round trip</button></div>' +
+    (o.hasRT ? '<label class="field" for="fare-trip-type">Trip type</label><select id="fare-trip-type">' +
+      '<option value="oneway"' + (sel.trip !== "round" ? ' selected' : '') + '>One way</option>' +
+      '<option value="round"' + (sel.trip === "round" ? ' selected' : '') + '>Round trip</option></select>' : '') +
     (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place, sel.trip)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-breakdown"></div>' +
@@ -1139,17 +1136,12 @@ function renderQuote(){
     '<button class="btn secondary" id="takehome">My take-home</button>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
-    '<div class="loop-bar"><button class="btn" id="share">Share price</button>' +
+    '<div class="drawer-actions"><button class="btn" id="share">Share price</button>' +
     '<button class="btn secondary" id="new-rate">New rate</button></div>' +
     '<div id="q-suggest"></div>'
   );
-  const segBtns = $view.querySelectorAll("#seg-trip button");
-  segBtns.forEach(b => b.addEventListener("click", () => {
-    sel.trip = b.dataset.trip;
-    segBtns.forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
-    refreshQuote();
-  }));
-  segBtns.forEach(x => { x.classList.toggle("on", x.dataset.trip === sel.trip); x.setAttribute("aria-pressed", x.dataset.trip === sel.trip ? "true" : "false"); });
+  const tripType = document.getElementById("fare-trip-type");
+  if(tripType) tripType.onchange = () => { sel.trip = tripType.value; refreshQuote(); };
   const mv = document.getElementById("opt-minivan");
   if(mv) mv.addEventListener("change", () => { sel.minivan = mv.checked; refreshQuote(); });
   const ap = document.getElementById("opt-airport");
@@ -1208,7 +1200,7 @@ function renderFlatbush(base){
     '<div class="q-summary" id="fb-summary"></div>' +
     '<div id="fb-breakdown"></div>' +
     '<button class="btn secondary" id="customize">Customize price</button>' +
-    '<div class="loop-bar"><button class="btn" id="share">Share price</button>' +
+    '<div class="drawer-actions"><button class="btn" id="share">Share price</button>' +
     '<button class="btn secondary" id="new-rate">New rate</button></div>'
   );
   const upd = () => {
@@ -1262,16 +1254,25 @@ function categoriesFor(from, to){
   return [...cats, "Other"];
 }
 let DETAILS_HTML = "";
-let drawerFocus = null;
-function openDrawer(title, bodyHtml){
+let drawerFocus = null, drawerBack = null;
+function openDrawer(title, bodyHtml, back = null){
   if($modal.classList.contains("hidden")) drawerFocus = document.activeElement;
   document.getElementById("sheet-title").textContent = title;
   document.getElementById("sheet-body").innerHTML = bodyHtml;
   $modal.classList.remove("hidden");
   for(const id of ["topnav","scroll","menu-pill"]) document.getElementById(id).inert = true;
-  document.getElementById("modal-close").focus();
+  drawerBack = back;
+  const dismiss = document.getElementById("modal-close");
+  dismiss.textContent = back ? "‹" : "✕";
+  dismiss.setAttribute("aria-label",back ? "Back" : "Close");
+  dismiss.focus();
+}
+function dismissDrawer(){
+  if(drawerBack) drawerBack();
+  else closeDrawer();
 }
 function closeDrawer(keepReview = false){
+  drawerBack = null;
   if(!keepReview) reviewFlowDate = null;
   $modal.classList.add("hidden");
   document.getElementById("sheet-body").innerHTML = "";
@@ -1365,7 +1366,8 @@ function renderPending(){
   view = "pending"; setStep(0, "Community");
   const mine = myVotes();
   const sorted = [...proposals].sort((a, b) => b.votes - a.votes);
-  h(    '<button class="btn secondary" id="b-addprice" style="margin-top:0">Add a price</button>' +
+  h('<header class="simple-head"><h1>Community</h1></header>' +
+    '<button class="btn secondary" id="b-addprice" style="margin-top:0">Add a price</button>' +
     '<div class="group-label">Open votes</div>' +
     (sorted.length ? sorted.map(p => {
       const f = p.fare || {};
@@ -1729,65 +1731,82 @@ function quoteInput(id,label,value,step="1"){
 function quoteMinutes(hours){
   return Number(hours) > 0 ? round3(Number(hours) * 60) : "";
 }
+function bindQuoteInput(id,key,scale = 1){
+  const input = document.getElementById(id);
+  if(!input) return;
+  input.oninput = () => {
+    calc[key] = input.value === "" || !input.validity.valid ?
+      (key === "adjustedFare" ? null : "") : Number(input.value) * scale;
+    updatePrice();
+  };
+}
+function detailRow(id,label,value=""){
+  return '<button type="button" class="row" id="' + id + '"><span class="row-main">' + esc(label) +
+    '</span>' + (value ? '<span class="tdmuted">' + esc(value) + '</span>' : '') +
+    '<span class="chev" aria-hidden="true">›</span></button>';
+}
 function renderCalc(){
   view = "calc";
   inFlow = false;
   if(!calc) calcReset();
   setStep(0,"Quote");
-
-  const routeRow = (id,label,value) => '<button class="row" id="' + id + '"><span class="row-label">' + label +
-    '</span><span class="row-val">' + esc(value || "Choose a stop") + '</span><span class="chev" aria-hidden="true">›</span></button>';
+  const route = [calc.from,calc.to].filter(Boolean).join(" → ");
   h('<header class="simple-head"><h1>Quote</h1></header>' +
-    '<div class="simple-fields">' + quoteInput("c-miles","Trip miles",calc.miles,"0.001") +
+    (route ? '<p class="simple-caption">' + esc(route) + '</p>' : '') +
+    '<div class="simple-fields">'  + quoteInput("c-miles","Trip miles",calc.miles,"0.001") +
       quoteInput("c-dur","Drive minutes",quoteMinutes(calc.hours),"0.001") + '</div>' +
     '<section id="c-result" hidden><div class="day-total"><div class="simple-label" id="c-fare-label"></div>' +
       '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div>' +
-      '<button class="btn" id="c-job">Save quote</button>' +
-      '<details class="simple-details"><summary>Quote details</summary>' +
-      quoteInput("c-fare-edit","Custom fare ($)",calc.adjustedFare,"0.01") +
-      '<div class="list simple-space" id="c-breakdown"></div>' +
-      '<button class="quiet-link" id="c-share">Share fare</button></details></section>' +
-    '<details class="simple-details" id="c-route"' + (calc.from || calc.to ? ' open' : '') +
-    '><summary>Trip options</summary><div class="list">' +
-      routeRow("c-from","From",calc.from) + routeRow("c-to","To",calc.to) + '</div>' +
-      '<label class="closeout-check"><input type="checkbox" id="c-round"' +
-      (calc.mode === "round" ? ' checked' : '') + '> Round trip</label><div class="simple-fields">' +
-      quoteInput("c-wait","Waiting minutes",quoteMinutes(calc.waitHours),"0.001") +
-      quoteInput("c-tolls","Tolls ($)",calc.tolls,"0.01") +
-      quoteInput("c-parking","Parking ($)",calc.parking,"0.01") + '</div>' +
-      (calcEndsAtHub(calc) ? '' : '<div class="simple-fields simple-space">' +
-        quoteInput("c-rmiles","Return miles",calc.returnMiles,"0.001") +
-        quoteInput("c-rh","Return minutes",quoteMinutes(calc.returnHours),"0.001") +
-        quoteInput("c-rtolls","Return tolls ($)",calc.returnTolls,"0.01") + '</div>') + '</details>');
-  const bind = (id,key,scale = 1) => {
-    const input = document.getElementById(id);
-    if(input) input.oninput = () => {
-      if(key === "adjustedFare"){
-        calc[key] = input.value !== "" && input.validity.valid ? Number(input.value) : null;
-      } else calc[key] = input.value === "" || !input.validity.valid ? "" : Number(input.value) * scale;
-      updatePrice();
-    };
-  };
-  [
-    ["c-miles","miles"],["c-dur","hours",1/60],["c-wait","waitHours",1/60],
-    ["c-tolls","tolls"],["c-parking","parking"],["c-rmiles","returnMiles"],
-    ["c-rh","returnHours",1/60],["c-rtolls","returnTolls"],["c-fare-edit","adjustedFare"]
-  ].forEach(args => bind(...args));
-  document.getElementById("c-round").onchange = event => {
-    calc.mode = event.target.checked ? "round" : "oneway";
-    updatePrice();
-  };
-  document.getElementById("c-from").onclick = () => pushScreen("calc-pick",renderCalc,() => renderCalcPicker("from"));
-  document.getElementById("c-to").onclick = () => pushScreen("calc-pick",renderCalc,() => renderCalcPicker("to"));
+      '<button class="btn" id="c-job">Save quote</button></section>' +
+    '<div class="list simple-space">' + detailRow("c-options","Quote options") + '</div>');
+  bindQuoteInput("c-miles","miles");
+  bindQuoteInput("c-dur","hours",1/60);
+  document.getElementById("c-options").onclick = openQuoteOptions;
   document.getElementById("c-job").onclick = () => {
     const quote = calcFare(calc,calcCfg);
     if(quote.miles > 0 && quote.hours > 0) openLedgerJobForm(null,{
       pickup:calc.from,destination:calc.to,fare:quote.fare
     });
   };
-  document.getElementById("c-share").onclick = event => shareCalc(event.currentTarget);
-  document.getElementById("c-breakdown").onclick = event => {
-    if(event.target.closest("#c-list-price")) openQuoteFromCalc(calc.from,calc.to,calc.mode,renderCalc,"Quote");
+  updatePrice();
+}
+function openQuoteOptions(){
+  const hasPrice = !document.getElementById("c-result").hidden;
+  openDrawer("Quote options",
+    '<div class="list">' + detailRow("c-from","From",calc.from || "Choose a stop") +
+    detailRow("c-to","To",calc.to || "Choose a stop") + '</div>' +
+    '<label class="field" for="c-trip-type">Trip type</label><select id="c-trip-type">' +
+    '<option value="oneway"' + (calc.mode !== "round" ? ' selected' : '') + '>One way</option>' +
+    '<option value="round"' + (calc.mode === "round" ? ' selected' : '') + '>Round trip</option></select>' +
+    '<div class="simple-fields simple-space">' +
+      quoteInput("c-wait","Waiting minutes",quoteMinutes(calc.waitHours),"0.001") +
+      quoteInput("c-tolls","Tolls ($)",calc.tolls,"0.01") +
+      quoteInput("c-parking","Parking ($)",calc.parking,"0.01") + '</div>' +
+    (calcEndsAtHub(calc) ? '' : '<div class="simple-fields simple-space">' +
+      quoteInput("c-rmiles","Return miles",calc.returnMiles,"0.001") +
+      quoteInput("c-rh","Return minutes",quoteMinutes(calc.returnHours),"0.001") +
+      quoteInput("c-rtolls","Return tolls ($)",calc.returnTolls,"0.01") + '</div>') +
+    (hasPrice ? '<div class="simple-space">' + quoteInput("c-fare-edit","Custom fare ($)",calc.adjustedFare,"0.01") +
+      '<div class="list simple-space" id="c-breakdown"></div>' +
+      '<button class="quiet-link" id="c-share">Share fare</button></div>' : ''));
+  [
+    ["c-wait","waitHours",1/60],["c-tolls","tolls"],["c-parking","parking"],["c-rmiles","returnMiles"],
+    ["c-rh","returnHours",1/60],["c-rtolls","returnTolls"],["c-fare-edit","adjustedFare"]
+  ].forEach(args => bindQuoteInput(...args));
+  document.getElementById("c-trip-type").onchange = event => {
+    calc.mode = event.target.value;
+    updatePrice();
+  };
+  document.getElementById("c-from").onclick = () => openQuotePlace("from");
+  document.getElementById("c-to").onclick = () => openQuotePlace("to");
+  const share = document.getElementById("c-share");
+  if(share) share.onclick = event => shareCalc(event.currentTarget);
+  const breakdown = document.getElementById("c-breakdown");
+  if(breakdown) breakdown.onclick = event => {
+    if(event.target.closest("#c-list-price")){
+      closeDrawer();
+      openQuoteFromCalc(calc.from,calc.to,calc.mode,renderCalc,"Quote");
+    }
   };
   updatePrice();
 }
@@ -1800,44 +1819,36 @@ function updatePrice(){
   document.getElementById("c-fare-show").textContent = money(r.fare);
   document.getElementById("c-takehome").textContent = money(r.takeHome) + " estimated take-home" +
     (r.effectivePerHour == null ? "" : " · " + money(r.effectivePerHour) + "/hr");
+  const breakdown = document.getElementById("c-breakdown");
+  if(!breakdown) return;
   const listFare = calcListFare();
-  document.getElementById("c-breakdown").innerHTML = calcBreakdownLines(r).map(row =>
-    tdLine(row.label,money(row.amount))).join("") +
-    (listFare == null ? "" : '<button class="row" id="c-list-price"><span class="row-main">Fare sheet</span><b>' +
-      money(listFare) + '</b><span class="chev" aria-hidden="true">›</span></button>');
+  breakdown.innerHTML = calcBreakdownLines(r).map(row => tdLine(row.label,money(row.amount))).join("") +
+    (listFare == null ? "" : detailRow("c-list-price","Fare Sheet",money(listFare)));
 }
-
-function renderCalcPicker(which){
-  view = "calc-pick"; setStep(0, which === "from" ? "Where from?" : "Where to?");
+function openQuotePlace(which){
   const other = which === "to" ? calc.from : null;
-  h('<div class="search-wrap"><input type="search" id="q" aria-label="Search places" placeholder="Search places" autocomplete="off"></div>' +
-    '<div id="plist"></div>');
-  const input = document.getElementById("q");
-  const list = document.getElementById("plist");
+  openDrawer(which === "from" ? "Pickup" : "Destination",
+    '<div class="search-wrap"><input type="search" id="quote-place-search" aria-label="Search places" autocomplete="off"></div>' +
+    '<div id="quote-places"></div>',openQuoteOptions);
+  const input = document.getElementById("quote-place-search");
+  const list = document.getElementById("quote-places");
   const update = () => {
-    if(!list.isConnected) return;
-    list.innerHTML = placeListHTML(input.value,other,calcHistoryPlaces(),input.value);
-    bindCalcPickRows(which);
+    if(list.isConnected) list.innerHTML = placeListHTML(input.value,other,calcHistoryPlaces(),input.value);
   };
-  input.addEventListener("input",update);
+  input.oninput = update;
+  list.onclick = event => {
+    const row = event.target.closest("[data-place],[data-custom]");
+    if(!row) return;
+    calc[which] = row.dataset.place ?? row.dataset.custom;
+    calc.adjustedFare = null;
+    calcPrefillFromJobs();
+    renderCalc();
+    openQuoteOptions();
+  };
   update();
   if(calcUser && tdLedger?.user !== calcUser.id) tdLoad().then(update);
 }
-function bindCalcPickRows(which){
-  const pick = name => {
-    if(which === "from") calc.from = name;
-    else calc.to = name;
-    calc.adjustedFare = null;
-    calcPrefillFromJobs();
-    if(!popScreen()) renderCalc(); // back to the form
-  };
-  $view.querySelectorAll("[data-place]").forEach(b => {
-    b.addEventListener("click", () => pick(b.dataset.place));
-  });
-  $view.querySelectorAll("[data-custom]").forEach(b => {
-    b.addEventListener("click", () => pick(b.dataset.custom));
-  });
-}
+
 function calcPrefillFromJobs(){
   if(!calc.from || !calc.to || !tdLedger || tdLedger.user !== calcUser?.id) return;
   const key = name => placeKey(resolvePlace(name));
@@ -1966,8 +1977,6 @@ function renderAccount(){
   setStep(0,"Account");
   h(
     '<div class="tdhead"><h1>Account</h1></div><div class="list">' +
-      '<button class="row" id="a-fares"><span>Fare sheet</span><span class="chev" aria-hidden="true">›</span></button>' +
-      '<button class="row" id="a-community"><span>Community</span>' + (proposals.length ? '<span class="tag" id="community-count">' + proposals.length + '</span>' : '') + '<span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-aliases"><span>Stops &amp; aliases</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-details"><span>Details</span><span class="chev" aria-hidden="true">›</span></button>' +
@@ -1978,8 +1987,6 @@ function renderAccount(){
       : '<button class="btn secondary" id="a-signin" style="margin-top:18px">Sign in with Google</button>' +
         '<div class="sub" style="margin-top:10px">Sign in to sync your rates and trips across devices. The fare sheet stays free for everyone, no sign-in needed.</div>')
   );
-  document.getElementById("a-fares").onclick = () => goMenu("fares");
-  document.getElementById("a-community").onclick = () => goMenu("community");
   const rates = document.getElementById("a-rates");
   if(rates) rates.addEventListener("click", () => pushScreen("account-rates", () => renderAccount(), renderAccountRates));
   const aliases = document.getElementById("a-aliases");
@@ -2153,6 +2160,7 @@ async function shareCalc(btn){
 /* ---------- init ---------- */
 document.getElementById("nav-back").addEventListener("click", () => {
   if(view === "jobs"){ goMenu("today"); return; }
+  if(view === "pending"){ goMenu("fares"); return; }
   if(view === "account"){ goMenu("money"); return; }
   if(isCalcViewName(view)){ goBackFromCalc(); return; }
   if(view === "quote"){
@@ -2180,10 +2188,10 @@ document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b =
 });
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
-document.getElementById("modal-close").addEventListener("click", () => closeDrawer());
+document.getElementById("modal-close").addEventListener("click",dismissDrawer);
 document.getElementById("modal-backdrop").addEventListener("click", () => closeDrawer());
 $modal.addEventListener("keydown",event => {
-  if(event.key === "Escape"){ event.preventDefault(); closeDrawer(); }
+  if(event.key === "Escape"){ event.preventDefault(); dismissDrawer(); }
 });
 
 
@@ -2408,12 +2416,11 @@ function openDayCloseout(date,data){
     const actuals = document.getElementById("closeout-actuals");
     if(actuals) actuals.onclick = () => openJobActuals(job,tdLedger.segments.filter(row => row.job_id === job.id));
   } else {
-    const comparison = '<details class="simple-details"' +
-      (Object.values(reference).some(value => value != null) ? ' open' : '') + '><summary>Compare totals</summary>' +
-      '<div id="closeout-comparison" aria-live="polite">' + aximoteComparisonHtml(data.aximote,reference) + '</div>' +
-      AXIMOTE_METRICS.map(metric => ledgerInput(metric.key,metric.label + " in Aximote",
-        "number",reference[metric.key],'min="0" step="' + metric.step + '" max="' + metric.max + '"')).join("") +
-      '</details>';
+    const check = aximoteComparison(data.aximote,reference);
+    const totalsStatus = check.some(metric => metric.unresolved) ? "Check difference" :
+      check.some(metric => metric.expected != null) ? "Matches" : "";
+    const comparison = '<div class="list simple-space">' + row("closeout-totals",
+      totalsStatus ? "Compare totals · " + totalsStatus : "Compare totals") + '</div>';
     const actions = '<div class="list simple-space">' + row("closeout-driving","Driving log") +
       row("closeout-add","Add job") + '</div>';
     if(data.reviewed){
@@ -2421,8 +2428,8 @@ function openDayCloseout(date,data){
         aximoteComparisonHtml(data.aximote,reference) + actions + pending);
     } else {
       openLedgerForm("Review day",sources + '<p>Compare the driving log with Aximote, then finish the review.</p>' +
-        comparison + actions + pending,async (fields,user) => {
-        const totals = closeoutReference(fields);
+        comparison + actions + pending,async (_,user) => {
+        const totals = closeoutDrafts.get(draftKey) || reference;
         if(aximoteComparison(data.aximote,totals).some(metric => metric.unresolved)){
           throw new Error("Aximote totals differ. Check the driving log.");
         }
@@ -2430,16 +2437,30 @@ function openDayCloseout(date,data){
         closeoutDrafts.delete(draftKey);
         reviewFlowDate = null;
       },null,"Finish review");
-      const form = document.getElementById("ledger-form");
-      if(form) form.addEventListener("input",() => {
-        const totals = closeoutReference(new FormData(form));
-        closeoutDrafts.set(draftKey,totals);
-        document.getElementById("closeout-comparison").innerHTML = aximoteComparisonHtml(data.aximote,totals);
-      });
+      document.getElementById("closeout-totals").onclick = () => openCloseoutTotals(date,data,draftKey,reference);
     }
   }
-  document.getElementById("closeout-driving").onclick = () => openDayDriving(date,data);
+  document.getElementById("closeout-driving").onclick = () =>
+    openDayDriving(date,data,() => openDayCloseout(date,data));
   document.getElementById("closeout-add").onclick = () => openLedgerJobForm(null,{business_date:date,status:"completed"});
+}
+function openCloseoutTotals(date,data,key,reference){
+  const back = () => openDayCloseout(date,data);
+  openDrawer("Compare Aximote totals",
+    '<form id="closeout-totals-form" class="ledger-form"><div id="closeout-comparison" aria-live="polite">' +
+    aximoteComparisonHtml(data.aximote,reference) + '</div>' +
+    AXIMOTE_METRICS.map(metric => ledgerInput(metric.key,metric.label + " in Aximote",
+      "number",reference[metric.key],'min="0" step="' + metric.step + '" max="' + metric.max + '"')).join("") +
+    '<button type="submit" class="btn">Done</button></form>',back);
+  const form = document.getElementById("closeout-totals-form");
+  const update = () => {
+    if(!form.checkValidity()) return;
+    const totals = closeoutReference(new FormData(form));
+    closeoutDrafts.set(key,totals);
+    document.getElementById("closeout-comparison").innerHTML = aximoteComparisonHtml(data.aximote,totals);
+  };
+  form.oninput = update;
+  form.onsubmit = event => { event.preventDefault(); update(); back(); };
 }
 function closeoutReference(values){
   return Object.fromEntries(AXIMOTE_METRICS.map(metric => {
@@ -2495,13 +2516,13 @@ function dayCostRows(date,day){
     }).join("") +
     (purchases.length ? tdLine("Fuel bought",tdMoney(tdSum(purchases,"amount"),2)) : "") + '</div>';
 }
-function openDayCosts(date){
+function openDayCosts(date,back){
   const day = tdDay(date);
   const rental = ledgerRental(date);
   const pace = day.rate == null ? "" : tdLine("Take-home per hour",tdMoney(day.rate,2) + " · " +
     tdMoney(Number(rental?.hourly_goal ?? calcCfg.earningsTarget)) + " goal");
   openDrawer("Costs",dayCostRows(date,day) + (day.net == null ? "" :
-    '<div class="list simple-space">' + tdLine("Take-home",tdMoney(day.net,2)) + pace + '</div>'));
+    '<div class="list simple-space">' + tdLine("Take-home",tdMoney(day.net,2)) + pace + '</div>'),back);
   document.getElementById("td-fuel").onclick = () => openDailyExpense(date,"fuel",day.manualFuel);
   document.getElementById("sheet-body").querySelectorAll("[data-td-expense]").forEach(button => {
     const category = button.dataset.tdExpense;
@@ -2509,8 +2530,8 @@ function openDayCosts(date){
       day.expenses.find(row => row.source === "manual_day_" + category));
   });
 }
-function openDayDriving(date,data){
-  openDrawer("Driving log",renderDayCarTrips(date,data.tripRows));
+function openDayDriving(date,data,back){
+  openDrawer("Driving log",renderDayCarTrips(date,data.tripRows),back);
   document.getElementById("td-add-car").onclick = () => openCarTrip(date);
   document.getElementById("sheet-body").querySelectorAll("[data-car-trip]").forEach(button => {
     button.onclick = () => {
@@ -2532,13 +2553,7 @@ function renderToday(reload=true){
       '<rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 3v5m8-5v5M4 10h16"/></svg>' +
       '<input class="simple-date" id="td-date" aria-label="Business date" type="date" value="' + esc(date) +
       '"></div>' : '') + '</header>';
-  if(ledgerLoading(head)){
-    if(!calcUser){
-      $view.insertAdjacentHTML("beforeend",'<button class="quiet-link" id="today-public-fares">Browse fare sheet</button>');
-      document.getElementById("today-public-fares").onclick = () => goMode("fares");
-    }
-    return;
-  }
+  if(ledgerLoading(head)) return;
   const day = tdDay(date);
   const data = closeoutData(date,day);
   const hasWork = data.jobs.length || data.tripRows.length || data.pendingTrips.length;
@@ -2558,7 +2573,6 @@ function renderToday(reload=true){
       job.working_minutes == null ? "Time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked";
     return ledgerJobRow(job,detail);
   }).join("");
-  const costsLabel = data.finance.length ? "Pending" : day.cost ? tdMoney(day.cost) : "";
   h(head +
     '<section class="day-total"><div class="simple-label">Earned</div><strong>' + tdMoney(day.gross) + '</strong>' +
     (summary.length ? '<div class="simple-caption">' + esc(summary.join(" · ")) + '</div>' : '') +
@@ -2569,25 +2583,30 @@ function renderToday(reload=true){
     ' <span aria-hidden="true">›</span></button></div>' +
     (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this day.</p>') +
     savedTripEntries(data.pendingTrips) + '</section>' +
-    '<details class="simple-details" id="td-records"><summary>Day details</summary><div class="list">' +
-    '<button class="row" id="td-driving"><span class="row-main">Driving log</span><span>' + data.tripRows.length +
-    '</span><span class="chev" aria-hidden="true">›</span></button>' +
-    '<button class="row" id="td-costs-pending"><span class="row-main">Costs</span><span>' + esc(costsLabel) +
-    '</span><span class="chev" aria-hidden="true">›</span></button>' +
-    (data.reviewed ? '<button class="row" id="td-closeout"><span class="row-main">Review details</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
-    '</div></details>');
+    '<div class="list simple-space">' + detailRow("td-records","Day details") + '</div>');
   document.getElementById("td-date").onchange = event => {
     if(event.target.value){ tdDate = event.target.value; renderToday(false); }
   };
   document.getElementById("td-all-jobs").onclick = () => goMenu("jobs");
-  document.getElementById("td-driving").onclick = () => openDayDriving(date,data);
-  document.getElementById("td-costs-pending").onclick = () => openDayCosts(date);
+  document.getElementById("td-records").onclick = () => openDayDetails(date,data,day);
   const review = document.getElementById("td-closeout");
   if(review) review.onclick = () => openDayCloseout(date,data);
   const add = document.getElementById("td-add-job");
   if(add) add.onclick = () => openLedgerJobForm(null,{business_date:date,status:"completed"});
   wireLedgerJobRows();
   wireSavedTripEntries();
+}
+
+function openDayDetails(date,data,day){
+  const back = () => openDayDetails(date,data,day);
+  openDrawer("Day details",'<div class="list">' +
+    detailRow("td-driving","Driving log",String(data.tripRows.length)) +
+    detailRow("td-costs-pending","Costs",data.finance.length ? "Pending" : day.cost ? tdMoney(day.cost) : "") +
+    (data.reviewed ? detailRow("td-review-details","Review details") : "") + '</div>');
+  document.getElementById("td-driving").onclick = () => openDayDriving(date,data,back);
+  document.getElementById("td-costs-pending").onclick = () => openDayCosts(date,back);
+  const review = document.getElementById("td-review-details");
+  if(review) review.onclick = () => openDayCloseout(date,data);
 }
 
 const CAR_CATEGORIES = {
@@ -2731,7 +2750,7 @@ function openLedgerJob(job){
   const primary = active ? '<button class="btn" id="ledger-edit">Update job</button>' :
     needsActuals ? '<button class="btn" id="ledger-actual-review">Review job</button>' :
     payOpen ? '<button class="btn" id="ledger-payment">Record payment</button>' : "";
-  const details = '<details class="simple-details"><summary>Job details</summary><div class="list">' +
+  const details = '<div class="list">' +
     (job.customer ? tdLine("Customer",job.customer) : "") +
     tdLine("Working time",job.working_minutes == null ? "Pending" : driveTimeLabel(Number(job.working_minutes))) +
     (payments.length ? tdLine("Payments recorded",tdMoney(tdSum(payments,"amount"),2)) : "") +
@@ -2741,29 +2760,36 @@ function openLedgerJob(job){
     (completed && !needsActuals ? '<button class="row" id="ledger-actual-review"><span class="row-main">Edit actuals</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
     (payOpen && needsActuals ? '<button class="row" id="ledger-payment"><span class="row-main">Record payment</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
     (completed && view === "jobs" ? '<button class="row" id="ledger-review"><span class="row-main">Go to day</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
-    '</div>' + (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : '') + linkedEvidence(job) + '</details>';
+    '</div>' + (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : '') + linkedEvidence(job);
   openDrawer(ledgerJobTitle(job),
     '<div class="day-total"><div class="simple-label">' + esc(fmtDateShort(job.business_date)) + '</div><strong>' +
     (job.fare == null ? "—" : tdMoney(Number(job.fare))) + '</strong><div class="simple-caption">' +
     esc(ledgerPaymentLabel(job,payments)) + (job.return_pending ? " · Return trip missing" : "") +
-    '</div></div>' + primary + details);
+    '</div></div>' + primary + '<div class="list simple-space">' + detailRow("ledger-more","Job details") + '</div>');
   const edit = document.getElementById("ledger-edit");
   if(edit) edit.onclick = () => openLedgerJobForm(job);
-  const actuals = document.getElementById("ledger-actual-review");
-  if(actuals) actuals.onclick = () => openJobActuals(job,segments);
-  const payment = document.getElementById("ledger-payment");
-  if(payment) payment.onclick = () => openLedgerPayment(job,payments);
-  document.getElementById("sheet-body").querySelectorAll("[data-undated-payment]").forEach(button => {
-    button.onclick = () => {
-      const row = undated.find(payment => payment.id === button.dataset.undatedPayment);
-      if(row) openPaymentDate(row);
+  const wireActions = () => {
+    const actuals = document.getElementById("ledger-actual-review");
+    if(actuals) actuals.onclick = () => openJobActuals(job,segments);
+    const payment = document.getElementById("ledger-payment");
+    if(payment) payment.onclick = () => openLedgerPayment(job,payments);
+  };
+  wireActions();
+  document.getElementById("ledger-more").onclick = () => {
+    openDrawer("Job details",details,() => openLedgerJob(job));
+    wireActions();
+    document.getElementById("sheet-body").querySelectorAll("[data-undated-payment]").forEach(button => {
+      button.onclick = () => {
+        const row = undated.find(payment => payment.id === button.dataset.undatedPayment);
+        if(row) openPaymentDate(row);
+      };
+    });
+    const review = document.getElementById("ledger-review");
+    if(review) review.onclick = () => {
+      closeDrawer();
+      tdDate = job.business_date;
+      goMenu("today");
     };
-  });
-  const review = document.getElementById("ledger-review");
-  if(review) review.onclick = () => {
-    closeDrawer();
-    tdDate = job.business_date;
-    goMenu("today");
   };
 }
 function openJobActuals(job,segments){
@@ -2778,8 +2804,9 @@ function openJobActuals(job,segments){
     ledgerInput("fare","Actual fare ($)","number",job.fare,'min="0" max="9999999999.99" step="0.01" required') +
     ledgerInput("minutes","Total working minutes","number",job.working_minutes,
       'min="0" max="9999999.999" step="0.001" required') + useDriveTime +
-    '<label class="closeout-check"><input type="checkbox" name="return-pending"' +
-    (job.return_pending ? ' checked' : '') + '> Return trip still needs recording</label>' +
+    '<label class="field" for="return-status">Return trip</label><select name="return-pending" id="return-status">' +
+    '<option value="complete"' + (!job.return_pending ? ' selected' : '') + '>Recorded or not needed</option>' +
+    '<option value="pending"' + (job.return_pending ? ' selected' : '') + '>Still missing</option></select>' +
     '<p class="tdnote">Include driving to the pickup, job-related waiting, and the return. Enter the fare earned even if payment is still due.</p>';
   openLedgerForm("Review job actuals",fields,async (data,user) => {
     const fare = data.get("fare"), minutes = data.get("minutes");
@@ -2794,7 +2821,7 @@ function openJobActuals(job,segments){
       "&return_pending=eq." + !!job.return_pending,{
         method:"PATCH",headers:{Prefer:"return=representation"},
         body:JSON.stringify({fare:Number(fare),working_minutes:Number(minutes),review_state:"confirmed",
-          return_pending:data.get("return-pending") === "on",
+          return_pending:data.get("return-pending") === "pending",
           rental_id:job.rental_id ?? rental?.id ?? null,rental_hourly_snapshot:snapshot})
       });
     if(!saved?.length) throw new Error("This job changed. Refresh the day and try again.");
@@ -2862,7 +2889,7 @@ async function saveTripMerge(tripId,jobId,fare,minutes){
 function linkedEvidence(job){
   const ids = new Set((tdLedger.legacyLinks || []).filter(row => row.job_id === job.id).map(row => row.trip_id));
   const trips = calcTripsArr.filter(trip => ids.has(trip.id));
-  return trips.length ? '<details class="ledger-evidence"><summary>Saved trip details</summary>' +
+  return trips.length ? '<h3 class="group-label">Saved trip details</h3><div class="list">' +
     trips.map(trip => {
       const amount = trip.actualAmount ?? trip.fareCharged;
       const aximote = trip.reconciliation?.aximote;
@@ -2872,7 +2899,7 @@ function linkedEvidence(job){
         (aximote?.recordedGallons == null ? "" : tdLine("Aximote fuel used",fmtNum(Number(aximote.recordedGallons)) + " gal")) +
         (aximote?.reportedEstimatedCost == null ? "" :
           tdLine("Aximote fuel estimate",tdMoney(Number(aximote.reportedEstimatedCost),2)));
-    }).join("") + '</details>' : "";
+    }).join("") + '</div>' : "";
 }
 function openPaymentDate(payment){
   openLedgerForm("Set payment date",tdLine("Confirmed received",tdMoney(Number(payment.amount),2)) +
@@ -3127,7 +3154,7 @@ function renderLedgerMoney(reload){
     tdLine("Paid",tdMoney(tdSum(payments,"amount"),2)) +
     (outstanding ? tdLine("Still due",tdMoney(outstanding,2)) : "") +
     (net != null ? tdLine("Earned",tdMoney(earned,2)) : "") + '</div>';
-  const detail = '<details class="simple-details"><summary>Money details</summary><div class="list">' +
+  const detail = '<div class="list">' +
     tdLine("Cash received in this period",tdMoney(tdSum(ledger.payments.filter(row => inPeriod(row.received_on)),"amount"),2)) +
     (undated.length ? tdLine("Paid, receipt dates pending",tdMoney(tdSum(undated,"amount"),2)) : "") +
     tdLine("Recorded working hours",fmtNum(tdSum(jobs,"working_minutes")/60) +
@@ -3138,22 +3165,23 @@ function renderLedgerMoney(reload){
     tdLine("Fuel bought",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "—") +
     '<button class="row" id="money-add"><span class="row-main">Add rental period</span><span class="chev" aria-hidden="true">›</span></button>' +
     (expectedDates.length ? '<button class="row" id="money-saved"><span class="row-main">Review saved jobs</span><span>' +
-      expectedDates.length + '</span><span class="chev" aria-hidden="true">›</span></button>' : '') + '</div></details>';
+      expectedDates.length + '</span><span class="chev" aria-hidden="true">›</span></button>' : '') + '</div>';
   h(head + '<select id="money-period" aria-label="Period">' + rentalOptions.join("") + monthOptions.join("") +
     '</select><section class="day-total simple-space"><div class="simple-label">' +
     (net == null ? "Earned" : "Take-home before tax") + '</div><strong>' +
     tdMoney(net ?? earned,2) + '</strong>' +
     (net == null && jobs.length ? '<div class="simple-caption">Take-home pending costs' +
-      (rental ? '' : ' and rental') + '</div>' : '') + '</section>' + tallies + detail);
+      (rental ? '' : ' and rental') + '</div>' : '') + '</section>' + tallies + '<div class="list simple-space">' + detailRow("money-details","Money details") + '</div>');
   document.getElementById("money-account").onclick = () => goMenu("account");
-  document.getElementById("money-add").onclick = openLedgerRental;
+  document.getElementById("money-details").onclick = () => {
+    openDrawer("Money details",detail);
+    document.getElementById("money-add").onclick = openLedgerRental;
+    const pending = document.getElementById("money-saved");
+    if(pending) pending.onclick = () => { closeDrawer(); goMenu("jobs"); };
+  };
   document.getElementById("money-period").onchange = event => {
     moneyRentalId = event.target.value;
     renderLedgerMoney(false);
-  };
-  const pending = document.getElementById("money-saved");
-  if(pending) pending.onclick = () => {
-    goMenu("jobs");
   };
 }
 
@@ -3190,6 +3218,8 @@ async function init(){
             renderLedgerJobs(true);
       }
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
+    } else if(viewParam === "fares"){
+      goMenu("fares");
     } else if(LEDGER_VIEWS.includes(viewParam) || [...q.keys()].every(key => key.startsWith("utm_"))){
       tdRenderView(viewParam || "today",true);
     } else if(shared){
