@@ -2849,6 +2849,7 @@ function tdMoney(n,d=0){return new Intl.NumberFormat("en-US",{style:"currency",c
 
 const LEDGER_VIEWS = ["today","jobs","money"];
 const MANUAL_FUEL = "manual_day_fuel";
+const RENTAL_PAYMENT = "rental_payment";
 let tdLoadToken = 0, tdLedger = null, tdError = "", tdLoading = false;
 
 function tdRenderView(section, reload = false){
@@ -2878,8 +2879,8 @@ async function tdLoad(){
  if(!user) return;
  try{const [jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations,legacyLinks,savedTrips]=await Promise.all([
  tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at,return_pending",user),
- tdFetch("fl2_segments","id,job_id,business_date,started_at,created_at,distance_mi,duration_minutes,category,origin,destination,source",user),
- tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source",user),
+ tdFetch("fl2_segments","*",user),
+ tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source,notes",user),
  tdFetch("fl2_fuel_purchases","id,business_date,purchased_at,amount,gallons",user),
  tdFetch("fl2_fuel_allocations","segment_id,allocated_cost,method",user),
  tdFetch("fl2_payments","id,job_id,received_on,amount",user),
@@ -2907,11 +2908,13 @@ function tdDay(date,ledger = tdLedger){
   const belongsToDay = row => row.job_id ? jobIds.has(row.job_id) : row.business_date === date;
   const segments = ledger.segments.filter(row => belongsToDay(row) &&
     row.category !== "personal" && row.category !== "unclassified");
-  const expenses = ledger.expenses.filter(row => belongsToDay(row) && row.source !== MANUAL_FUEL);
+  const expenses = ledger.expenses.filter(row => belongsToDay(row) && ![MANUAL_FUEL,RENTAL_PAYMENT].includes(row.source));
   const manualFuel = ledger.expenses.find(row => row.business_date === date && row.source === MANUAL_FUEL);
   const segmentIds = new Set(segments.map(row => row.id));
   const fuel = ledger.allocations.filter(row => segmentIds.has(row.segment_id));
-  const fuelCost = manualFuel ? Number(manualFuel.amount) : tdSum(fuel,"allocated_cost");
+  const estimatedFuel = segments.filter(segment => !fuel.some(row => row.segment_id === segment.id));
+  const fuelCost = manualFuel ? Number(manualFuel.amount) :
+    tdSum(fuel,"allocated_cost") + tdSum(estimatedFuel,"reported_fuel_cost");
   const fuelConfirmed = manualFuel ? manualFuel.review_state === "confirmed" :
     segments.length > 0 && segments.every(segment => fuel.some(row => row.segment_id === segment.id)) &&
     fuel.every(row => row.method !== "estimated");
@@ -3157,7 +3160,8 @@ function dayCostRows(date,day){
   const purchases = tdLedger.purchases.filter(row => row.business_date === date);
   return '<div class="list">' +
     '<button type="button" class="row" data-td-fuel><span class="row-main">Fuel used</span><span>' +
-    (day.manualFuel || day.fuel.length ? tdMoney(day.fuelCost,2) : "Pending") + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+    (day.manualFuel || day.fuel.length || day.segments.some(row => row.reported_fuel_cost != null) ?
+      tdMoney(day.fuelCost,2) + (day.fuelConfirmed ? "" : " est.") : "Pending") + '</span><span class="chev" aria-hidden="true">›</span></button>' +
     Object.entries({toll:"Tolls",parking:"Parking",other:"Other costs"}).map(([category,label]) => {
       const rows = day.expenses.filter(row => row.category === category);
       return '<button type="button" class="row" data-td-expense="' + category + '"><span class="row-main">' + label +
@@ -3220,6 +3224,51 @@ function openDayDriving(date,data,back){
     };
   });
 }
+function rentalFunding(date,period){
+  const activeRental = ledgerRental(date);
+  const rentals = !period ? (activeRental ? [activeRental] : []) : period.rental ? [period.rental] :
+    tdLedger.rentals.filter(row => !period.start || (row.starts_on <= period.end && row.ends_before > period.start));
+  const cutoff = period ? period.end : date;
+  return rentals.reduce((total,rental) => {
+    const duringRental = value => value && value >= rental.starts_on && value < rental.ends_before &&
+      (!cutoff || value <= cutoff);
+    const rentalJobs = tdLedger.jobs.filter(row => duringRental(row.business_date) && row.status === "completed");
+    const dates = new Set([...rentalJobs,...tdLedger.expenses.filter(row => duringRental(row.business_date)),
+      ...tdLedger.segments.filter(row => duringRental(row.business_date))].map(row => row.business_date));
+    const operating = [...dates].reduce((sum,day) => sum + tdDay(day).operatingCost,0);
+    const collected = tdSum(tdLedger.payments.filter(row => duringRental(row.received_on)), "amount");
+    const paid = tdSum(tdLedger.expenses.filter(row => row.source === RENTAL_PAYMENT &&
+      row.notes === rental.id && (!cutoff || row.business_date <= cutoff)), "amount");
+    const base = Number(rental.fixed_cost);
+    total.base += base;
+    total.operating += operating;
+    total.paid += paid;
+    total.ready += Math.max(0,Math.min(base - paid,collected - operating - paid));
+    return total;
+  },{base:0,operating:0,paid:0,ready:0,rentals});
+}
+function openRentalRepayment(rental){
+  const key = crypto.randomUUID();
+  openLedgerForm("Record rental payment",
+    ledgerInput("amount","Amount paid ($)","number","",'required min="0.01" max="9999999999.99" step="0.01"') +
+    ledgerInput("date","Date paid","date",todayNY(),'required max="' + todayNY() + '"'),
+    (data,user) => ledgerWriteOnce("fl2_expenses",{
+      user_id:user,business_date:data.get("date"),category:"other",amount:Number(data.get("amount")),
+      review_state:"confirmed",source:RENTAL_PAYMENT,source_key:key,notes:rental.id
+    }));
+}
+function wireRentalFunding(date,period){
+  const button = document.getElementById("td-rental-paid");
+  if(!button) return;
+  const funding = rentalFunding(date,period);
+  button.onclick = () => {
+    openDrawer("Rental payments",'<div class="list">' + funding.rentals.map((rental,index) =>
+      detailRow("rental-payment-" + index,homeRentalLabel(rental),"Record payment")).join("") + '</div>');
+    funding.rentals.forEach((rental,index) => {
+      document.getElementById("rental-payment-" + index).onclick = () => openRentalRepayment(rental);
+    });
+  };
+}
 function todaySheet(day,date,summary,reviewed,period = null,due = 0){
   const rental = period ? period.rental : ledgerRental(date);
   const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
@@ -3232,10 +3281,21 @@ function todaySheet(day,date,summary,reviewed,period = null,due = 0){
   const pace = day.rate == null ? 0 : Math.min(100,Math.max(0,day.rate / Math.max(1,goal) * 100));
   const working = day.completeTime ? driveTimeLabel(Math.round(day.hours * 60)) : day.hours ?
     driveTimeLabel(Math.round(day.hours * 60)) + " recorded" : "Pending";
-  return '<section class="today-sheet" aria-label="Earnings summary">' +
-    '<button type="button" class="today-net" id="td-takehome" aria-label="Take-home breakdown">' +
-    '<span>Take-home <i aria-hidden="true">›</i></span><strong>' + (day.net == null ? "—" : tdMoney(day.net,2)) +
-    '</strong><span>' + tdMoney(day.gross) + ' earned' + (day.net == null && day.gross ? ' · Costs pending' : '') + '</span></button>' +
+  const funding = rentalFunding(date,period);
+  const hasRental = funding.rentals.length > 0;
+  const expenses = hasRental ? funding.operating : day.operatingCost ?? day.operating ?? 0;
+  const cost = funding.base + expenses;
+  return '<section class="today-sheet" aria-label="Costs and earnings">' +
+    '<div class="today-net"><span>Cost to cover' + (hasRental && (!period || todayPeriod === "week") ? ' · Rental to date' : '') +
+    '</span><strong>' + tdMoney(cost,2) + '</strong><span>' +
+    (hasRental ? tdMoney(funding.base,2) + ' rental + operating expenses' : 'Operating expenses') + '</span></div>' +
+    (hasRental ? '<div class="today-hours"><div><strong>' + tdMoney(funding.ready,2) + '</strong><span>Ready to pay</span></div>' +
+    '<button type="button" id="td-rental-paid"><strong>' + tdMoney(funding.paid,2) + '</strong><span>Paid toward rental ›</span></button></div>' : '') +
+    '<div class="today-hours"><div><strong>' + tdMoney(expenses,2) + '</strong><span>Expenses recorded</span></div>' +
+    '<button type="button" id="td-takehome" aria-label="Take-home breakdown"><strong>' +
+    (day.net == null ? "—" : tdMoney(day.net,2)) + '</strong><span>Take-home ›</span></button></div>' +
+    '<div class="today-hours"><div><strong>' + tdMoney(day.gross,2) + '</strong><span>Gross earned</span></div>' +
+    '</div>' +
     '<div class="today-hours"><button type="button" class="today-metric" id="td-hourly" aria-label="Hourly earnings breakdown"><strong>' +
     (day.rate == null ? "—" : tdMoney(day.rate,2) + "/hr") + '</strong><span>' + tdMoney(goal) + '/hr goal</span>' +
     '<span class="today-pace" aria-hidden="true"><span style="width:' + pace + '%"></span></span></button>' +
@@ -3408,7 +3468,8 @@ function homePeriodLedger(period){
   const jobIds = new Set(jobs.map(job => job.id));
   const segments = ledger.segments.filter(row => row.job_id ? jobIds.has(row.job_id) :
     row.category !== "personal" && included(row,row.started_at));
-  const expenses = ledger.expenses.filter(row => row.job_id ? jobIds.has(row.job_id) : included(row));
+  const expenses = ledger.expenses.filter(row => row.source !== RENTAL_PAYMENT &&
+    (row.job_id ? jobIds.has(row.job_id) : included(row)));
   const purchases = ledger.purchases.filter(row => included(row,row.purchased_at,false));
   const saved = pendingSavedTrips().filter(trip => included({business_date:trip.date},trip.started_at));
   return {...ledger,jobs,segments,expenses,purchases,saved,uncertain};
@@ -3495,6 +3556,7 @@ function renderHomePeriod(){
     expenseTotals + '<div class="list simple-space">' + dayLinks + '</div></section>' +
     (rental ? '<div class="list simple-space">' + detailRow("home-rental-details","Rental details") + '</div>' : ''));
   wireHomeTabs();
+  wireRentalFunding(tdDate,period);
   const openTotals = () => openDrawer("Period earnings",'<div class="list">' + tdLine("Earned",tdMoney(totals.gross,2)) +
     tdLine("Hours worked",fmtNum(totals.hours) + "h") + tdLine("Take-home",totals.net == null ? "Pending" : tdMoney(totals.net,2)) +
     tdLine("Take-home per hour",totals.rate == null ? "Pending" : tdMoney(totals.rate,2)) + '</div>' + expenseTotals);
@@ -3555,6 +3617,7 @@ function renderToday(reload=true){
     detailRow("home-add-fuel","Record gas purchase") + detailRow("home-fuel-used","Adjust fuel cost") +
     detailRow("home-expense-details","Expense details") + '</div></section>');
   wireHomeTabs();
+  wireRentalFunding(date,null);
   document.getElementById("td-all-jobs").onclick = () => openDayRecords(date);
   document.getElementById("td-takehome").onclick = () => openDayCosts(date);
   document.getElementById("td-hourly").onclick = () => openDayCosts(date,"Hourly earnings");
@@ -3592,7 +3655,9 @@ function carTripTitle(segment){
 function carTripFacts(segment){
   return [
     segment.distance_mi == null ? null : fmtNum(Number(segment.distance_mi)) + " mi",
-    segment.duration_minutes == null ? null : fmtNum(Number(segment.duration_minutes)) + " min"
+    segment.duration_minutes == null ? null : fmtNum(Number(segment.duration_minutes)) + " min",
+    segment.fuel_gallons == null ? null : Number(segment.fuel_gallons) + " gal",
+    segment.reported_fuel_cost == null ? null : tdMoney(Number(segment.reported_fuel_cost),2) + " est."
   ].filter(Boolean).join(" · ") || "Mileage and time pending";
 }
 function renderDayCarTrips(date,segments){
@@ -3617,6 +3682,20 @@ function renderDayCarTrips(date,segments){
         (carTripNeedsReview(segment) || (job && job.status !== "completed") ? "Review" : "›") + '</small></span></button>';
     }).join("") : '<div class="empty">No driving entries for ' + esc(fmtDateShort(date)) + '.</div>') + '</div>';
 }
+const aximoteTime = new Intl.DateTimeFormat("sv-SE",{
+  timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"
+});
+function aximoteLocalTime(iso){
+  return iso ? aximoteTime.format(new Date(iso)).slice(-5) : "";
+}
+function aximoteTimestamp(date,time){
+  const expected = date + " " + time;
+  const naive = Date.parse(date + "T" + time + ":00Z");
+  const matches = [4,5].map(offset => new Date(naive + offset * 3600000))
+    .filter(value => aximoteTime.format(value) === expected);
+  if(matches.length !== 1) throw new Error("This clock time is ambiguous or unavailable in New York.");
+  return matches[0].toISOString();
+}
 function openCarTrip(date,segment = null,jobId = null,categoryChoice = null,back = null){
   const key = segment ? null : crypto.randomUUID();
   const editable = !segment || segment.source === "manual_car_trip";
@@ -3628,11 +3707,16 @@ function openCarTrip(date,segment = null,jobId = null,categoryChoice = null,back
   const fields = (segment ? tdLine("Business date",segment.business_date || date) :
     ledgerInput("trip-date","Date in Aximote","date",date,"required")) +
     (segment ? tdLine("Source",CAR_SOURCE_LABELS[segment.source] || "Other source") : "") +
-    (editable ? stopOptionsHtml("car-stops") +
+    (editable ? ledgerInput("drive-start","Start time (New York)","time",aximoteLocalTime(segment?.started_at)) +
+      ledgerInput("drive-end","End time (New York)","time",aximoteLocalTime(segment?.ended_at)) +
+      stopOptionsHtml("car-stops") +
       ledgerInput("origin","From","text",segment?.origin,'list="car-stops" maxlength="250"') +
       ledgerInput("destination","To","text",segment?.destination,'list="car-stops" maxlength="250"') +
       ledgerInput("miles","Recorded miles","number",segment?.distance_mi,'min="0" max="999999999.999" step="0.001"') +
-      ledgerInput("minutes","Recorded minutes","number",segment?.duration_minutes,'min="0" max="9999999.999" step="0.001"') :
+      ledgerInput("minutes","Duration (minutes)","number",segment?.duration_minutes,'min="0" max="9999999.999" step="0.001"') +
+      ledgerInput("fuel-gallons","Fuel used (gal)","number",segment?.fuel_gallons,'min="0" max="99999999.9999" step="0.0001"') +
+      ledgerInput("fuel-rate","Fuel rate (gal / 100 mi)","number",segment?.fuel_rate_gal_per_100_mi,'min="0" max="99999999.9999" step="0.0001"') +
+      ledgerInput("fuel-cost","Aximote cost estimate ($)","number",segment?.reported_fuel_cost,'min="0" max="9999999999.99" step="0.01"') :
       tdLine("Recorded trip",carTripFacts(segment))) +
     '<label class="field" for="ledger-car-category">Trip type</label><select id="ledger-car-category" name="category">' +
     Object.entries(CAR_CATEGORIES).map(([category,label]) => '<option value="' + category + '"' +
@@ -3655,6 +3739,19 @@ function openCarTrip(date,segment = null,jobId = null,categoryChoice = null,back
         distance_mi:miles === "" ? null : Number(miles),
         duration_minutes:minutes === "" ? null : Number(minutes)
       });
+      const tripDate = segment?.business_date || data.get("trip-date");
+      const started = data.get("drive-start"), ended = data.get("drive-end");
+      if(ended && !started) throw new Error("Enter the start time too.");
+      if(started !== aximoteLocalTime(segment?.started_at) || ended !== aximoteLocalTime(segment?.ended_at)){
+        row.started_at = started ? aximoteTimestamp(tripDate,started) : null;
+        row.ended_at = ended ? aximoteTimestamp(ended < started ? dateOffset(tripDate,1) : tripDate,ended) : null;
+      }
+      for(const [field,column] of Object.entries({
+        "fuel-gallons":"fuel_gallons","fuel-rate":"fuel_rate_gal_per_100_mi","fuel-cost":"reported_fuel_cost"
+      })){
+        const value = data.get(field);
+        if(value !== "" || segment?.[column] != null) row[column] = value === "" ? null : Number(value);
+      }
     }
     if(segment){
       const jobFilter = selectedJob ? "eq." + encodeURIComponent(selectedJob) : "is.null";
@@ -4153,7 +4250,7 @@ function renderLedgerMoney(reload){
   const payments = ledger.payments.filter(payment => jobIds.has(payment.job_id));
   const expectedDates = pendingSavedTrips().filter(trip => inPeriod(trip.date));
   const dates = new Set(jobs.map(job => job.business_date));
-  ledger.expenses.filter(row => !row.job_id && inPeriod(row.business_date))
+  ledger.expenses.filter(row => row.source !== RENTAL_PAYMENT && !row.job_id && inPeriod(row.business_date))
     .forEach(row => dates.add(row.business_date));
   ledger.segments.filter(row => !row.job_id && row.category !== "personal" && inPeriod(row.business_date))
     .forEach(row => dates.add(row.business_date));
