@@ -221,6 +221,20 @@
   .day-total strong{ display:block; font-size:clamp(38px,12vw,56px); line-height:1.08;
     letter-spacing:-.055em; font-weight:720; overflow-wrap:anywhere; margin:4px 0 8px; }
   .simple-caption,.simple-empty,.simple-action p{ color:var(--muted); font-size:14px; line-height:1.45; }
+  .today-sheet{ margin-bottom:16px; border:1px solid var(--border); padding:14px; border-radius:16px; background:var(--surface); font-variant-numeric:tabular-nums; }
+  .today-top,.today-hours{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:10px; }
+  .today-gauge{ position:relative; min-width:0; }
+  .today-gauge svg{ display:block; width:100%; }
+  .today-gauge-label{ position:absolute; left:0; right:0; bottom:4px; text-align:center; }
+  .today-gauge-label strong,.today-net strong{ display:block; font-size:clamp(20px,6vw,32px); letter-spacing:-.045em; }
+  .today-gauge-label small{ font-size:11px; font-weight:500; }
+  .today-sheet span{ display:block; color:var(--muted); font-size:12px; }
+  .today-net{ padding-left:12px; border-left:1px solid var(--border); overflow-wrap:anywhere; }
+  .today-footnote{ margin:8px 0; color:var(--muted); font-size:12px; text-align:center; }
+  .today-hours{ margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
+  .today-hours > :last-child{ text-align:right; }
+  .today-progress{ height:4px; border-radius:6px; overflow:hidden; background:var(--chip); margin-top:8px; }
+  .today-progress span{ height:100%; background:var(--accent); }
   .simple-action{ margin-bottom:20px; }
   .simple-action .btn{ margin:0; }
   .simple-action p{ margin:8px 0 0; }
@@ -278,8 +292,7 @@
 </div>
 <div id="menu-pill" role="navigation" aria-label="Main">
   <button data-menu="today">Today</button>
-  <button data-menu="fares">Fare Sheet</button>
-  <button data-menu="calc">Quote</button>
+  <button data-menu="pricing">Quote</button>
   <button data-menu="money">Money</button>
 </div>
 <div id="modal" class="hidden">
@@ -449,7 +462,6 @@ function routePlaceOptions(name){
   const candidates = places.filter(stop => aliasesForPlace(stop).some(alias => placeKey(alias) === key));
   return candidates.length ? candidates : [place];
 }
-function calcSaveAliases(){ try{ localStorage.setItem("fl_aliases", JSON.stringify(placeAliases)); }catch(e){} }
 
 const cfg = window.FL_CONFIG || {};
 const SB = (cfg.SUPABASE_URL || "").replace(/\/+$/,"");
@@ -892,17 +904,21 @@ function goMode(next){
   if(sel.from){ inFlow = true; renderPlacePicker(2); return; }
   inFlow = false; sel = {}; renderPlacePicker(1);
 }
+let pricingView = "fares";
 function updateMenu(){
   const pill = document.getElementById("menu-pill");
   const faresView = ["step1","step2","quote","flatbush","notlisted","pending"].includes(view);
+  if(faresView) pricingView = "fares";
+  else if(view === "calc") pricingView = "calc";
   const section = view === "jobs" ? "today" : view.startsWith("account") ? "money" :
-    faresView ? "fares" : view;
+    faresView || view === "calc" ? "pricing" : view;
   pill.querySelectorAll("[data-menu]").forEach(button => {
     if(button.dataset.menu === section) button.setAttribute("aria-current","page");
     else button.removeAttribute("aria-current");
   });
 }
 function goMenu(section){
+  if(section === "pricing"){ goMenu(pricingView); return; }
   if(section === "fares" && view === "pending"){
     inFlow = false;
     sel = {};
@@ -1014,7 +1030,7 @@ function renderPlacePicker(step){
   const other = isFrom ? null : sel.from;
   const showFlatbush = !isFrom && !!gridFor(sel.from);
   h(
-    (isFrom ? '<header class="simple-head"><h1>Fare Sheet</h1><button class="quiet-link" id="fares-community">Community<span class="tag' + (proposals.length ? '' : ' hidden') + '" id="community-count" aria-hidden="true">' + proposals.length + '</span></button></header>' : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
+    (isFrom ? '<header class="simple-head"><h1>Fare Sheet</h1><button class="quiet-link" id="fare-calculator">Calculator</button></header><div class="tdlinks"><span></span><button class="quiet-link" id="fares-community">Community<span class="tag' + (proposals.length ? '' : ' hidden') + '" id="community-count" aria-hidden="true">' + proposals.length + '</span></button></div>' : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
     '<div class="search-wrap"><input type="search" id="q" aria-label="' + (isFrom ? "Search pickup" : "Search destination") + '" placeholder="' + (isFrom ? "Search pickup" : "Search destination") + '" autocomplete="off"></div>' +
     (showFlatbush
       ? '<div class="list"><button class="row" data-place="' + esc(zoneLabel(sel.from)) + '">' + esc(sel.from + " zone fare") + '<span class="chev" aria-hidden="true">›</span></button></div>'
@@ -1023,6 +1039,8 @@ function renderPlacePicker(step){
     '<button class="quiet-link" id="add-link">Add a price</button>'
   );
   const input = document.getElementById("q");
+  const calculator = document.getElementById("fare-calculator");
+  if(calculator) calculator.onclick = () => goMode("calc");
   const community = document.getElementById("fares-community");
   if(community) community.onclick = () => goMenu("community");
   input.addEventListener("input", () => {
@@ -1133,7 +1151,7 @@ function renderQuote(){
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-breakdown"></div>' +
     '<button class="btn secondary" id="customize">Customize price</button>' +
-    '<button class="btn secondary" id="takehome">My take-home</button>' +
+    '<button class="btn secondary" id="takehome">Calculate take-home</button>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
     '<div class="drawer-actions"><button class="btn" id="share">Share price</button>' +
@@ -1432,27 +1450,135 @@ function calcNormalizeConfig(){
   delete calcCfg.hubs; delete calcCfg.hubList;
 }
 
-function calcLoadLocal(){
+function readPreferenceStorage(key){
   try {
-    const c = JSON.parse(localStorage.getItem("fl_calc_config") || "null");
-    if(c && typeof c === "object") calcCfg = Object.assign({}, CALC_DEFAULTS, c);
-    calcNormalizeConfig();
-  } catch(e){}
+    const value = JSON.parse(localStorage.getItem(key) || "null");
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch(e){ return null; }
+}
+function localPreferences(){
+  const config = readPreferenceStorage("fl_calc_config") || {};
+  return {...config,aliases:config.aliases || readPreferenceStorage("fl_aliases") || {}};
+}
+function applyPreferences(config){
+  calcCfg = {...CALC_DEFAULTS,...config};
+  calcNormalizeConfig();
+  placeAliases = Object.assign(Object.create(null),config.aliases || {});
+}
+function preferenceKey(owner){ return "fl_calc_profile:" + owner; }
+function pendingPreferences(){
+  return calcUser ? readPreferenceStorage(preferenceKey(calcUser.id))?.pending : null;
+}
+function patchPreferences(config,patch){
+  const {aliasEdits,...rates} = patch;
+  const next = {...config,...rates};
+  if(aliasEdits){
+    const aliases = Object.assign(Object.create(null),config.aliases || {});
+    for(const [name,target] of Object.entries(aliasEdits)){
+      if(target == null) delete aliases[name];
+      else aliases[name] = target;
+    }
+    next.aliases = aliases;
+  }
+  return next;
+}
+function calcLoadLocal(){
+  applyPreferences(localPreferences());
   calcTripsArr = [];
   try {
-    const t = JSON.parse(localStorage.getItem("fl_calc_trips") || "null");
-    if(Array.isArray(t) && !localStorage.getItem("fl_legacy_claim_owner")) calcTripsArr = t;
+    const trips = JSON.parse(localStorage.getItem("fl_calc_trips") || "null");
+    if(Array.isArray(trips) && !localStorage.getItem("fl_legacy_claim_owner")) calcTripsArr = trips;
   } catch(e){}
-  try {
-    const a = JSON.parse(localStorage.getItem("fl_aliases") || "null");
-    if(a && typeof a === "object" && !Array.isArray(a)){
-      placeAliases = Object.assign(Object.create(null),a);
+}
+async function readRemotePreferences(owner){
+  const rows = await sbUser("calc_configs?select=config,updated_at&user_id=eq." + encodeURIComponent(owner));
+  if(!Array.isArray(rows)) throw new Error("Invalid settings response.");
+  return rows[0] || null;
+}
+async function writeRemotePreferences(owner,patching,initial){
+  for(let attempt = 0; attempt < 3; attempt++){
+    if(calcUser?.id !== owner) throw new Error("Your session changed.");
+    const previous = await readRemotePreferences(owner);
+    if(calcUser?.id !== owner) throw new Error("Your session changed.");
+    const config = patchPreferences(previous?.config || initial,patching);
+    const updatedAt = new Date(Math.max(Date.now(),(Date.parse(previous?.updated_at) || 0)+1)).toISOString();
+    const key = "calc_configs?user_id=eq." + encodeURIComponent(owner);
+    const rows = previous ? await sbUser(key + "&updated_at=" +
+      (previous.updated_at == null ? "is.null" : "eq." + encodeURIComponent(previous.updated_at)),{
+        method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify({config,updated_at:updatedAt})
+      }) : await sbUser("calc_configs?on_conflict=user_id",{
+        method:"POST",headers:{Prefer:"resolution=ignore-duplicates,return=representation"},
+        body:JSON.stringify({user_id:owner,config,updated_at:updatedAt})
+      });
+    if(rows?.[0]?.config) return rows[0].config;
+  }
+  throw new Error("Settings changed on another device. Try again.");
+}
+let pendingSettingsWrite = Promise.resolve();
+function savePreferences(changes){
+  const owner = calcUser?.id;
+  const save = pendingSettingsWrite.then(async () => {
+    if(calcUser?.id !== owner) throw new Error("Your session changed. Reopen Settings.");
+    if(!owner){
+      const config = patchPreferences(localPreferences(),changes);
+      localStorage.setItem("fl_calc_config",JSON.stringify(config));
+      applyPreferences(config);
+      return "device";
     }
-  } catch(e){}
+
+    const key = preferenceKey(owner);
+    const saved = readPreferenceStorage(key);
+    const pending = {...saved?.pending,...changes};
+    if(saved?.pending?.aliasEdits || changes.aliasEdits){
+      pending.aliasEdits = {...saved?.pending?.aliasEdits,...changes.aliasEdits};
+    }
+    const initial = saved?.config || {...calcCfg,aliases:{...placeAliases}};
+    const local = patchPreferences(initial,pending);
+    const writeLocal = data => {
+      try { localStorage.setItem(key,JSON.stringify(data)); return true; } catch(e){ return false; }
+    };
+    const cached = writeLocal({config:initial,pending});
+    let upstream;
+    try { upstream = await writeRemotePreferences(owner,pending,initial); }
+    catch(e){
+      if(!cached) throw new Error("Could not save settings. Try again.");
+      if(calcUser?.id === owner) applyPreferences(local);
+      return "pending";
+    }
+    writeLocal({config:upstream});
+    if(calcUser?.id === owner) applyPreferences(upstream);
+    return "synced";
+  });
+  pendingSettingsWrite = save.catch(() => {});
+  return save;
 }
-function calcSaveLocal(){
-  localStorage.setItem("fl_calc_config", JSON.stringify(calcCfg));
+async function loadSignedInPreferences(owner){
+  const key = preferenceKey(owner);
+  const saved = readPreferenceStorage(key);
+  applyPreferences({...saved?.config,aliases:saved?.config?.aliases || {}});
+  if(saved?.pending){
+    applyPreferences(patchPreferences(saved.config || {},saved.pending));
+    await savePreferences({});
+    return;
+  }
+  const remote = await readRemotePreferences(owner);
+  if(calcUser?.id !== owner) return;
+  const signedOut = localPreferences();
+  const config = remote?.config || signedOut;
+  // Older app versions kept aliases on the device.
+  if(!Object.hasOwn(config,"aliases") && !saved && Object.keys(signedOut.aliases).length){
+    applyPreferences({...config,aliases:signedOut.aliases});
+    await savePreferences({aliasEdits:signedOut.aliases});
+    return;
+  }
+  try { localStorage.setItem(key,JSON.stringify({config})); } catch(e){}
+  applyPreferences(config);
 }
+function preferenceStatus(result){
+  return result === "synced" ? "Saved to your account." : result === "device" ? "Saved on this device." :
+    "Saved on this device. Account sync is pending.";
+}
+
 calcLoadLocal();
 
 /* --- Supabase Auth (Google OAuth only, v1) — client code only.
@@ -1502,13 +1628,18 @@ async function calcRefreshSession(){
       headers: { "apikey": KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: s.refresh_token })
     });
-    if(!r.ok) throw new Error("refresh failed");
+    if(calcSession()?.refresh_token !== s.refresh_token) return null;
+    if(!r.ok){
+      if([400,401,403].includes(r.status)){ calcClearSession(); calcUser = null; }
+      return null;
+    }
     const d = await r.json();
+    if(calcSession()?.refresh_token !== s.refresh_token) return null;
     const ns = { access_token: d.access_token, refresh_token: d.refresh_token || s.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000 };
     calcSaveSession(ns);
     calcApplySession();
     return ns;
-  } catch(e){ calcClearSession(); calcUser = null; return null; }
+  } catch(e){ return null; }
 }
 let calcRefreshPending = null;
 async function calcAuthHeaders(){
@@ -1549,24 +1680,8 @@ function calcSignOut(){
 }
 
 /* --- storage routing: Supabase per-user tables when signed in, localStorage when signed out --- */
-async function calcLoadRemote(){
-  const cfgRows = await sbUser("calc_configs?select=config&user_id=eq." + calcUser.id);
-  if(cfgRows && cfgRows[0] && cfgRows[0].config) calcCfg = Object.assign({}, CALC_DEFAULTS, cfgRows[0].config);
-  calcNormalizeConfig();
-
-}
-async function calcSaveRemote(){
-  if(!calcUser) return;
-  await sbUser("calc_configs", { method: "POST", headers: { "Prefer": "resolution=merge-duplicates" }, body: JSON.stringify({ user_id: calcUser.id, config: calcCfg }) });
-}
-/* First sign-in: upload local config/trips once when the account is empty, then the account is the source of truth. */
 async function calcSyncAfterSignIn(){
   if(!calcUser) return;
-  const cfgRows = await sbUser("calc_configs?select=config&user_id=eq." + calcUser.id);
-  const localCfg = JSON.parse(localStorage.getItem("fl_calc_config") || "null");
-  if(!(cfgRows && cfgRows[0]) && localCfg){
-    await sbUser("calc_configs", { method: "POST", body: JSON.stringify({ user_id: calcUser.id, config: localCfg }) });
-  }
   const remoteTrips = await sbUser("calc_trips?select=trip_id&user_id=eq." + calcUser.id);
   const remoteIds = new Set((remoteTrips || []).map(r => r.trip_id));
   const localTrips = JSON.parse(localStorage.getItem("fl_calc_trips") || "null");
@@ -1581,19 +1696,14 @@ async function calcSyncAfterSignIn(){
       }
     }
   }
-  await calcLoadRemote();
 }
 async function calcInitStore(){
   calcLoadLocal();
   calcApplySession();
   if(calcUser){
     calcTripsArr = [];
-    try { await calcSyncAfterSignIn(); } catch(e){ /* signed-in screens retry ledger reads separately */ }
+    await Promise.allSettled([loadSignedInPreferences(calcUser.id),calcSyncAfterSignIn()]);
   }
-}
-function calcPersist(){
-  calcSaveLocal();
-  if(calcUser){ calcSaveRemote().catch(() => {}); }
 }
 /* --- math (design §8, v2). No mileage fee: the fare is hourly + fuel at
    cost + tolls/parking. Return tolls are an expense too: tolls are a
@@ -1603,7 +1713,7 @@ function round3(n){ return Math.round(n * 1000) / 1000; } // fuel is priced per 
 function roundToNearest50c(n){ return Math.round(n * 2) / 2; }
 function roundToNearest5(n){ return Math.round(n / 5) * 5; }
 function calcRates(cfg){
-  const monthlyFixed = Number(cfg.monthlyFixed) > 0 ? Number(cfg.monthlyFixed) : 2500;
+  const monthlyFixed = Number(cfg.monthlyFixed) >= 0 ? Number(cfg.monthlyFixed) : 2500;
   const targetHours = Number(cfg.targetHours) > 0 ? Number(cfg.targetHours) : 160;
   const earningsTarget = Number(cfg.earningsTarget) || 0;
   const mpg = Number(cfg.mpg) > 0 ? Number(cfg.mpg) : 12.6;
@@ -1751,7 +1861,7 @@ function renderCalc(){
   if(!calc) calcReset();
   setStep(0,"Quote");
   const route = [calc.from,calc.to].filter(Boolean).join(" → ");
-  h('<header class="simple-head"><h1>Quote</h1></header>' +
+  h('<header class="simple-head"><h1>Calculator</h1><button class="quiet-link" id="calc-fares">Fare Sheet</button></header>' +
     (route ? '<p class="simple-caption">' + esc(route) + '</p>' : '') +
     '<div class="simple-fields">'  + quoteInput("c-miles","Trip miles",calc.miles,"0.001") +
       quoteInput("c-dur","Drive minutes",quoteMinutes(calc.hours),"0.001") + '</div>' +
@@ -1759,6 +1869,7 @@ function renderCalc(){
       '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div>' +
       '<button class="btn" id="c-job">Save quote</button></section>' +
     '<div class="list simple-space">' + detailRow("c-options","Quote options") + '</div>');
+  document.getElementById("calc-fares").onclick = () => goMenu("fares");
   bindQuoteInput("c-miles","miles");
   bindQuoteInput("c-dur","hours",1/60);
   document.getElementById("c-options").onclick = openQuoteOptions;
@@ -1937,13 +2048,14 @@ function openCalcFromQuote(){
   backTarget = "quote";
   calcReset();
   calc.from = sel.from; calc.to = sel.to;
+  const listed = computeQuote();
+  if(!listed.complex) calc.adjustedFare = listed.total;
   calc.mode = sel.trip === "round" ? "round" : "oneway";
   const w = sel.wait || {};
   const wa = parseFloat(w.amount);
   const hasWaitHrs = !!(wa && wa > 0 && w.unit !== "once");
   if(hasWaitHrs) calc.waitHours = Math.max(0, parseFloat(w.hours) || 0);
-  if(calc.mode === "round"){ if(!hasWaitHrs) calc.waitHours = 0.75; }
-  else if(!hasWaitHrs) calc.waitHours = 0;
+
   let tolls = 0, parking = 0;
   (sel.addons || []).forEach(a => {
     const amt = parseFloat(a.amount) || 0;
@@ -1962,14 +2074,14 @@ function fmtDateShort(iso){
 }
 
 /* ---------- trip calculator: Account ---------- */
-function calcDerivedHtml(){
-  const r = calcRates(calcCfg);
-  const mf = Number(calcCfg.monthlyFixed) || 2500;
-  const th = Number(calcCfg.targetHours) || 160;
+function calcDerivedHtml(config = calcCfg){
+  const r = calcRates(config);
+  const mf = Number(config.monthlyFixed);
+  const th = Number(config.targetHours);
   return '<div class="set-row"><span class="set-label">Vehicle recovery</span><span class="set-val">' + money(r.vehiclePerHr) + " = " + money(mf) + " ÷ " + fmtNum(th) + " hrs</span></div>" +
-    '<div class="set-row"><span class="set-label">Passenger rate</span><span class="set-val">' + money(r.passengerPerHr) + " = " + money(r.vehiclePerHr) + " + " + money(Number(calcCfg.earningsTarget) || 0) + ", nearest $0.50</span></div>" +
+    '<div class="set-row"><span class="set-label">Passenger rate</span><span class="set-val">' + money(r.passengerPerHr) + " = " + money(r.vehiclePerHr) + " + " + money(Number(config.earningsTarget) || 0) + ", nearest $0.50</span></div>" +
     '<div class="set-row"><span class="set-label">Waiting rate</span><span class="set-val">Same as passenger rate</span></div>' +
-    '<div class="set-row"><span class="set-label">Fuel cost</span><span class="set-val">$' + r.fuelPerMile.toFixed(3) + "/mi = " + money(Number(calcCfg.gasPrice) || 0) + " ÷ " + fmtNum(Number(calcCfg.mpg) || 0) + " MPG</span></div>" +
+    '<div class="set-row"><span class="set-label">Fuel cost</span><span class="set-val">$' + r.fuelPerMile.toFixed(3) + "/mi = " + money(Number(config.gasPrice) || 0) + " ÷ " + fmtNum(Number(config.mpg) || 0) + " MPG</span></div>" +
     '<div class="set-row"><span class="set-label">Return hourly</span><span class="set-val">' + money(r.vehiclePerHr) + " — cost only, no earnings</span></div>";
 }
 function renderAccount(){
@@ -1998,7 +2110,7 @@ function renderAccount(){
   const signout = document.getElementById("a-signout");
   if(signout) signout.addEventListener("click", calcSignOut);
 }
-function renderAliases(query = "",load = true){
+function renderAliases(query = "",load = true,status = ""){
   view = "account-aliases";
   setStep(0,"Stops & aliases");
   const index = [...new Set([...places,...calcHistoryPlaces()])].sort((a,b) => a.localeCompare(b));
@@ -2009,6 +2121,8 @@ function renderAliases(query = "",load = true){
   h('<div class="search-wrap"><input type="search" id="alias-search" aria-label="Search stops and aliases" ' +
     'placeholder="Search stops and aliases" autocomplete="off"></div>' +
     '<div class="tdlinks"><span class="tdmuted" id="alias-count"></span><button id="alias-add">Add alias</button></div>' +
+    (status || pendingPreferences() ? '<p role="status" class="simple-caption">' +
+      esc(status || preferenceStatus("pending")) + '</p>' : '') +
     '<div id="alias-results"></div>');
   const update = () => {
     const key = placeKey(document.getElementById("alias-search").value);
@@ -2049,7 +2163,7 @@ function openAliasEditor(index,target = ""){
       '<datalist id="alias-targets">' + index.map(place => '<option value="' + esc(place) + '"></option>').join("") + '</datalist>') +
     '<p role="alert" hidden></p><button class="btn" type="submit">Add alias</button></form>');
   const form = document.getElementById("alias-form");
-  form.onsubmit = event => {
+  form.onsubmit = async event => {
     event.preventDefault();
     const data = new FormData(form);
     const alias = data.get("alias").trim();
@@ -2064,54 +2178,86 @@ function openAliasEditor(index,target = ""){
       error.hidden = false;
       return;
     }
-    placeAliases[alias] = stop;
-    calcSaveAliases();
-    closeDrawer();
-    renderAliases();
+    const submit = form.querySelector("button[type=submit]");
+    if(submit.disabled) return;
+    submit.disabled = true;
+    try {
+      const result = await savePreferences({aliasEdits:{[alias]:stop}});
+      if(!form.isConnected) return;
+      closeDrawer();
+      renderAliases("",false,preferenceStatus(result));
+    } catch(e){ error.textContent = e.message; error.hidden = false; submit.disabled = false; }
   };
   document.getElementById("sheet-body").querySelectorAll("[data-remove-alias]").forEach(button => {
-    button.onclick = () => {
-      delete placeAliases[button.dataset.removeAlias];
-      calcSaveAliases();
-      closeDrawer();
-      renderAliases();
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        const result = await savePreferences({aliasEdits:{[button.dataset.removeAlias]:null}});
+        if(!form.isConnected) return;
+        closeDrawer();
+        renderAliases("",false,preferenceStatus(result));
+      } catch(e){
+        const error = form.querySelector("[role=alert]");
+        error.textContent = e.message; error.hidden = false; button.disabled = false;
+      }
     };
   });
 }
 
 function renderAccountRates(){
-  view = "account-rates"; setStep(0, "Rates");
-  const rateRow = (key, label, ph) => '<div class="set-row"><span class="set-label">' + esc(label) + '</span><input type="text" inputmode="decimal" data-cfg="' + key + '" value="' + esc(calcCfg[key]) + '" placeholder="' + esc(ph) + '"></div>';
-  h(
-    '<div class="group-label">Rates</div><div class="list" style="padding:0 14px">' +
-      rateRow("monthlyFixed", "Monthly rental + insurance", "2500") +
-      rateRow("targetHours", "Target hours / month", "160") +
-      rateRow("earningsTarget", "Earnings target / hr", "40") +
-      rateRow("gasPrice", "Gas price / gallon", "3.50") +
-      rateRow("mpg", "Fuel economy (MPG)", "12.6") +
-    "</div>" +
-    '<div class="group-label">Derived rates</div><div class="list" style="padding:0 14px"><div id="s-derived">' + calcDerivedHtml() + "</div></div>" +
-    '<div class="os-line" id="s-saved" aria-live="polite"></div>' +
-    '<div style="text-align:center"><button class="quiet-link" id="s-reset">Reset rates to defaults</button></div>'
-  );
-  $view.querySelectorAll("[data-cfg]").forEach(inp => inp.addEventListener("input", () => {
-    const v = parseFloat(String(inp.value).replace(/[$,]/g, ""));
-    if(!isNaN(v) && v >= 0){
-      calcCfg[inp.dataset.cfg] = v;
-      calcPersist();
-      const d = document.getElementById("s-derived");
-      if(d) d.innerHTML = calcDerivedHtml();
-      const note = document.getElementById("s-saved");
-      if(note){ note.textContent = "Saved"; clearTimeout(note._t); note._t = setTimeout(() => { note.textContent = ""; }, 1200); }
+  view = "account-rates";
+  setStep(0,"Rates");
+  const fields = [
+    ["monthlyFixed","Monthly rental and insurance ($)",0],
+    ["targetHours","Target hours per month",0.01],
+    ["earningsTarget","Take-home goal per hour ($)",0],
+    ["gasPrice","Gas price per gallon ($)",0],
+    ["mpg","Fuel economy (MPG)",0.01]
+  ];
+  h('<form id="rates-form" class="ledger-form"><div class="list" style="padding:0 14px">' +
+    fields.map(([key,label,min]) => ledgerInput(key,label,"number",calcCfg[key],
+      'required step="any" min="' + min + '"')).join("") + '</div>' +
+    '<div class="group-label">Derived rates</div><div class="list" style="padding:0 14px"><div id="s-derived">' +
+    calcDerivedHtml() + '</div></div><p class="simple-caption" id="s-saved" role="status">' +
+    (pendingPreferences() ? esc(preferenceStatus("pending")) : '') + '</p>' +
+    '<button class="btn" id="s-save" type="submit">Save rates</button>' +
+    '<button class="quiet-link" id="s-reset" type="button">Use defaults</button></form>');
+  const form = document.getElementById("rates-form");
+  const owner = calcUser?.id;
+  const status = document.getElementById("s-saved");
+  const save = document.getElementById("s-save");
+  const values = () => {
+    const data = new FormData(form);
+    return Object.fromEntries(fields.map(([key]) => [key,Number(data.get(key))]));
+  };
+  form.oninput = () => {
+    if(form.checkValidity()) document.getElementById("s-derived").innerHTML = calcDerivedHtml(values());
+    status.textContent = "Unsaved changes";
+  };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if(save.disabled) return;
+    if(calcUser?.id !== owner){
+      status.textContent = "Your session changed. Reopen Settings to save.";
+      return;
     }
-  }));
-  const reset = document.getElementById("s-reset");
-  if(reset) reset.addEventListener("click", () => {
-    calcCfg = Object.assign({}, CALC_DEFAULTS);
-    calcNormalizeConfig();
-    calcPersist();
-    renderAccountRates();
-  });
+    const updates = Object.fromEntries(Object.entries(values()).filter(([key,value]) => value !== Number(calcCfg[key])));
+    const group = [...form.querySelectorAll("input,button")];
+    group.forEach(control => control.disabled = true);
+    status.textContent = "Saving…";
+    try {
+      const result = await savePreferences(updates);
+      for(const [key] of fields) form.elements[key].value = calcCfg[key];
+      if(form.isConnected) document.getElementById("s-derived").innerHTML = calcDerivedHtml();
+      status.textContent = preferenceStatus(result);
+    }
+    catch(e){ status.textContent = e.message || "Could not save rates. Try again."; }
+    finally { group.forEach(control => control.disabled = false); }
+  };
+  document.getElementById("s-reset").onclick = () => {
+    for(const [key] of fields) form.elements[key].value = CALC_DEFAULTS[key];
+    form.oninput();
+  };
 }
 
 /* ---------- trip calculator: share (amount-only) ---------- */
@@ -2540,6 +2686,42 @@ function openDayDriving(date,data,back){
     };
   });
 }
+function todaySheet(day,date,summary,reviewed){
+  const rental = ledgerRental(date);
+  const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
+  const target = Number(rental?.planned_hours ?? calcCfg.targetHours);
+  const period = tdLedger.jobs.filter(job => job.status === "completed" && (rental ?
+    rental.starts_on <= job.business_date && job.business_date < rental.ends_before :
+    job.business_date.slice(0,7) === date.slice(0,7)));
+  const periodHours = tdSum(period,"working_minutes") / 60;
+  const progress = Math.min(100,Math.max(0,periodHours / Math.max(target,0.01) * 100));
+  const scale = Math.max(1,goal * 1.2);
+  const ratio = Math.max(0,Math.min(1,(day.rate || 0) / scale));
+  const angle = fraction => Math.PI * fraction;
+  const point = (fraction,radius) => [90-radius*Math.cos(angle(fraction)),82-radius*Math.sin(angle(fraction))].join(" ");
+  const color = day.rate == null ? "var(--muted)" : day.rate >= goal ? "#22875b" : "var(--accent)";
+  const goalFraction = goal / scale;
+  const gauge = '<div class="today-gauge"><svg viewBox="0 0 180 90" aria-hidden="true">' +
+    '<path d="M18 82 A72 72 0 0 1 162 82" fill="none" stroke="var(--chip)" stroke-width="8" stroke-linecap="round"/>' +
+    (ratio ? '<path d="M18 82 A72 72 0 0 1 ' + point(ratio,72) + '" fill="none" stroke="' +
+      color + '" stroke-width="8" stroke-linecap="round"/>' : '') +
+    '<path d="M' + point(goalFraction,64) + ' L' + point(goalFraction,80) +
+    '" stroke="var(--muted)" stroke-width="2"/></svg><div class="today-gauge-label"><strong>' +
+    (day.rate == null ? "—" : tdMoney(day.rate,2)) + '<small>/hr</small></strong><span>' +
+    tdMoney(goal) + '/hr goal</span></div></div>';
+  const working = day.completeTime ? fmtNum(day.hours) + "h" : day.hours ? fmtNum(day.hours) + "h recorded" : "Pending";
+  return '<section class="today-sheet" aria-label="Day summary"><div class="today-top">' + gauge +
+    '<div class="today-net"><span>Take-home</span><strong>' + (day.net == null ? "—" : tdMoney(day.net,2)) +
+    '</strong><span>' + tdMoney(day.gross) + ' earned</span></div></div>' +
+    (summary.length || reviewed ? '<div class="today-footnote">' +
+      esc([summary.join(" · "),reviewed ? "Driving reviewed" : ""].filter(Boolean).join(" · ")) + '</div>' : '') +
+    '<div class="today-hours"><div><strong>' + esc(working) + '</strong><span>Hours worked</span></div>' +
+    '<div><strong>' + fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>' +
+    (rental ? "Rental period" : "Monthly target") + '</span></div></div>' +
+    '<div class="today-progress" role="progressbar" aria-label="Working hours target" aria-valuenow="' +
+    Math.round(progress) + '"><span style="width:' + progress + '%"></span></div></section>';
+}
+
 function renderToday(reload=true){
   view = "today";
   inFlow = false;
@@ -2562,7 +2744,6 @@ function renderToday(reload=true){
   if(day.jobs.length && day.completeFare){
     summary.push(data.due ? tdMoney(data.due) + " to collect" : "Paid in full");
   }
-  if(day.hours) summary.push(driveTimeLabel(day.hours * 60) + (day.completeTime ? " worked" : " recorded"));
   const primary = data.reviewed ? '' :
     '<div class="simple-action"><button class="btn" id="' + (hasWork ? "td-closeout" : "td-add-job") + '">' +
     (hasWork ? "Review day" : "Add job") + '</button>' +
@@ -2574,39 +2755,32 @@ function renderToday(reload=true){
     return ledgerJobRow(job,detail);
   }).join("");
   h(head +
-    '<section class="day-total"><div class="simple-label">Earned</div><strong>' + tdMoney(day.gross) + '</strong>' +
-    (summary.length ? '<div class="simple-caption">' + esc(summary.join(" · ")) + '</div>' : '') +
-    (data.reviewed ? '<div class="simple-caption">Driving reviewed</div>' : '') + '</section>' +
+    todaySheet(day,date,summary,data.reviewed) +
     primary +
-    '<section aria-label="Jobs for this day" id="td-day-jobs"><div class="simple-section-head"><h2>Jobs</h2>' +
+    '<section aria-label="Trips for this day" id="td-day-jobs"><div class="simple-section-head"><h2>Trips</h2>' +
     '<button class="quiet-link" id="td-all-jobs">All jobs' + (active ? ' <span class="tdmuted">(' + active + ' open)</span>' : '') +
     ' <span aria-hidden="true">›</span></button></div>' +
     (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this day.</p>') +
-    savedTripEntries(data.pendingTrips) + '</section>' +
-    '<div class="list simple-space">' + detailRow("td-records","Day details") + '</div>');
+    savedTripEntries(data.pendingTrips) + '<div class="list simple-space">' +
+    detailRow("td-driving","Driving log",data.tripRows.length ? String(data.tripRows.length) : "") + '</div></section>' +
+    '<section class="simple-space" aria-label="Expenses"><div class="simple-section-head"><h2>Expenses</h2></div>' +
+    '<div class="list simple-space">' + detailRow("td-costs","Daily costs",data.finance.length ? "Pending" :
+      day.cost ? tdMoney(day.cost,2) : "") +
+    (data.reviewed ? detailRow("td-review-details","Review details") : "") + '</div></section>');
   document.getElementById("td-date").onchange = event => {
     if(event.target.value){ tdDate = event.target.value; renderToday(false); }
   };
   document.getElementById("td-all-jobs").onclick = () => goMenu("jobs");
-  document.getElementById("td-records").onclick = () => openDayDetails(date,data,day);
+  document.getElementById("td-driving").onclick = () => openDayDriving(date,data);
+  document.getElementById("td-costs").onclick = () => openDayCosts(date);
+  const reviewed = document.getElementById("td-review-details");
+  if(reviewed) reviewed.onclick = () => openDayCloseout(date,data);
   const review = document.getElementById("td-closeout");
   if(review) review.onclick = () => openDayCloseout(date,data);
   const add = document.getElementById("td-add-job");
   if(add) add.onclick = () => openLedgerJobForm(null,{business_date:date,status:"completed"});
   wireLedgerJobRows();
   wireSavedTripEntries();
-}
-
-function openDayDetails(date,data,day){
-  const back = () => openDayDetails(date,data,day);
-  openDrawer("Day details",'<div class="list">' +
-    detailRow("td-driving","Driving log",String(data.tripRows.length)) +
-    detailRow("td-costs-pending","Costs",data.finance.length ? "Pending" : day.cost ? tdMoney(day.cost) : "") +
-    (data.reviewed ? detailRow("td-review-details","Review details") : "") + '</div>');
-  document.getElementById("td-driving").onclick = () => openDayDriving(date,data,back);
-  document.getElementById("td-costs-pending").onclick = () => openDayCosts(date,back);
-  const review = document.getElementById("td-review-details");
-  if(review) review.onclick = () => openDayCloseout(date,data);
 }
 
 const CAR_CATEGORIES = {
@@ -3103,7 +3277,8 @@ function openLedgerRental(){
       body:JSON.stringify({user_id:user,starts_on:startsOn,ends_before:endsBefore,
         fixed_cost:Number(data.get("amount")),planned_hours:Number(data.get("hours")),hourly_goal:Number(data.get("goal"))})
     });
-    moneyRentalId = rows?.[0]?.id ?? null;
+    if(!rows?.[0]?.id) throw new Error("A rental period already starts on this date. Refresh and check the period list.");
+    moneyRentalId = rows[0].id;
   });
 }
 function renderLedgerMoney(reload){
