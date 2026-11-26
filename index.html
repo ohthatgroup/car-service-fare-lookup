@@ -481,6 +481,22 @@
   .rate-tile{padding:12px;border-radius:14px;background:var(--bg)}
   .rate-tile b{font-size:23px;display:block;margin:4px 0}
   .rate-tile small{display:block;color:var(--muted)}
+  .form-details{margin:12px 0}
+  .form-details summary{min-height:44px;display:flex;align-items:center;gap:8px;color:var(--link);font-weight:650;cursor:pointer}
+  .form-details summary::before{content:"›";font-size:19px}
+  .form-details[open] summary::before{transform:rotate(90deg)}
+  .preset-row{margin:8px 0;min-height:44px}
+  .fare-card-route{display:grid;gap:8px;margin:0 0 16px}
+  .fare-card-route small{display:block;color:#bfcee6;font-size:13px;margin-bottom:2px}
+  .fare-card .day-total strong{color:inherit;margin:4px 0 8px}
+  .fare-card .day-total,.fare-card-route{overflow-wrap:anywhere}
+  .fare-card .fare-vehicle{margin:16px 0 0}
+  .fare-vehicle img{display:block;width:100%;max-height:210px;object-fit:cover;border-radius:12px}
+  .fare-vehicle figcaption{margin-top:7px;font-size:14px}
+  .fare-card details{margin:0 0 10px}
+  .fare-card summary{color:#d7e5fb;cursor:pointer;padding:10px 0}
+  .fare-card .tdline{color:#e4edfc;border-color:#435375}
+  body[data-view="shared"] #menu-pill{display:none}
 </style>
 </head>
 <body>
@@ -948,17 +964,6 @@ function openCustomizeDrawer(onChange){
   wire();
 }
 
-function extrasPayload(){
-  const w = sel.wait || {};
-  const wa = parseFloat(w.amount);
-  const addons = (sel.addons || []).filter(a => a.name && a.name.trim() && parseFloat(a.amount) > 0)
-    .map(a => ({ name: a.name.trim(), amount: parseFloat(a.amount) }));
-  const hasWait = !!(wa && wa > 0);
-  if(!hasWait && !addons.length) return null;
-  return { wait_amount: hasWait ? wa : null, wait_unit: hasWait ? (w.unit || "hour") : null,
-    wait_hours: hasWait && (w.unit || "hour") !== "once" ? Math.max(1, parseFloat(w.hours) || 1) : null,
-    addons };
-}
 function makeShareCode(){
   const abc = "abcdefghjkmnpqrstuvwxyz23456789";
   let out = ""; for(let i = 0; i < 6; i++) out += abc[Math.floor(Math.random() * abc.length)];
@@ -1161,7 +1166,8 @@ function goMenu(section){
 let currentStep = 1;
 function setStep(n,label){
   currentStep = n;
-  const simpleRoot = ["today","money","step1","step2","quote-rates","pending","account"].includes(view);
+  document.body.dataset.view = view;
+  const simpleRoot = ["today","money","step1","step2","quote-rates","pending","account","shared"].includes(view);
   const title = document.getElementById("nav-title");
   const nav = document.getElementById("topnav");
   title.style.display = simpleRoot || !isCalcViewName(view) ? "none" : "";
@@ -1411,7 +1417,6 @@ function renderRouteRates(){
   wireQuoteRoute();
   renderRouteRateList(from,to);
   wireCalcForm(() => {
-    calc.adjustedFare = null;
     backTarget = "quote-rates";
     screenStack = [];
     calcStage = "result";
@@ -1442,80 +1447,110 @@ function startCalculatedQuote(from = null,to = null,saved = null){
   renderCalc();
 }
 
-function quoteText(priceStr){
-  return sel.from + " → " + sel.to + ": " + priceStr +
-    (sel.trip === "round" ? " (round trip)" : " (one way)");
+function publicFarePhoto(value){
+  return typeof value === "string" && value.length <= 120000 &&
+    /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : "";
 }
-
-function shareUrl(){
-  if(view === "flatbush" && sel.fb){
-    const gridBases = [...new Set(gridCells.map(c => c.base))].sort();
-    const bi = gridBases.indexOf(sel.fb.base);
-    return location.origin + "/s/g" + bi + "-" + sel.fb.rowIdx + "-" + sel.fb.colIdx;
-  }
-  const { fare } = sel.resolved;
-  let code = String(fare.id);
-  if(sel.trip === "round") code += "r";
-  if(sel.minivan) code += "m";
-  if(sel.airport) code += "p";
-  return location.origin + "/s/" + code;
+function vehicleMarkup(vehicle){
+  const photo = publicFarePhoto(vehicle?.photo);
+  const name = String(vehicle?.name || "").slice(0,80);
+  return photo || name ? '<figure class="fare-vehicle">' +
+    (photo ? '<img src="' + esc(photo) + '" alt="">' : '') + (name ? '<figcaption>' + esc(name) + '</figcaption>' : '') + '</figure>' : "";
 }
-async function shareQuote(btn){
-  let url = null;
-  const ex = extrasPayload();
-  const cp = sel.customPrice;
-  const customSet = !!(cp && cp.price > 0 && cp.trip === currentTripKey());
-  if(ex || customSet){
-    const row = { code: makeShareCode(), addons: ex ? ex.addons : [], wait_amount: ex ? ex.wait_amount : null,
-      wait_unit: ex ? ex.wait_unit : null, wait_hours: ex ? ex.wait_hours : null };
-    if(customSet) row.custom_price = cp.price;
-    if(view === "flatbush" && sel.fb){
-      row.grid = { base: sel.fb.base, row: sel.fb.rowIdx, col: sel.fb.colIdx };
-    } else if(sel.resolved){
-      row.fare_id = sel.resolved.fare.id;
-      row.trip = sel.trip === "round" ? "round" : null;
-      row.minivan = !!sel.minivan; row.airport = !!sel.airport;
-    }
-    if(row.grid || row.fare_id){
-      try {
-        await sb("shares", { method: "POST", body: JSON.stringify(row) });
-        url = location.origin + "/s/q" + row.code;
-      } catch(e){ url = null; }
-    }
-  }
-  if(!url) url = shareUrl();
-  if(navigator.share){
-    try { await navigator.share({ url: url }); } catch(e){}
-    return;
-  }
-  try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
-  catch(e){ btn.textContent = url; }
-  setTimeout(() => btn.textContent = "Share price", 1600);
+function fareBreakdownMarkup(values){
+  const lines = Array.isArray(values) ? values.slice(0,16).filter(line =>
+    line && typeof line.label === "string" && typeof line.amount === "number" && Number.isFinite(line.amount)) : [];
+  return lines.length > 1 ? '<details><summary>Price breakdown</summary>' +
+    lines.map(line => tdLine(line.label.slice(0,100),money(line.amount))).join("") + '</details>' : '';
 }
-
+function fareCardMarkup(fare,priceId = "",action = "",breakdownId = ""){
+  const route = [["From",fare.from],["To",fare.to]].filter(([,place]) => place).map(([label,place]) =>
+    '<div><small>' + label + '</small>' + esc(String(place).slice(0,250)) + '</div>').join("");
+  return '<section class="quote-result-card fare-card">' +
+    (route ? '<div class="fare-card-route">' + route + '</div>' : '') +
+    '<div class="day-total"><div class="simple-label">' + (fare.round ? "Round trip" : "One way") + '</div><strong' +
+    (priceId ? ' id="' + priceId + '" aria-live="polite"' : '') + '>' + esc(String(fare.amount || "").slice(0,40)) + '</strong></div>' +
+    (breakdownId ? '<div id="' + breakdownId + '"></div>' : fareBreakdownMarkup(fare.lines)) +
+    vehicleMarkup(fare.vehicle) + action + '</section>';
+}
+function openShareFare(button,fare){
+  openDrawer("Share fare",fareCardMarkup({...fare,lines:[]}) +
+    (fare.lines?.length > 1 ? '<label class="toggle-row"><input type="checkbox" id="share-breakdown"> Include price breakdown</label>' : '') +
+    '<p role="alert" id="share-error" hidden></p><button type="button" class="btn" id="send-fare">Share link</button>');
+  const send = document.getElementById("send-fare");
+  let shareUrl = null;
+  send.onclick = async () => {
+    send.disabled = true;
+    const alert = document.getElementById("share-error");
+    alert.hidden = true;
+    try{
+      if(!shareUrl){
+        const payload = {...fare,lines:document.getElementById("share-breakdown")?.checked ? fare.lines : []};
+        if(window.FareLookupDemo){
+          const url = new URL(location.pathname,location.origin);
+          url.hash = "fare=" + encodeURIComponent(JSON.stringify(payload));
+          shareUrl = url.href;
+        } else {
+          const code = crypto.randomUUID().replaceAll("-","");
+          await sb("shares",{method:"POST",body:JSON.stringify({code,public_fare:payload})});
+          shareUrl = location.origin + "/s/v" + code;
+        }
+      }
+      if(navigator.share) await navigator.share({url:shareUrl});
+      else await navigator.clipboard.writeText(shareUrl);
+      closeDrawer();
+      if(button.isConnected && !navigator.share){
+        const label = button.textContent;
+        button.textContent = "Link copied";
+        setTimeout(() => { if(button.isConnected) button.textContent = label; },1600);
+      }
+    } catch(error){
+      if(error.name !== "AbortError"){
+        alert.textContent = shareUrl ? "Couldn’t share the link. Try again." : "Couldn’t create a share link. Try again.";
+        alert.hidden = false;
+      }
+    } finally { send.disabled = false; }
+  };
+}
+function renderSharedFare(fare){
+  view = "shared";
+  inFlow = false;
+  setStep(0,"Shared fare");
+  h('<header class="simple-head"><h1>Fare</h1></header>' + fareCardMarkup(fare,"",
+    '<button type="button" class="btn" id="create-own-fare">Create your own fare</button>'));
+  document.getElementById("create-own-fare").onclick = () => {
+    const from = typeof fare.from === "string" ? fare.from.slice(0,250) : null;
+    const to = typeof fare.to === "string" ? fare.to.slice(0,250) : null;
+    if(from && to && !isZoneLabel(from) && !isZoneLabel(to)){
+      calcReset();
+      calc.from = from;
+      calc.to = to;
+      calc.mode = fare.round ? "round" : "oneway";
+      selectQuoteRoute(from,to);
+    } else { sel = {}; renderPlacePicker(1); }
+  };
+}
 function renderQuote(){
   view = "quote"; setStep(3);
   const { fare } = sel.resolved;
   const o = optionsApply();
   h(
-    '<div class="route-line">' + esc(sel.from) + " → " + esc(sel.to) + "</div>" +
-    '<button class="price-big fare-edit-btn" id="q-price" aria-live="polite"></button>' +
-    '<div class="q-summary" id="q-summary"></div>' +
+    fareCardMarkup({from:sel.from,to:sel.to,round:sel.trip === "round",vehicle:calcCfg.vehicle},"q-price",
+      '<button class="btn" id="share">Share fare</button>',"q-breakdown") +
     (o.hasRT ? '<label class="toggle-row"><input type="checkbox" id="fare-trip-type"' +
       (sel.trip === "round" ? ' checked' : '') + '> Round trip</label>' : '') +
     (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place, sel.trip)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
-    '<div id="q-breakdown"></div>' +
-    '<button class="btn secondary" id="customize">Customize price</button>' +
-     '<button class="btn secondary" id="takehome">Calculate take-home</button>' +
+    '<details class="form-details"><summary>Fare options</summary>' +
+    '<button class="quiet-link" id="customize">Adjust this quote</button>' +
+    '<button class="quiet-link" id="takehome">Calculate from miles and time</button></details>' +
+    '<div id="q-suggest"></div>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
-    '<div class="drawer-actions"><button class="btn" id="share">Share price</button>' +
-    '<button class="btn secondary" id="new-rate">New rate</button></div>' +
-    '<div id="q-suggest"></div>'
+    '<button class="quiet-link" id="new-rate">New fare</button>'
   );
   const tripType = document.getElementById("fare-trip-type");
-  if(tripType) tripType.onchange = () => { sel.trip = tripType.checked ? "round" : "oneway"; refreshQuote(); };
+  if(tripType) tripType.onchange = () => { sel.trip = tripType.checked ? "round" : "oneway"; renderQuote(); document.getElementById("fare-trip-type").focus(); };
   const mv = document.getElementById("opt-minivan");
   if(mv) mv.addEventListener("change", () => { sel.minivan = mv.checked; refreshQuote(); });
   const ap = document.getElementById("opt-airport");
@@ -1525,13 +1560,12 @@ function renderQuote(){
   document.getElementById("share").addEventListener("click", (e) => {
     const q = computeQuote();
     const priceStr = q.complex ? q.printed : money(q.total);
-    shareQuote(e.target, quoteText(priceStr), priceStr);
+    openShareFare(e.currentTarget,{from:sel.from,to:sel.to,round:sel.trip === "round",
+      amount:priceStr,lines:q.lines.filter(line => line.label !== "List price"),vehicle:calcCfg.vehicle});
   });
   document.getElementById("new-rate").addEventListener("click", () => { quoteFromCalc = false; inFlow = false; sel = {}; renderPlacePicker(1); });
   document.getElementById("customize").addEventListener("click", () => openCustomizeDrawer(refreshQuote));
   document.getElementById("takehome").addEventListener("click", openCalcFromQuote);
-  // v4.4: the big price opens Customize, same as the calculator result fare.
-  document.getElementById("q-price").addEventListener("click", () => openCustomizeDrawer(refreshQuote));
   refreshQuote();
 }
 
@@ -1547,16 +1581,17 @@ function refreshQuote(){
     const amtEl = mv.closest("label").querySelector(".amt");
     if(amtEl){ const add = miniVanAddition(plainPrice(fare.price), fare.from_place, sel.trip); amtEl.textContent = add != null ? "+" + money(add) : ""; }
   }
-  document.getElementById("q-summary").textContent = q.complex ? "" : summaryLine(true);
   const bd = document.getElementById("q-breakdown");
-  bd.innerHTML = (!q.complex && q.lines.length > 1) ? breakdownHtml(q.lines, q.total) : "";
+  const expanded = bd.querySelector("details")?.open;
+  bd.innerHTML = q.complex ? "" : fareBreakdownMarkup(q.lines.filter(line => line.label !== "List price"));
+  if(expanded && bd.firstElementChild) bd.firstElementChild.open = true;
   const open = proposals.find(p => p.fare_id === fare.id);
   const sg = document.getElementById("q-suggest");
   if(open){
     sg.innerHTML = '<button class="propose-link" id="to-pending">Price change pending · ' + open.votes + " of " + VOTES_NEEDED + " votes</button>";
     document.getElementById("to-pending").addEventListener("click", renderPending);
   } else {
-    sg.innerHTML = '<button class="propose-link" id="suggest">Price looks wrong? Suggest a change</button>';
+    sg.innerHTML = '<button class="propose-link" id="suggest">Suggest a new fare-sheet price</button>';
     document.getElementById("suggest").addEventListener("click", openSuggestDrawer);
   }
 }
@@ -1594,14 +1629,15 @@ function renderFlatbush(base){
     document.getElementById("fb-summary").textContent = summaryLine(false);
     document.getElementById("fb-breakdown").innerHTML = showTotal
       ? breakdownHtml((custom != null && listNum != null ? [{ label: "List price", amount: listNum }] : []).concat([{ label: "Zone fare", amount: baseNum }]).concat(exLines), baseNum + exSum) : "";
-    sel.fbText = base + " ↔ " + zoneLabel(base) + " (" + r + " × " + c + "): " + shown;
     sel.fb = { base: base, row: r, col: c, price: price, rowIdx: grid.rows.indexOf(r), colIdx: grid.cols.indexOf(c) };
   };
   document.getElementById("fb-row").addEventListener("change", upd);
   document.getElementById("fb-col").addEventListener("change", upd);
   upd();
-  document.getElementById("share").addEventListener("click", (e) => {
-    shareQuote(e.target, sel.fbText, sel.fb ? sel.fb.price : "");
+  document.getElementById("share").addEventListener("click", event => {
+    const amount = document.getElementById("fb-price").textContent;
+    if(amount) openShareFare(event.currentTarget,{from:base,to:zoneLabel(base) + " · " + sel.fb.row + " × " + sel.fb.col,
+      amount,vehicle:calcCfg.vehicle});
   });
   document.getElementById("new-rate").addEventListener("click", () => { inFlow = false; sel = {}; renderPlacePicker(1); });
   document.getElementById("customize").addEventListener("click", () => openCustomizeDrawer(upd));
@@ -1659,11 +1695,11 @@ function openAddDrawer(prefill){
   const dl = '<datalist id="places-dl">' + places.map(p => "<option value=\"" + esc(p) + "\">").join("") + "</datalist>";
   openDrawer("Add a price",
     '<div class="sub">Goes live right away for everyone.</div>' + dl +
-    '<label class="field">From</label><input type="text" id="f-from" list="places-dl" value="' + esc(prefill.from || "") + '" placeholder="Where from?">' +
-    '<label class="field">To</label><input type="text" id="f-to" list="places-dl" value="' + esc(prefill.to || "") + '" placeholder="Where to?">' +
-    '<label class="field">Category</label><select id="f-cat"></select>' +
-    '<label class="field">One-way price</label><input type="text" id="f-price" placeholder="$85">' +
-    '<label class="field">Round trip price (optional)</label><input type="text" id="f-rt" placeholder="$130">' +
+    '<label class="field" for="f-from">From</label><input type="text" id="f-from" list="places-dl" value="' + esc(prefill.from || "") + '" placeholder="Where from?">' +
+    '<label class="field" for="f-to">To</label><input type="text" id="f-to" list="places-dl" value="' + esc(prefill.to || "") + '" placeholder="Where to?">' +
+    formDetails("Category",'<label class="field" for="f-cat">Fare category</label><select id="f-cat"></select>') +
+    '<label class="field" for="f-price">One-way price</label><input type="text" id="f-price" inputmode="decimal" placeholder="$85">' +
+    '<label class="field" for="f-rt">Round trip price (optional)</label><input type="text" id="f-rt" inputmode="decimal" placeholder="$130">' +
     '<div class="error hidden" id="f-err"></div>' +
     '<button class="btn" id="f-save">Add a price</button>');
   const catSel = document.getElementById("f-cat");
@@ -1706,8 +1742,8 @@ function openSuggestDrawer(){
   const { fare } = sel.resolved;
   openDrawer("Propose a change",
     '<div class="sub">' + esc(fare.from_place) + " → " + esc(fare.to_place) + " is " + esc(fare.price) + " now. Your proposal applies when its net score reaches " + VOTES_NEEDED + " votes.</div>" +
-    '<label class="field">New one-way price</label><input type="text" id="s-price" placeholder="$90">' +
-    '<label class="field">New round trip price (optional)</label><input type="text" id="s-rt" placeholder="">' +
+    '<label class="field" for="s-price">New one-way price</label><input type="text" id="s-price" inputmode="decimal" placeholder="$90">' +
+    '<label class="field" for="s-rt">New round trip price (optional)</label><input type="text" id="s-rt" inputmode="decimal" placeholder="">' +
     '<div class="error hidden" id="s-err"></div>' +
     '<button class="btn" id="s-save">Post proposal</button>');
   document.getElementById("s-save").addEventListener("click", async () => {
@@ -2157,14 +2193,6 @@ function calcReset(){
   calc = { mode: "oneway", from: null, to: null, miles: "", hours: "", waitHours: 0,
     tolls: "", parking: "", returnMiles: "", returnHours: "", returnTolls: "", adjustedFare: null };
 }
-function calcListFare(){
-  if(!calc.from || !calc.to) return null;
-  const res = findFare(calc.from, calc.to);
-  if(!res) return null;
-  const f = res.fare;
-  if(calc.mode === "round" && f.round_trip) return plainPrice(f.round_trip);
-  return plainPrice(f.price);
-}
 /* v2 breakdown lines (design §8): Time, Waiting, Fuel at cost, Tolls +
    parking, Return — no mileage-fee line anywhere. */
 function calcBreakdownLines(r){
@@ -2204,6 +2232,13 @@ function detailRow(id,label,value=""){
     '</span>' + (value ? '<span class="tdmuted">' + esc(value) + '</span>' : '') +
     '<span class="chev" aria-hidden="true">›</span></button>';
 }
+function customerCalcLines(result){
+  const extras = [["Tolls",result.tolls + result.returnTolls],["Parking",result.parking]]
+    .filter(([,amount]) => amount > 0);
+  const transport = round2(result.fare - extras.reduce((sum,[,amount]) => sum + amount,0));
+  if(transport < 0) return [];
+  return [["Transport",transport],...extras].map(([label,amount]) => ({label,amount}));
+}
 function renderCalc(){
   view = "calc";
   inFlow = false;
@@ -2214,14 +2249,20 @@ function renderCalc(){
   const head = '<header class="simple-head"><h1>' + (calcStage === "result" ? "Your rate" : "Trip details") + '</h1></header>' +
     (route ? '<p class="simple-caption">' + esc(route) + '</p>' : '');
   if(calcStage === "result"){
-    h(head + '<section id="c-result" class="quote-result-card"><div class="day-total"><div class="simple-label" id="c-fare-label"></div>' +
-      '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div>' +
-      '<button class="btn" id="c-share-result">Share rate</button></section>' +
-      '<div class="quote-result-actions"><button class="btn secondary" id="c-customize">Edit price</button>' +
+    const result = calcFare(calc,calcCfg);
+    const customerLines = customerCalcLines(result);
+    h('<header class="simple-head"><h1>Fare</h1></header><div id="c-result">' +
+      fareCardMarkup({from:calc.from,to:calc.to,round:calc.mode === "round",amount:money(result.fare),
+        lines:customerLines,vehicle:calcCfg.vehicle},"c-fare-show",
+        '<button class="btn" id="c-share-result">Share fare</button>') + '</div>' +
+      '<div class="quote-result-actions"><button class="btn secondary" id="c-customize">Edit miles &amp; time</button>' +
       '<button class="btn secondary" id="c-job">Save quote</button></div>' +
-      '<div class="list" id="c-result-breakdown"></div>');
-    document.getElementById("c-share-result").onclick = event => shareCalc(event.currentTarget);
-    document.getElementById("c-customize").onclick = openQuoteOptions;
+      '<details class="form-details"><summary>Driver breakdown</summary><p class="simple-caption" id="c-takehome"></p>' +
+      '<div class="list" id="c-result-breakdown"></div></details>');
+    document.getElementById("c-share-result").onclick = event => openShareFare(event.currentTarget,{
+      from:calc.from,to:calc.to,round:calc.mode === "round",amount:money(result.fare),lines:customerLines,vehicle:calcCfg.vehicle
+    });
+    document.getElementById("c-customize").onclick = () => goBackFromCalc();
     document.getElementById("c-job").onclick = () => openLedgerJobForm(null,{
       pickup:calc.from,destination:calc.to,fare:calcFare(calc,calcCfg).fare
     });
@@ -2261,6 +2302,7 @@ function calcFormMarkup(){
     (calc.mode === "round" ? " checked" : "") + '></label>' +
     quoteInput("c-miles","Trip miles",calc.miles,"0.001") + durationFields("c-dur","Drive",calc.hours) + '</div>' +
     '<div id="quote-extras"></div><button class="btn secondary" id="c-add-extra" type="button">Add to quote</button>' +
+    formDetails("Set a custom total",quoteInput("c-fare-edit","Custom total ($)",calc.adjustedFare,"0.01"),calc.adjustedFare != null) +
     '<button class="btn" id="c-next" type="submit">Calculate</button></form>';
 }
 function wireCalcForm(calculate){
@@ -2295,6 +2337,7 @@ function wireCalcForm(calculate){
     document.getElementById("c-add-extra").disabled = calc.extras.length === Object.keys(QUOTE_EXTRAS).length;
   };
   bindQuoteInput("c-miles","miles");
+  bindQuoteInput("c-fare-edit","adjustedFare");
   bindDuration("c-dur","hours");
   document.getElementById("c-trip-type").onchange = event => { calc.mode = event.target.checked ? "round" : "oneway"; };
   document.getElementById("c-add-extra").onclick = () => {
@@ -2316,38 +2359,17 @@ function wireCalcForm(calculate){
   };
   updatePrice();
 }
-function openQuoteOptions(){
-  openDrawer("Customize rate",
-    '<div class="quote-form">' + quoteInput("c-fare-edit","Custom fare ($)",calc.adjustedFare,"0.01") +
-    '<div class="list" id="c-breakdown"></div><button class="btn" id="c-customize-done">Done</button></div>');
-  bindQuoteInput("c-fare-edit","adjustedFare");
-  document.getElementById("c-customize-done").onclick = () => closeDrawer();
-  const breakdown = document.getElementById("c-breakdown");
-  breakdown.onclick = event => {
-    if(event.target.closest("#c-list-price")){
-      closeDrawer();
-      openQuoteFromCalc(calc.from,calc.to,calc.mode,renderCalc,"Quote");
-    }
-  };
-  updatePrice();
-}
 function updatePrice(){
   const r = calcFare(calc,calcCfg);
   const output = document.getElementById("c-result");
   const next = document.getElementById("c-next");
   if(next) next.disabled = !(r.miles > 0 && r.hours > 0);
   if(!output) return;
-  document.getElementById("c-fare-label").textContent = calc.adjustedFare == null ? "Suggested fare" : "Your quote";
   document.getElementById("c-fare-show").textContent = money(r.fare);
   document.getElementById("c-takehome").textContent = money(r.takeHome) + " estimated take-home" +
     (r.effectivePerHour == null ? "" : " · " + money(r.effectivePerHour) + "/hr");
   const resultBreakdown = document.getElementById("c-result-breakdown");
   resultBreakdown.innerHTML = calcBreakdownLines(r).map(row => tdLine(row.label,money(row.amount))).join("");
-  const breakdown = document.getElementById("c-breakdown");
-  if(!breakdown) return;
-  const listFare = calcListFare();
-  breakdown.innerHTML = calcBreakdownLines(r).map(row => tdLine(row.label,money(row.amount))).join("") +
-    (listFare == null ? "" : detailRow("c-list-price","Fare Sheet",money(listFare)));
 }
 function openQuotePlace(which,render = renderCalc){
   const other = which === "to" ? calc.from : null;
@@ -2507,6 +2529,7 @@ function renderAccount(){
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-zones"><span>Operating zones</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-rentals"><span>Rental periods</span><span class="chev" aria-hidden="true">›</span></button>' +
+    detailRow("a-vehicle","Vehicle",calcCfg.vehicle?.name || "") +
     '</div><h2 class="settings-heading">Account</h2><div class="list">' +
       detailRow("a-details","About FareLookup") + '</div>' +
     (calcUser
@@ -2522,12 +2545,56 @@ function renderAccount(){
     todayPeriod = "month";
     goMenu("today");
   };
+  document.getElementById("a-vehicle").onclick = openVehicleSettings;
   const details = document.getElementById("a-details");
   if(details) details.addEventListener("click", openDetails);
   const signin = document.getElementById("a-signin");
   if(signin) signin.addEventListener("click", calcSignInGoogle);
   const signout = document.getElementById("a-signout");
   if(signout) signout.addEventListener("click", calcSignOut);
+}
+async function resizeVehiclePhoto(file){
+  if(file.size > 20000000) throw new Error("Choose a photo under 20 MB.");
+  const url = URL.createObjectURL(file);
+  try{
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(1,600 / Math.max(image.naturalWidth,image.naturalHeight));
+    canvas.width = Math.max(1,Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1,Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
+    for(const quality of [0.78,0.65,0.5,0.35]){
+      const photo = publicFarePhoto(canvas.toDataURL("image/jpeg",quality));
+      if(photo) return photo;
+    }
+    throw new Error("Choose a smaller photo.");
+  } finally { URL.revokeObjectURL(url); }
+}
+function openVehicleSettings(){
+  const vehicle = calcCfg.vehicle || {};
+  openDrawer("Vehicle",vehicleMarkup(vehicle) + '<form class="ledger-form" id="vehicle-form">' +
+    ledgerInput("name","Vehicle name","text",vehicle.name,'maxlength="80"') +
+    '<label class="field" for="vehicle-photo">Vehicle photo</label>' +
+    '<input id="vehicle-photo" name="photo" type="file" accept="image/*">' +
+    (vehicle.photo ? '<label class="toggle-row"><input name="remove" type="checkbox"> Remove photo</label>' : '') +
+    '<p role="alert" hidden></p><button type="submit" class="btn">Save vehicle</button></form>');
+  const form = document.getElementById("vehicle-form");
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const data = new FormData(form), submit = form.querySelector("[type=submit]"), alert = form.querySelector("[role=alert]");
+    if(submit.disabled) return;
+    submit.disabled = true;
+    alert.hidden = true;
+    try{
+      const file = data.get("photo");
+      const photo = file?.size ? await resizeVehiclePhoto(file) : data.has("remove") ? "" : vehicle.photo || "";
+      await savePreferences({vehicle:{name:data.get("name").trim(),photo}});
+      if(form.isConnected){ closeDrawer(); renderAccount(); }
+    } catch(error){ alert.textContent = error.message || "Couldn’t save vehicle."; alert.hidden = false; }
+    finally { submit.disabled = false; }
+  };
 }
 function renderAliases(query = "",load = true,status = ""){
   view = "account-aliases";
@@ -2590,18 +2657,16 @@ function renderAliases(query = "",load = true,status = ""){
     });
   }
 }
-function openAliasEditor(index,target = ""){
+function openAliasEditor(index,target){
   const defaults = fareAliasIndex.get(target) || [];
   const saved = Object.entries(placeAliases).filter(([,place]) => place === target);
   const savedRows = saved.map(([alias]) => '<div class="row"><span class="row-main">' + esc(alias) +
     '</span><button class="trip-x" aria-label="Remove ' + esc(alias) + '" data-remove-alias="' + esc(alias) + '">✕</button></div>');
-  openDrawer(target || "Add alias",
+  openDrawer(target,
     (defaults.length ? '<p class="sub">' + esc(defaults.join(" · ")) + '</p>' : '') +
     (savedRows.length ? '<div class="list">' + savedRows.join("") + '</div>' : '') +
     '<form id="alias-form" class="ledger-form">' +
     ledgerInput("alias","Alias","text","",'required maxlength="250"') +
-    (target ? "" : ledgerInput("target","Stop","text","",'required list="alias-targets"') +
-      '<datalist id="alias-targets">' + index.map(place => '<option value="' + esc(place) + '"></option>').join("") + '</datalist>') +
     '<p role="alert" hidden></p><button class="btn" type="submit">Add alias</button></form>');
   const form = document.getElementById("alias-form");
   form.onsubmit = async event => {
@@ -2609,7 +2674,7 @@ function openAliasEditor(index,target = ""){
     const data = new FormData(form);
     const alias = data.get("alias").trim();
     const key = placeKey(alias);
-    const stop = target || index.find(place => placeKey(place) === placeKey(data.get("target")));
+    const stop = target;
     const error = form.querySelector("[role=alert]");
     if(!stop || !key || index.some(place => placeKey(place) === key) ||
        Object.keys(placeAliases).some(name => placeKey(name) === key) ||
@@ -2758,49 +2823,6 @@ function renderAccountRates(){
     for(const [key] of fields) form.elements[key].value = CALC_DEFAULTS[key];
     form.oninput();
   };
-}
-
-/* ---------- trip calculator: share (amount-only) ---------- */
-async function shareCalc(btn){
-  const r = calcFare(calc, calcCfg);
-  if(!(r.miles > 0 && r.hours > 0)) return;
-  /* Follow-up to v4.4.2: the adjusted fare rides on the share row too
-     (calc_adjusted = the fare actually shown on the result — the
-     adjusted total when the driver edited it, else the suggested fare),
-     and so does the return leg when there is one. A trip with no
-     return leg stores nulls, never zeros — the Open link then carries
-     no return params at all. */
-  const hasReturn = r.returnMiles > 0 || r.returnHours > 0 || r.returnTolls > 0;
-  const row = { code: makeShareCode(), calc_fare: r.fare,
-    calc_route: (calc.from && calc.to) ? calc.from + " → " + calc.to : null,
-    calc_roundtrip: calc.mode === "round",
-    /* v4.4.2: the trip inputs ride on the share row so the Open
-       button can start a NEW trip in the calculator with the full
-       breakdown (see calc-share-trip-inputs.sql — run it before
-       this works live). */
-    calc_miles: r.miles, calc_hours: r.hours, calc_wait_hours: r.waitHours,
-    calc_tolls: r.tolls, calc_parking: r.parking,
-    calc_adjusted: r.fare,
-    calc_return_miles: hasReturn ? r.returnMiles : null,
-    calc_return_hours: hasReturn ? r.returnHours : null,
-    calc_return_tolls: hasReturn ? r.returnTolls : null };
-  let url = null;
-  try {
-    await sb("shares", { method: "POST", body: JSON.stringify(row) });
-    url = location.origin + "/s/c" + row.code;
-  } catch(e){ url = null; }
-  if(!url){
-    btn.textContent = "Couldn't share — try again";
-    setTimeout(() => { if(btn.isConnected) btn.textContent = btn.id === "c-share-result" ? "Share rate" : "Share fare"; }, 1600);
-    return;
-  }
-  if(navigator.share){
-    try { await navigator.share({ url: url }); } catch(e){}
-    return;
-  }
-  try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
-  catch(e){ btn.textContent = url; }
-  setTimeout(() => { if(btn.isConnected) btn.textContent = btn.id === "c-share-result" ? "Share rate" : "Share fare"; }, 1600);
 }
 
 /* ---------- init ---------- */
@@ -3334,9 +3356,9 @@ function homeHeader(){
     '<h1 class="period-heading"><select id="home-period" aria-label="Home period">' +
     Object.entries(HOME_PERIODS).map(([key,label]) => '<option value="' + key + '"' +
       (todayPeriod === key ? " selected" : "") + '>' + label + '</option>').join("") +
-    '</select></h1><button type="button" class="simple-date-wrap" id="home-calendar" aria-label="Choose dates">' +
+    '</select></h1>' + (todayPeriod !== "all" ? '<button type="button" class="simple-date-wrap" id="home-calendar" aria-label="Choose dates">' +
     '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">' +
-    '<rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 3v5m8-5v5M4 11h16"/></svg></button>' : '<h1>Home</h1>') + '</header>';
+    '<rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 3v5m8-5v5M4 11h16"/></svg></button>' : '') : '<h1>Home</h1>') + '</header>';
 }
 function homeRentalPeriods(){
   return [...tdLedger.rentals].sort((a,b) => b.starts_on.localeCompare(a.starts_on));
@@ -3354,38 +3376,25 @@ function homeRentalLabel(row){
   return homeDateLabel(row.starts_on) + " to " + homeDateLabel(dateOffset(row.ends_before,-1));
 }
 function openHomeCalendar(){
-  const rental = homeSelectedRental();
-  const rentalOptions = homeRentalPeriods().map(row => '<option value="' + esc(row.id) + '"' +
-    (row.id === rental?.id ? " selected" : "") + '>' + esc(homeRentalLabel(row)) + '</option>').join("");
-  openDrawer("Choose dates", '<form id="home-date-form" class="ledger-form">' +
-    '<label class="field" for="home-date-range">Period</label><select id="home-date-range" name="period">' +
-    Object.entries(HOME_PERIODS).map(([key,label]) => '<option value="' + key + '"' +
-      (todayPeriod === key ? " selected" : "") + '>' + label + '</option>').join("") +
-    '</select><div id="home-date-day">' + ledgerInput("date","Date","date",tdDate,"required") + '</div>' +
-    '<div id="home-date-month"><label class="field" for="home-date-rental">Rental period</label>' +
-    (rentalOptions ? '<select id="home-date-rental" name="rental">' + rentalOptions + '</select>' : "") +
-    '<div class="list">' + detailRow("calendar-add-rental","Add rental period") + '</div></div>' +
+  const rentalMode = todayPeriod === "month";
+  const rental = rentalMode ? homeSelectedRental() : null;
+  const rentals = rentalMode ? homeRentalPeriods() : [];
+  if(rentalMode && !rentals.length){ openLedgerRental(); return; }
+  const fields = rentalMode ? '<label class="field" for="home-date-rental">Rental period</label>' +
+    '<select id="home-date-rental" name="rental">' + rentals.map(row => '<option value="' + esc(row.id) + '"' +
+      (row.id === rental?.id ? " selected" : "") + '>' + esc(homeRentalLabel(row)) + '</option>').join("") + '</select>' +
+    '<div class="list">' + detailRow("calendar-add-rental","Add rental period") + '</div>' :
+    ledgerInput("date",todayPeriod === "week" ? "Date within week" : "Date","date",tdDate,"required");
+  openDrawer(rentalMode ? "Choose rental period" : todayPeriod === "week" ? "Choose week" : "Choose date",
+    '<form id="home-date-form" class="ledger-form">' + fields +
     '<button class="btn" type="submit">Apply</button></form>');
   const form = document.getElementById("home-date-form");
-  const range = form.elements.period;
-  const update = () => {
-    const choosingDate = ["day","week"].includes(range.value);
-    document.getElementById("home-date-day").hidden = !choosingDate;
-    form.elements.date.disabled = !choosingDate;
-    document.getElementById("home-date-month").hidden = range.value !== "month";
-    form.querySelector('[type="submit"]').disabled = range.value === "month" && !rentalOptions;
-  };
-  range.onchange = update;
-  update();
-  document.getElementById("calendar-add-rental").onclick = () => {
-    todayPeriod = "month";
-    openLedgerRental(openHomeCalendar);
-  };
+  const add = document.getElementById("calendar-add-rental");
+  if(add) add.onclick = () => openLedgerRental(openHomeCalendar);
   form.onsubmit = event => {
     event.preventDefault();
-    todayPeriod = range.value;
-    if(!form.elements.date.disabled) tdDate = form.elements.date.value;
-    if(todayPeriod === "month") homeRentalId = form.elements.rental.value;
+    if(rentalMode) homeRentalId = form.elements.rental.value;
+    else tdDate = form.elements.date.value;
     closeDrawer();
     renderToday(false);
   };
@@ -3701,38 +3710,42 @@ function openCarTrip(date,segment = null,jobId = null,categoryChoice = null,back
   const editable = !segment || segment.source === "manual_car_trip";
   const selectedJob = segment?.job_id || jobId;
   const segmentDate = segment?.business_date || date;
-  const earliest = new Date(new Date(segmentDate + "T12:00:00Z").getTime() - 86400000).toISOString().slice(0,10);
-  const jobs = tdLedger.jobs.filter(job => job.id === selectedJob || (job.status === "completed" &&
-    (job.business_date === segmentDate || (job.return_pending && job.business_date >= earliest && job.business_date < segmentDate))));
-  const fields = (segment ? tdLine("Business date",segment.business_date || date) :
-    ledgerInput("trip-date","Date in Aximote","date",date,"required")) +
-    (segment ? tdLine("Source",CAR_SOURCE_LABELS[segment.source] || "Other source") : "") +
-    (editable ? ledgerInput("drive-start","Start time (New York)","time",aximoteLocalTime(segment?.started_at)) +
-      ledgerInput("drive-end","End time (New York)","time",aximoteLocalTime(segment?.ended_at)) +
-      stopOptionsHtml("car-stops") +
-      ledgerInput("origin","From","text",segment?.origin,'list="car-stops" maxlength="250"') +
-      ledgerInput("destination","To","text",segment?.destination,'list="car-stops" maxlength="250"') +
-      ledgerInput("miles","Recorded miles","number",segment?.distance_mi,'min="0" max="999999999.999" step="0.001"') +
-      ledgerInput("minutes","Duration (minutes)","number",segment?.duration_minutes,'min="0" max="9999999.999" step="0.001"') +
+  const jobOptions = (driveDate,selection) => {
+    const previousDay = dateOffset(driveDate,-1);
+    const jobs = tdLedger.jobs.filter(job => job.id === selection || (job.status === "completed" &&
+      (job.business_date === driveDate || (job.return_pending && job.business_date === previousDay))));
+    return '<option value="">No job linked</option>' + jobs.map(job => '<option value="' + esc(job.id) + '"' +
+      (job.id === selection ? ' selected' : '') + '>' + esc(ledgerJobTitle(job) +
+      (job.business_date === driveDate ? "" : " · " + fmtDateShort(job.business_date))) + '</option>').join("");
+  };
+  const fields = (segment ? tdLine("Date",fmtDateShort(segmentDate)) : "") +
+    (editable ?
+      ledgerInput("miles","Distance (mi)","number",segment?.distance_mi,'min="0" max="999999999.999" step="0.001"') +
+      ledgerInput("minutes","Duration (min)","number",segment?.duration_minutes,'min="0" max="9999999.999" step="0.001"') +
       ledgerInput("fuel-gallons","Fuel used (gal)","number",segment?.fuel_gallons,'min="0" max="99999999.9999" step="0.0001"') +
-      ledgerInput("fuel-rate","Fuel rate (gal / 100 mi)","number",segment?.fuel_rate_gal_per_100_mi,'min="0" max="99999999.9999" step="0.0001"') +
-      ledgerInput("fuel-cost","Aximote cost estimate ($)","number",segment?.reported_fuel_cost,'min="0" max="9999999999.99" step="0.01"') :
-      tdLine("Recorded trip",carTripFacts(segment))) +
+      ledgerInput("fuel-cost","Aximote fuel estimate ($)","number",segment?.reported_fuel_cost,'min="0" max="9999999999.99" step="0.01"') +
+      formDetails("Route & drive times",
+        (segment ? "" : ledgerInput("trip-date","Drive date","date",date,"required")) +
+        ledgerInput("drive-start","Start time (New York)","time",aximoteLocalTime(segment?.started_at)) +
+        ledgerInput("drive-end","End time (New York)","time",aximoteLocalTime(segment?.ended_at)) +
+        stopOptionsHtml("car-stops") +
+        ledgerInput("origin","From","text",segment?.origin,'list="car-stops" maxlength="250"') +
+        ledgerInput("destination","To","text",segment?.destination,'list="car-stops" maxlength="250"') +
+        (segment?.fuel_rate_gal_per_100_mi == null ? "" :
+          tdLine("Aximote fuel rate",Number(segment.fuel_rate_gal_per_100_mi) + " gal / 100 mi"))) :
+      tdLine("Recorded drive",carTripFacts(segment))) +
     '<label class="field" for="ledger-car-category">Trip type</label><select id="ledger-car-category" name="category">' +
     Object.entries(CAR_CATEGORIES).map(([category,label]) => '<option value="' + category + '"' +
       ((segment?.category || categoryChoice) === category ? ' selected' : '') + '>' + esc(label) + '</option>').join("") +
     '</select><div id="car-job-field"><label class="field" for="ledger-car-job">Match to job</label>' +
-    '<select id="ledger-car-job" name="job"><option value="">Unmatched</option>' +
-    jobs.map(job => '<option value="' + esc(job.id) + '"' + (job.id === selectedJob ? ' selected' : '') + '>' +
-      esc(ledgerJobTitle(job) + (job.business_date === segmentDate ? "" : " · " + fmtDateShort(job.business_date)) +
-      (job.fare == null ? "" : " · " + tdMoney(Number(job.fare)))) + '</option>').join("") +
+    '<select id="ledger-car-job" name="job">' + jobOptions(segmentDate,selectedJob) +
     '</select></div>';
   openLedgerForm(segment ? carTripTitle(segment) : "Add Aximote trip",fields,async (data,user) => {
     const category = data.get("category");
     const row = {category,job_id:category === "personal" ? null : data.get("job") || null};
     if(editable){
-      const miles = data.get("miles"), minutes = data.get("minutes");
-      if(miles === "" && minutes === "") throw new Error("Enter the miles or minutes shown in Aximote.");
+      const miles = data.get("miles");
+      let minutes = data.get("minutes");
       Object.assign(row,{
         origin:resolvePlace(data.get("origin").trim()) || null,
         destination:resolvePlace(data.get("destination").trim()) || null,
@@ -3746,8 +3759,15 @@ function openCarTrip(date,segment = null,jobId = null,categoryChoice = null,back
         row.started_at = started ? aximoteTimestamp(tripDate,started) : null;
         row.ended_at = ended ? aximoteTimestamp(ended < started ? dateOffset(tripDate,1) : tripDate,ended) : null;
       }
+      const startTime = row.started_at ?? segment?.started_at;
+      const endTime = row.ended_at ?? segment?.ended_at;
+      if(minutes === "" && started && ended && startTime && endTime){
+        minutes = (Date.parse(endTime) - Date.parse(startTime)) / 60000;
+        row.duration_minutes = minutes;
+      }
+      if(miles === "" && minutes === "") throw new Error("Enter distance or duration, or add the drive’s start and end times.");
       for(const [field,column] of Object.entries({
-        "fuel-gallons":"fuel_gallons","fuel-rate":"fuel_rate_gal_per_100_mi","fuel-cost":"reported_fuel_cost"
+        "fuel-gallons":"fuel_gallons","fuel-cost":"reported_fuel_cost"
       })){
         const value = data.get(field);
         if(value !== "" || segment?.[column] != null) row[column] = value === "" ? null : Number(value);
@@ -3771,8 +3791,18 @@ function openCarTrip(date,segment = null,jobId = null,categoryChoice = null,back
   },null,"Save",back);
   const category = document.getElementById("ledger-car-category");
   if(category){
-    category.onchange = () => { document.getElementById("car-job-field").hidden = category.value === "personal"; };
-    category.onchange();
+    const picker = document.getElementById("ledger-car-job");
+    const driveDate = document.getElementById("ledger-trip-date");
+    if(driveDate) driveDate.onchange = () => {
+      if(driveDate.value) picker.innerHTML = jobOptions(driveDate.value,null);
+    };
+    const update = () => {
+      const hidden = category.value === "personal";
+      document.getElementById("car-job-field").hidden = hidden;
+      picker.disabled = hidden;
+    };
+    category.onchange = update;
+    update();
   }
 }
 
@@ -3857,21 +3887,18 @@ function openLedgerJob(job,parent = null){
   };
 }
 function openJobActuals(job,segments,back = null){
-  const measured = segments.filter(row => isAximoteTrip(row) && row.category !== "personal" && row.category !== "waiting");
+  const measured = segments.filter(row => isAximoteTrip(row) && row.category !== "personal");
   const measuredMinutes = measured.length && measured.every(row => row.duration_minutes != null)
     ? tdSum(measured,"duration_minutes") : null;
-  const observed = measuredMinutes == null ? "" : tdLine("Linked Aximote drive time",driveTimeLabel(measuredMinutes));
-  const useDriveTime = measuredMinutes == null ? "" :
-    ledgerInput("wait","Waiting minutes to add","number","",'min="0" max="9999999.999" step="0.001"') +
-    '<button type="button" class="quiet-link" id="use-aximote-duration">Use linked drive time plus waiting</button>';
-  const fields = tdLine("Job",ledgerJobTitle(job)) + observed +
-    ledgerInput("fare","Actual fare ($)","number",job.fare,'min="0" max="9999999999.99" step="0.01" required') +
-    ledgerInput("minutes","Total working minutes","number",job.working_minutes,
-      'min="0" max="9999999.999" step="0.001" required') + useDriveTime +
-    '<label class="field" for="return-status">Return trip</label><select name="return-pending" id="return-status">' +
-    '<option value="complete"' + (!job.return_pending ? ' selected' : '') + '>Recorded or not needed</option>' +
-    '<option value="pending"' + (job.return_pending ? ' selected' : '') + '>Still missing</option></select>' +
-    '<p class="tdnote">Include driving to the pickup, job-related waiting, and the return. Enter the fare earned even if payment is still due.</p>';
+  const observed = measuredMinutes == null ? "" :
+    '<button type="button" class="quiet-link preset-row" id="use-aximote-duration">Use linked drive time · ' +
+    esc(driveTimeLabel(measuredMinutes)) + '</button>';
+  const fields = tdLine("Job",ledgerJobTitle(job)) +
+    ledgerInput("fare","Fare earned ($)","number",job.fare,'min="0" max="9999999999.99" step="0.01" required') +
+    ledgerInput("minutes","Total working time (min)","number",job.working_minutes,
+      'min="0" max="9999999.999" step="0.001" required') + observed +
+    '<label class="toggle-row"><input type="checkbox" name="return-pending"' + (job.return_pending ? " checked" : "") +
+    '> Return drive still missing</label>';
   openLedgerForm("Review job actuals",fields,async (data,user) => {
     const fare = data.get("fare"), minutes = data.get("minutes");
     if(fare === "" || minutes === "") throw new Error("Enter the actual fare and working time.");
@@ -3885,7 +3912,7 @@ function openJobActuals(job,segments,back = null){
       "&return_pending=eq." + !!job.return_pending,{
         method:"PATCH",headers:{Prefer:"return=representation"},
         body:JSON.stringify({fare:Number(fare),working_minutes:Number(minutes),review_state:"confirmed",
-          return_pending:data.get("return-pending") === "pending",
+          return_pending:data.has("return-pending"),
           rental_id:job.rental_id ?? rental?.id ?? null,rental_hourly_snapshot:snapshot})
       });
     if(!saved?.length) throw new Error("This job changed. Refresh the day and try again.");
@@ -3893,9 +3920,7 @@ function openJobActuals(job,segments,back = null){
   const use = document.getElementById("use-aximote-duration");
   if(use) use.onclick = () => {
     const input = document.getElementById("ledger-minutes");
-    const wait = document.getElementById("ledger-wait");
-    if(!wait.reportValidity()) return;
-    input.value = round3(measuredMinutes + Number(wait.value || 0));
+    input.value = round3(measuredMinutes);
     input.focus();
   };
 }
@@ -3937,7 +3962,7 @@ function openSavedTripMerge(trip,back = null){
     '</select><p class="tdnote">This attaches the saved record to the selected job and keeps that job’s fare and payments.</p>',
     data => saveTripMerge(trip.id,data.get("job"),null,null),null,"Link job");
   document.getElementById("saved-trip-add").onclick = () => openLedgerForm("Add saved job",info +
-    ledgerInput("fare","Actual fare ($)","number","",'min="0" max="9999999999.99" step="0.01" required') +
+    ledgerInput("fare","Fare earned ($)","number",trip.actualAmount,'min="0" max="9999999999.99" step="0.01" required') +
     ledgerInput("minutes","Actual working minutes (if known)","number","",'min="0" max="9999999.999" step="0.001"'),
     data => {
       const minutes = data.get("minutes");
@@ -4001,10 +4026,13 @@ function renderLedgerJobs(reload){
   wireSavedTripEntries();
 }
 
+function formDetails(label,fields,open = false){
+  return '<details class="form-details"' + (open ? " open" : "") + '><summary>' + label + '</summary>' + fields + '</details>';
+}
 function ledgerInput(name,label,type,value,attributes=""){
   return '<label class="field" for="ledger-' + name + '">' + label + '</label><input id="ledger-' + name +
     '" name="' + name + '" type="' + type + '"' + (type === "date" ? ' class="ledger-date"' : '') +
-    ' value="' + esc(value ?? "") + '" ' + attributes + '>';
+    ' value="' + esc(value ?? "") + '"' + (type === "number" ? ' inputmode="decimal"' : '') + ' ' + attributes + '>';
 }
 function openLedgerForm(title,fields,save,onSaved,submitLabel = "Save",back = null){
   const user = calcUser?.id;
@@ -4063,22 +4091,25 @@ function openLedgerJobForm(job = null,prefill = {},back = null){
   const statuses = {quoted:"Quoted",scheduled:"Scheduled"};
   if(!fromQuote) statuses.completed = "Completed";
   if(job) statuses.cancelled = "Cancelled";
-  const fields = ledgerInput("date","Business date","date",initial.business_date || todayNY(),
-      initial.started_at ? 'readonly required' : 'required') +
-    stopOptionsHtml("job-stops") +
+  const chooseStatus = !fromQuote && (job || !prefill.status);
+  const fields = stopOptionsHtml("job-stops") +
     ledgerInput("pickup","Pickup","text",initial.pickup,'maxlength="250" list="job-stops"') +
-    ledgerInput("destination","Destination","text",initial.destination,'maxlength="250" list="job-stops"') +
-    ledgerInput("customer","Customer","text",initial.customer,'maxlength="250"') +
-    '<label class="field" for="ledger-status">Status</label><select name="status" id="ledger-status">' +
-    Object.entries(statuses).map(([value,label]) =>
-      '<option value="' + value + '"' + (value === status ? ' selected' : '') + '>' + label + '</option>').join("") +
-    '</select>' + ledgerInput("fare","Fare ($)","number",initial.fare,'min="0" max="9999999999.99" step="0.01"') +
-    '<div id="ledger-actuals" hidden>' +
-    ledgerInput("minutes","Working minutes (if known)","number",initial.working_minutes,
-      'min="0" max="9999999.999" step="0.001"') + '</div>';
+    ledgerInput("destination","Drop-off","text",initial.destination,'maxlength="250" list="job-stops"') +
+    (chooseStatus ? '<label class="field" for="ledger-status">Status</label><select name="status" id="ledger-status">' +
+      Object.entries(statuses).map(([value,label]) =>
+        '<option value="' + value + '"' + (value === status ? ' selected' : '') + '>' + label + '</option>').join("") +
+      '</select>' : '') +
+    ledgerInput("fare","Fare ($)","number",initial.fare,'min="0" max="9999999999.99" step="0.01"' +
+      (status === "completed" ? " required" : "")) +
+    '<div id="ledger-actuals"' + (status === "completed" ? "" : " hidden") + '>' +
+    ledgerInput("minutes","Working time (min)","number",initial.working_minutes,
+      'min="0" max="9999999.999" step="0.001"') + '</div>' +
+    formDetails("Date & customer",ledgerInput("date","Job date","date",initial.business_date || todayNY(),
+      initial.started_at ? 'readonly required' : 'required') +
+      ledgerInput("customer","Customer","text",initial.customer,'maxlength="250"'),!!initial.customer);
   openLedgerForm(job ? "Update job" : fromQuote ? "Save quote" : "Add job",fields,async (data,user) => {
     const businessDate = data.get("date");
-    const jobStatus = data.get("status");
+    const jobStatus = chooseStatus ? data.get("status") : status;
     const fare = data.get("fare");
     const minutes = data.get("minutes");
     const rental = ledgerRental(businessDate);
@@ -4114,6 +4145,7 @@ function openLedgerJobForm(job = null,prefill = {},back = null){
     select.onchange = () => {
       const completed = select.value === "completed";
       document.getElementById("ledger-actuals").hidden = !completed;
+      document.getElementById("ledger-minutes").disabled = !completed;
       document.getElementById("ledger-fare").required = completed;
     };
     select.onchange();
@@ -4124,11 +4156,10 @@ function openLedgerPayment(job,payments,back = null){
   const due = job.fare == null ? null : round2(Number(job.fare) - tdSum(payments,"amount"));
   const fields = ledgerInput("amount","Amount received ($)","number",due > 0 ? due : "",
     'required min="0.01" max="9999999999.99" step="0.01"') +
-    ledgerInput("date","Date received","date",todayNY(),'required') +
-    ledgerInput("method","Payment method (optional)","text","",'maxlength="100"');
+    formDetails("Date received",ledgerInput("date","Date received","date",todayNY(),'required max="' + todayNY() + '"'));
   openLedgerForm("Record payment",fields,(data,user) => ledgerWriteOnce("fl2_payments",{
     user_id:user, job_id:job.id, received_on:data.get("date"), amount:Number(data.get("amount")),
-    method:data.get("method").trim() || null, source:"manual", source_key:key
+    source:"manual", source_key:key
   }),null,"Save",back);
 }
 function openJobToll(date){
@@ -4136,8 +4167,8 @@ function openJobToll(date){
   const jobs = tdLedger.jobs.filter(job => job.business_date === date && job.status === "completed");
   openLedgerForm("Record tolls",
     ledgerInput("amount","Amount ($)","number","",'required min="0" max="9999999999.99" step="0.01"') +
-    '<label class="field" for="toll-job">Job</label><select name="job" id="toll-job"><option value="">Day expense</option>' +
-    jobs.map(job => '<option value="' + esc(job.id) + '">' + esc(ledgerJobTitle(job)) + '</option>').join("") + '</select>',
+    (jobs.length ? '<label class="field" for="toll-job">Apply to</label><select name="job" id="toll-job"><option value="">Day expense</option>' +
+      jobs.map(job => '<option value="' + esc(job.id) + '">' + esc(ledgerJobTitle(job)) + '</option>').join("") + '</select>' : ''),
     (data,user) => ledgerWriteOnce("fl2_expenses",{
       user_id:user,job_id:data.get("job") || null,business_date:date,category:"toll",
       amount:Number(data.get("amount")),review_state:"confirmed",source:"manual",source_key:key
@@ -4184,11 +4215,11 @@ function openLedgerRental(back = null){
     'required min="0" max="9999999999.99" step="0.01"');
   openLedgerForm("Add rental period",
     ledgerInput("start","First rental day","date",todayNY(),'required') +
-    ledgerInput("end","Return date (excluded)","date","",'required') + amount +
-    ledgerInput("hours","Planned working hours","number",calcCfg.targetHours,
+    ledgerInput("end","Car return date","date","",'required') + amount +
+    formDetails("Working targets",ledgerInput("hours","Planned working hours","number",calcCfg.targetHours,
       'required min="0.001" max="9999999.999" step="0.001"') +
-    ledgerInput("goal","Take-home goal per hour ($)","number",calcCfg.earningsTarget,
-      'required min="0" max="99999999.99" step="0.01"'), async (data,user) => {
+      ledgerInput("goal","Take-home goal per hour ($)","number",calcCfg.earningsTarget,
+      'required min="0" max="99999999.99" step="0.01"')), async (data,user) => {
     const startsOn = data.get("start"), endsBefore = data.get("end");
     if(endsBefore <= startsOn) throw new Error("Enter a return date after the first rental day.");
     if(tdLedger.rentals.some(row => startsOn < row.ends_before && endsBefore > row.starts_on)){
@@ -4332,9 +4363,24 @@ async function init(){
   }
   h('<div class="empty">Loading prices…</div>');
   try {
+    const q = new URLSearchParams(location.search);
+    const fragment = new URLSearchParams(location.hash.slice(1));
+    if(q.get("view") === "shared" || fragment.has("fare")){
+      let fare;
+      if(fragment.has("fare")) fare = JSON.parse(fragment.get("fare"));
+      else {
+        const code = q.get("code") || "";
+        if(!/^[a-z0-9]{4,64}$/i.test(code)) throw new Error("Invalid fare link.");
+        const rows = await sb("shares?select=public_fare&code=eq." + encodeURIComponent(code));
+        fare = rows?.[0]?.public_fare;
+      }
+      if(!fare || typeof fare.amount !== "string" || !fare.amount) throw new Error("Fare unavailable.");
+      renderSharedFare(fare);
+      loadData().catch(() => {});
+      return;
+    }
     await loadData();
     await calcInitStore();
-    const q = new URLSearchParams(location.search);
     const shRow = q.get("sh") ? await sb("shares?code=eq." + encodeURIComponent(q.get("sh")) + "&select=*").catch(() => null) : null;
     const shared = shRow && shRow[0];
     const viewParam = signInDestination || q.get("view");
