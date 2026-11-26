@@ -236,13 +236,19 @@
     box-shadow:0 8px 28px rgba(0,0,0,.18);
   }
   @media (min-width:560px){
-    #menu-pill{ left:50%; right:auto; transform:translateX(-50%); width:min(220px, calc(100vw - 120px)); }
+    #menu-pill{ left:50%; right:auto; transform:translateX(-50%); width:345px; }
   }
   #menu-pill button{
     flex:1; border:0; background:transparent; color:var(--text);
     padding:10px 4px; border-radius:980px; cursor:pointer; white-space:nowrap;
   }
-  #menu-pill button svg{ width:22px; height:22px; display:block; margin:0 auto; }
+  #menu-pill button svg{ width:20px; height:20px; display:block; margin:0 auto 3px; }
+  #menu-pill button span.menu-label{ display:block; font-size:11px; }
+  .ledger-date{ font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; }
+  .ledger-form .ledger-date{ width:100%; }
+  .ledger-form p[role=alert]{ color:var(--danger); }
+  .tdrow.tdexpense{ min-height:44px; border:0; padding:10px 0; color:var(--link); }
+  .tdlist + .tdlist{ margin-top:12px; }
   #menu-pill button.on{ background:var(--surface); color:var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.12); }
   /* calculator */
   .set-row{ display:flex; align-items:center; gap:10px; padding:12px 2px; border-bottom:1px solid var(--border); font-size:16px; }
@@ -255,7 +261,7 @@
   .trip-x{ border:0; background:var(--chip); color:var(--muted); width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:13px; flex:none; margin-left:auto; }
   #c-fare-edit{ width:100%; text-align:center; font-size:52px; font-weight:700; letter-spacing:-.03em; border:0; background:transparent; color:var(--text); padding:0; margin:32px 0 4px; }
   .hidden{ display:none !important; }
-.tdhead{display:flex;align-items:center;justify-content:space-between;margin:10px 0 16px;gap:8px}.tdhead h1{font-size:30px;margin:0;letter-spacing:-.045em}.tdhead input{font-size:14px;max-width:145px;border:0;background:transparent;color:var(--muted);min-height:44px}.tdcard{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:15px;font-variant-numeric:tabular-nums}.tdmetrics{display:grid;grid-template-columns:1.18fr 1fr;gap:10px;align-items:center}.tdgauge{position:relative;aspect-ratio:1.55;text-align:center;min-width:0}.tdgauge svg{width:100%;height:100%}.tdcopy{position:absolute;inset:43% 0 auto;line-height:1.12}.tdscore{font-size:clamp(23px,6.7vw,34px);font-weight:760;letter-spacing:-.05em;white-space:nowrap}.tdscore small{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0}.tdmuted{font-size:12px;color:var(--muted);line-height:1.45}.tdnet{border-left:1px solid var(--border);padding-left:12px}.tdnet b{font-size:clamp(26px,7.3vw,38px);display:block;letter-spacing:-.05em;margin:6px 0;overflow-wrap:anywhere}.tdgap{text-align:center;font-size:12px;font-weight:650;margin:5px 0 14px}.tdhours{border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.tdhours b{font-size:19px}.tdbar{grid-column:1/-1;height:5px;border-radius:6px;background:var(--chip);overflow:hidden}.tdbar i{display:block;height:100%;background:var(--accent);border-radius:6px}.tdtabs{display:flex;gap:22px;margin-top:12px;border-bottom:1px solid var(--border)}.tdtabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:650;padding:0 3px;min-height:48px;position:relative}.tdtabs button[aria-selected=true]{color:var(--text)}.tdtabs button[aria-selected=true]:after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:3px;background:var(--accent)}.tdlist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}.tdrow{width:100%;border:0;border-bottom:1px solid var(--border);background:none;color:var(--text);font:inherit;text-align:left;padding:14px;min-height:72px;display:flex;justify-content:space-between;gap:10px;align-items:center}.tdrow:last-child{border:0}.tdrow span:first-child{min-width:0;flex:1}.tdrow span:last-child{text-align:right;flex:none}.tdrow b{display:block;font-size:15px;overflow-wrap:anywhere}.tdrow small{display:block;font-size:12px;margin-top:5px}.tdline{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);font-size:14px}.tdline:last-child{border:0}.tdlinks{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:48px}.tdlinks button{min-height:44px;color:var(--link);background:none;border:0;font:inherit;font-weight:600;font-size:14px}.tdnote{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0}
+.tdhead{display:flex;align-items:center;justify-content:space-between;margin:10px 0 16px;gap:8px}.tdhead h1{font-size:30px;margin:0;letter-spacing:-.045em}.tdhead input{font-size:14px;max-width:145px;border:0;background:transparent;color:var(--muted);min-height:44px}.tdcard{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:15px;font-variant-numeric:tabular-nums}.tdmetrics{display:grid;grid-template-columns:1.18fr 1fr;gap:10px;align-items:center}.tdgauge{position:relative;aspect-ratio:1.55;text-align:center;min-width:0}.tdgauge svg{width:100%;height:100%}.tdcopy{position:absolute;inset:43% 0 auto;line-height:1.12}.tdscore{font-size:clamp(23px,6.7vw,34px);font-weight:760;letter-spacing:-.05em;white-space:nowrap}.tdscore small{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0}.tdmuted{font-size:12px;color:var(--muted);line-height:1.45}.tdnet{border-left:1px solid var(--border);padding-left:12px}.tdnet b{font-size:clamp(26px,7.3vw,38px);display:block;letter-spacing:-.05em;margin:6px 0;overflow-wrap:anywhere}.tdgap{text-align:center;font-size:12px;font-weight:650;margin:5px 0 14px}.tdhours{border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.tdhours b{font-size:19px}.tdbar{grid-column:1/-1;height:5px;border-radius:6px;background:var(--chip);overflow:hidden}.tdbar i{display:block;height:100%;background:var(--accent);border-radius:6px}.tdtabs{display:flex;gap:22px;margin-top:12px;border-bottom:1px solid var(--border)}.tdtabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:650;padding:0 3px;min-height:48px;position:relative}.tdtabs button:is([aria-selected=true],[aria-pressed=true]){color:var(--text)}.tdtabs button:is([aria-selected=true],[aria-pressed=true]):after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:3px;background:var(--accent)}.tdlist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}.tdrow{width:100%;border:0;border-bottom:1px solid var(--border);background:none;color:var(--text);font:inherit;text-align:left;padding:14px;min-height:72px;display:flex;justify-content:space-between;gap:10px;align-items:center}.tdrow:last-child{border:0}.tdrow span:first-child{min-width:0;flex:1}.tdrow span:last-child{text-align:right;flex:none}.tdrow b{display:block;font-size:15px;overflow-wrap:anywhere}.tdrow small{display:block;font-size:12px;margin-top:5px}.tdline{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);font-size:14px}.tdline:last-child{border:0}.tdlinks{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:48px}.tdlinks button{min-height:44px;color:var(--link);background:none;border:0;font:inherit;font-weight:600;font-size:14px}.tdnote{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0}
 .tdplain{border:0;background:none;color:var(--text);font:inherit;width:100%;cursor:pointer}.tdnet.tdplain{border-left:1px solid var(--border);text-align:left}.tdhours.tdplain{border-top:1px solid var(--border);text-align:left}.tdplain:focus-visible{outline:2px solid var(--accent);outline-offset:3px}</style>
 </head>
 <body>
@@ -272,9 +278,10 @@
   </div>
 </div>
 <div id="menu-pill" role="navigation" aria-label="Menu">
-  <button data-menu="today" aria-label="Today"></button><button data-menu="fares" aria-label="Fare sheet"></button>
-  <button data-menu="calc" aria-label="Calculator"></button>
-  <button data-menu="community" aria-label="Community"></button>
+  <button data-menu="today" aria-label="Today"></button>
+  <button data-menu="calc" aria-label="Quote"></button>
+  <button data-menu="jobs" aria-label="Jobs"></button>
+  <button data-menu="money" aria-label="Money"></button>
   <button data-menu="account" aria-label="Account"></button>
 </div>
 <div id="modal" class="hidden">
@@ -791,9 +798,9 @@ function goMode(next){
    currentColor. The bottom bar is the only way between modes — the
    calculator is a top-level screen, never reached by a back link. */
 const MENU_ICONS = {today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4m8-4v4M4 10h16m-12 4h8"/></svg>',
-  fares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
+  jobs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="7" width="16" height="13" rx="3"/><path d="M8 7V4h8v3M4 12h16m-10 2h4"/></svg>',
+  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 6v12m3-9h-4a1.5 1.5 0 0 0 0 3h2a1.5 1.5 0 0 1 0 3H9"/></svg>',
   calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7.5h8M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/></svg>',
-  community: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3 2.9-4.6 5.5-4.6s4.7 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.6c2.3.3 4 1.7 4.7 4.4"/></svg>',
   account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>'
 };
 function updateMenu(){
@@ -802,12 +809,22 @@ function updateMenu(){
   // The icon bar hides wherever the loop bar shows.
   const loopViews = ["quote", "flatbush", "calc-result"];
   pill.style.display = loopViews.includes(view) ? "none" : "";
-  const section = view === "today" ? "today" : view === "pending" ? "community"
+  const section = ["today","jobs","money"].includes(view) ? view : view === "pending" ? "account"
     : view === "account" || view.indexOf("account-") === 0 ? "account"
-    : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "fares";
-  pill.querySelectorAll("[data-menu]").forEach(b => b.classList.toggle("on", b.dataset.menu === section));
+    : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "account";
+  pill.querySelectorAll("[data-menu]").forEach(b => {
+    const active = b.dataset.menu === section;
+    b.classList.toggle("on", active);
+    if(active) b.setAttribute("aria-current","page");
+    else b.removeAttribute("aria-current");
+  });
 }
-function goMenu(section){if(section==="today"){screenStack=[];renderToday();return;}
+function goMenu(section){
+  if(["today","jobs","money"].includes(section)){
+    screenStack = [];
+    tdRenderView(section, !tdLoading && (!tdLedger || tdLedger.user !== calcUser?.id));
+    return;
+  }
   if(section === "fares" || section === "calc"){ goMode(section); return; }
   if(section === "community"){ screenStack = []; renderPending(); return; }
   if(section === "account"){
@@ -854,7 +871,7 @@ function setStep(n, label){
   // there instead, matching the wizard's From step. The calculator is
   // a top-level screen; the bottom bar is the way between modes.
   const onCalcHome = view === "calc" && calcStep === 1;
-  const onTabRoot = view === "account" || view === "pending" || view === "today";
+  const onTabRoot = ["account","pending","today","jobs","money"].includes(view);
   document.getElementById("topnav").classList.toggle("in-flow", (inFlow || view !== "step1") && !onCalcHome && !noCalcResultBack && !onTabRoot);
   renderHeader();
   updateMenu();
@@ -1408,11 +1425,13 @@ async function calcRefreshSession(){
     return ns;
   } catch(e){ calcClearSession(); calcUser = null; return null; }
 }
+let calcRefreshPending = null;
 async function calcAuthHeaders(){
   let s = calcSession();
   if(!s) return null;
   if(s.expires_at && s.expires_at < Date.now() + 60000){
-    s = await calcRefreshSession();
+    calcRefreshPending ??= calcRefreshSession().finally(() => { calcRefreshPending = null; });
+    s = await calcRefreshPending;
     if(!s) return null;
   }
   return { "apikey": KEY, "Authorization": "Bearer " + s.access_token, "Content-Type": "application/json" };
@@ -1426,13 +1445,15 @@ async function sbUser(path, opts){
   return t ? JSON.parse(t) : null;
 }
 function calcSignInGoogle(){
+  const target = LEDGER_VIEWS.includes(view) ? view : "account";
+  sessionStorage.setItem("fl_signin_destination",target);
   const redirect = location.origin + "/?view=account";
   location.href = SB + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(redirect);
 }
 function calcSignOut(){
   calcClearSession();
   calcUser = null;
-  tdLedger=null;tdLoadToken++;
+  tdLedger=null;tdLoading=false;tdLoadToken++;
   calcLoadLocal();
   renderAccount(); // sign-out only happens from the Account screen
 }
@@ -1800,25 +1821,21 @@ function calcResultHtml(r, listFare, opts){
   opts = opts || {};
   const fare = r.fare;
   const adjusted = fare !== r.suggestedFare;
+  const goal = Number(calcCfg.earningsTarget);
+  const goalLabel = money(goal);
   let cmp = "";
   if(listFare != null){
     const listTakeHome = round2(listFare - r.expenses);
     const listPerHour = r.totalHours > 0 ? round2(listTakeHome / r.totalHours) : null;
     let cmpLine = "";
     if(listPerHour != null){
-      cmpLine = listPerHour >= 40
-        ? "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — covers your $40 target"
-        : "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — " + money(40 - listPerHour) + " under your $40 target";
+      cmpLine = listPerHour >= goal
+        ? "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr · meets your " + goalLabel + "/hr goal"
+        : "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — " + money(goal - listPerHour) + "/hr below goal";
     }
     cmp = '<div class="card cmp-card" id="c-cmp-card" role="button" tabindex="0"><span class="cmp-chev">›</span><div class="route">List price ' + money(listFare) + " · Suggested " + money(r.suggestedFare) + "</div>" +
       (cmpLine ? '<div class="change">' + esc(cmpLine) + "</div>" : "") + "</div>";
   }
-  const eff = r.effectivePerHour;
-  let targetLine = "";
-  if(eff == null) targetLine = "";
-  else if(eff >= 40) targetLine = "Meets your $40/hr target";
-  else if(r.takeHome < 0) targetLine = "That's " + money(-r.takeHome) + " below your costs";
-  else targetLine = money(40 - eff) + "/hr under your $40 target";
   const routeLine = (opts.from && opts.to) ? '<div class="route-line">' + esc(opts.from) + " → " + esc(opts.to) + "</div>" : "";
   const fareHtml = opts.editable
     ? '<button class="price-big fare-edit-btn" id="c-fare-show">' + money(fare) + "</button>" +
@@ -1828,11 +1845,17 @@ function calcResultHtml(r, listFare, opts){
     '<div class="q-summary">' + (opts.mode === "round" ? "Round trip" : "One way") + "</div>" +
     (adjusted ? '<div class="note-line">Suggested ' + money(r.suggestedFare) + "</div>" : "") +
     ((opts.editable && listFare != null && fare !== listFare) ? '<div style="text-align:center"><button class="quiet-link" id="c-use-list">Use list price ' + money(listFare) + "</button></div>" : "") +
-    breakdownHtml(calcBreakdownLines(r), fare) +
-    cmp +
-    '<div class="card" id="c-takehome"><div class="route">Take-home ' + money(r.takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
-    '<div class="change">Fare ' + money(fare) + " − fuel " + money(r.fuelCost) + " − tolls " + money(r.tollsParking + r.returnTolls) + " − recovery " + money(r.recovery) + "</div>" +
-    (targetLine ? '<div class="change">' + esc(targetLine) + "</div>" : "") + "</div>";
+    '<div class="card" id="c-takehome">' + calcTakeHomeHtml(r, fare) + "</div>" +
+    breakdownHtml(calcBreakdownLines(r), fare) + cmp;
+}
+function calcTakeHomeHtml(result, fare){
+  const takeHome = round2(fare - result.expenses);
+  const rate = result.totalHours > 0 ? round2(takeHome / result.totalHours) : null;
+  const goal = Number(calcCfg.earningsTarget);
+  const pace = rate == null ? "" : rate >= goal ? "Meets goal" : money(goal - rate) + "/hr below goal";
+  return '<div class="route">Estimated take-home ' + money(takeHome) +
+    (rate == null ? "" : " · " + money(rate) + "/hr") + '</div>' +
+    '<div class="change">' + money(goal) + '/hr goal' + (pace ? " · " + pace : "") + '</div>';
 }
 /* v2: the result is its own screen layer, pushed from the form. ‹ Back
    returns to the form with inputs intact. */
@@ -1848,7 +1871,8 @@ function renderCalcResult(){
   view = "calc-result"; setStep(0, "My fare");
   const listFare = calcListFare();
   h('<div id="calc-result">' + calcResultHtml(r0, listFare, { editable: true, mode: calc.mode, from: calc.from, to: calc.to }) + "</div>" +
-    '<button class="btn secondary" id="c-save" style="margin-top:18px">Save trip</button>' +
+    '<button class="btn secondary" id="c-job" style="margin-top:18px">Save quote to Jobs</button>' +
+    '<button class="btn secondary" id="c-save">Save trip to calculator history</button>' +
     '<div class="loop-bar" id="c-loop"><button class="btn" id="c-share">Share fare</button>' +
     '<button class="btn secondary" id="c-new">New rate</button></div>');
   wireCalcResult();
@@ -1878,7 +1902,10 @@ function wireCalcResult(){
       const v = parseFloat(String(e.target.value).replace(/[$,]/g, ""));
       if(v > 0) calc.adjustedFare = round2(v);
       else calc.adjustedFare = null;
-      renderCalcResult();
+      const result = calcFare(calc, calcCfg);
+      box.innerHTML = calcResultHtml(result, calcListFare(), {
+        editable:true, mode:calc.mode, from:calc.from, to:calc.to
+      });
     }
   });
   /* Live update while typing: take-home + $/hr follow the typed fare
@@ -1891,16 +1918,7 @@ function wireCalcResult(){
     const v = parseFloat(String(e.target.value).replace(/[$,]/g, ""));
     const r = calcFare(calc, calcCfg); // expenses / hours are fare-independent
     const fare = (v > 0) ? round2(v) : r.suggestedFare;
-    const takeHome = round2(fare - r.expenses);
-    const eff = r.totalHours > 0 ? round2(takeHome / r.totalHours) : null;
-    let targetLine = "";
-    if(eff == null) targetLine = "";
-    else if(eff >= 40) targetLine = "Meets your $40/hr target";
-    else if(takeHome < 0) targetLine = "That's " + money(-takeHome) + " below your costs";
-    else targetLine = money(40 - eff) + "/hr under your $40 target";
-    card.innerHTML = '<div class="route">Take-home ' + money(takeHome) + (eff != null ? " · " + money(eff) + "/hr" : "") + "</div>" +
-      '<div class="change">Fare ' + money(fare) + " − fuel " + money(r.fuelCost) + " − tolls " + money(r.tollsParking + r.returnTolls) + " − recovery " + money(r.recovery) + "</div>" +
-      (targetLine ? '<div class="change">' + esc(targetLine) + "</div>" : "");
+    card.innerHTML = calcTakeHomeHtml(r, fare);
   });
   box.addEventListener("keydown", (e) => {
     if(e.target && e.target.id === "c-fare-edit" && e.key === "Enter"){ e.target.blur(); }
@@ -1916,6 +1934,10 @@ function wireCalcResult(){
     calcMonth = new Date().toISOString().slice(0, 7);
     pushScreen("calc-history", () => renderCalcResult(), () => renderCalcHistory("calc"));
   });
+  document.getElementById("c-job").onclick = () => {
+    const quote = calcFare(calc, calcCfg);
+    openLedgerJobForm(null, {pickup:calc.from, destination:calc.to, fare:quote.fare});
+  };
   const share = document.getElementById("c-share");
   if(share) share.addEventListener("click", (e) => shareCalc(e.target));
   const nw = document.getElementById("c-new");
@@ -2364,6 +2386,8 @@ function renderAccount(){
     calcMonthWidgetHtml() +
     '<button class="btn secondary" id="a-month-share" style="margin-top:14px">Share ' + esc(fmtMonthLabel(calcMonth)) + '</button>' +
     '<div class="list" style="margin-top:14px">' +
+      '<button class="row" id="a-fares"><span>Fare sheet</span><span class="chev">›</span></button>' +
+      '<button class="row" id="a-community"><span>Community</span>' + (proposals.length ? '<span class="tag" id="community-count">' + proposals.length + '</span>' : '') + '<span class="chev">›</span></button>' +
       '<button class="row" id="a-history"><span>History</span><span class="tag">' + esc(countLabel) + '</span><span class="chev">›</span></button>' +
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev">›</span></button>' +
       '<button class="row" id="a-aliases"><span>Aliases</span>' + (aliasCount > 0 ? '<span class="tag">' + aliasCount + '</span>' : "") + '<span class="chev">›</span></button>' +
@@ -2385,6 +2409,8 @@ function renderAccount(){
     const m = calcMonthList(); const i = m.indexOf(calcMonth);
     if(i > 0){ calcMonth = m[i - 1]; renderAccount(); }
   });
+  document.getElementById("a-fares").onclick = () => goMenu("fares");
+  document.getElementById("a-community").onclick = () => goMenu("community");
   const hist = document.getElementById("a-history");
   if(hist) hist.addEventListener("click", () => { screenStack = []; renderCalcHistory("account"); });
   const rates = document.getElementById("a-rates");
@@ -2623,12 +2649,8 @@ document.getElementById("step-row").addEventListener("click", e => {
   }
 });
 document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b => {
-  b.innerHTML = MENU_ICONS[b.dataset.menu] || "";
-  if(b.dataset.menu === "community"){
-    const s = document.createElement("span");
-    s.className = "badge hidden"; s.id = "community-count"; s.textContent = "0";
-    b.appendChild(s);
-  }
+  b.innerHTML = (MENU_ICONS[b.dataset.menu] || "") +
+    '<span class="menu-label" aria-hidden="true">' + esc(b.getAttribute("aria-label")) + '</span>';
   b.addEventListener("click", () => goMenu(b.dataset.menu));
 });
 const $modal = document.getElementById("modal");
@@ -2642,56 +2664,464 @@ let tdDate=todayNY(),tdTab="trips";
 function tdMoney(n,d=0){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:d,maximumFractionDigits:2}).format(n)}
 function tdColor(n,r,g,u){return u||r==null?"var(--muted)":n<0?"#bf443a":r>=g?"#16844b":"#b27613"}
 
-let tdLoadToken=0,tdLedger=null,tdError="";
+const LEDGER_VIEWS = ["today","jobs","money"];
+const MANUAL_FUEL = "manual_day_fuel";
+let tdLoadToken = 0, tdLedger = null, tdError = "", tdLoading = false;
+
+function tdRenderView(section, reload = false){
+  if(section === "today") renderToday(reload);
+  else if(section === "jobs") renderLedgerJobs(reload);
+  else if(section === "money") renderLedgerMoney(reload);
+}
 async function tdFetch(table,fields,user){
- const result=[];for(let offset=0;;offset+=500){const rows=await sbUser(table+"?select="+fields+"&user_id=eq."+encodeURIComponent(user)+"&limit=500&offset="+offset);if(!Array.isArray(rows))throw Error("Invalid ledger response");result.push(...rows);if(rows.length<500)return result;}
+ const result=[];for(let offset=0;;offset+=500){const rows=await sbUser(table+"?select="+fields+"&user_id=eq."+encodeURIComponent(user)+"&order="+(table==="fl2_fuel_allocations"?"segment_id,purchase_id":"id")+"&limit=500&offset="+offset);if(!Array.isArray(rows))throw Error("Invalid ledger response");result.push(...rows);if(rows.length<500)return result;}
 }
 async function tdLoad(){
- const token=++tdLoadToken,user=calcUser?.id;tdLedger=null;tdError="";renderToday(false);if(!user)return;
+ const token = ++tdLoadToken, user = calcUser?.id;
+ tdLedger = null;
+ tdError = "";
+ tdLoading = !!user;
+ tdRenderView(view);
+ if(!user) return;
  try{const [jobs,segments,expenses,purchases,allocations,payments,rentals]=await Promise.all([
- tdFetch("fl2_jobs","id,business_date,pickup,destination,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes",user),
+ tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at",user),
  tdFetch("fl2_segments","id,job_id,business_date,distance_mi,duration_minutes,category,origin,destination,source",user),
- tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state",user),
+ tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source",user),
  tdFetch("fl2_fuel_purchases","id,business_date,amount,gallons",user),
  tdFetch("fl2_fuel_allocations","segment_id,allocated_cost,method",user),
  tdFetch("fl2_payments","job_id,received_on,amount",user),
  tdFetch("fl2_rentals","id,starts_on,ends_before,fixed_cost,planned_hours,hourly_goal",user)
  ]);if(token!==tdLoadToken||calcUser?.id!==user)return;tdLedger={user,jobs,segments,expenses,purchases,allocations,payments,rentals};}
  catch(e){if(token!==tdLoadToken)return;tdError="Could not load your driving ledger. Try again.";}
- if(view==="today"&&token===tdLoadToken)renderToday(false);
+ if(token === tdLoadToken){
+   tdLoading = false;
+   tdRenderView(view);
+ }
 }
 function tdLine(l,v){return '<div class="tdline"><span>'+esc(l)+'</span><b>'+esc(v)+'</b></div>'}
 function tdSum(rows,key){return rows.reduce((a,r)=>a+Number(r[key]||0),0)}
 function tdDay(date){
- const l=tdLedger,jobs=l.jobs.filter(j=>j.business_date===date&&j.status==="completed"),ids=new Set(jobs.map(j=>j.id)),segments=l.segments.filter(s=>s.job_id?ids.has(s.job_id):s.business_date===date).filter(s=>s.category!=="personal"&&s.category!=="unclassified"),expenses=l.expenses.filter(e=>e.job_id?ids.has(e.job_id):e.business_date===date),segIds=new Set(segments.map(s=>s.id)),fuel=l.allocations.filter(x=>segIds.has(x.segment_id)),gross=tdSum(jobs,"fare"),hours=tdSum(jobs,"working_minutes")/60,completeTime=jobs.every(j=>j.working_minutes!=null),completeFare=jobs.every(j=>j.fare!=null),confirmed=jobs.length>0&&jobs.every(j=>j.review_state==="confirmed")&&completeTime&&completeFare&&jobs.every(j=>j.rental_hourly_snapshot!=null)&&expenses.every(e=>e.review_state==="confirmed")&&segments.length>0&&segments.every(s=>fuel.some(f=>f.segment_id===s.id&&f.method!=="estimated"))&&fuel.every(f=>f.method!=="estimated"),rent=jobs.reduce((a,j)=>a+Number(j.working_minutes||0)/60*Number(j.rental_hourly_snapshot||0),0),cost=tdSum(expenses,"amount")+tdSum(fuel,"allocated_cost")+rent;
- return {jobs,segments,expenses,fuel,gross,hours,completeTime,completeFare,confirmed,rent,cost,net:confirmed?gross-cost:null,rate:confirmed&&hours>0?(gross-cost)/hours:null,miles:tdSum(segments,"distance_mi")};
+  const ledger = tdLedger;
+  const jobs = ledger.jobs.filter(job => job.business_date === date && job.status === "completed");
+  const jobIds = new Set(jobs.map(job => job.id));
+  const belongsToDay = row => row.job_id ? jobIds.has(row.job_id) : row.business_date === date;
+  const segments = ledger.segments.filter(row => belongsToDay(row) &&
+    row.category !== "personal" && row.category !== "unclassified");
+  const expenses = ledger.expenses.filter(row => belongsToDay(row) && row.source !== MANUAL_FUEL);
+  const manualFuel = ledger.expenses.find(row => row.business_date === date && row.source === MANUAL_FUEL);
+  const segmentIds = new Set(segments.map(row => row.id));
+  const fuel = ledger.allocations.filter(row => segmentIds.has(row.segment_id));
+  const fuelCost = manualFuel ? Number(manualFuel.amount) : tdSum(fuel,"allocated_cost");
+  const fuelConfirmed = manualFuel ? manualFuel.review_state === "confirmed" :
+    segments.length > 0 && segments.every(segment => fuel.some(row => row.segment_id === segment.id)) &&
+    fuel.every(row => row.method !== "estimated");
+  const gross = tdSum(jobs,"fare");
+  const hours = tdSum(jobs,"working_minutes") / 60;
+  const completeTime = jobs.every(job => job.working_minutes != null);
+  const completeFare = jobs.every(job => job.fare != null);
+  const rentalKnown = completeTime && jobs.every(job => job.rental_hourly_snapshot != null);
+  const recordedWork = jobs.length > 0 || segments.length > 0;
+  const hasUnclassified = ledger.segments.some(row => belongsToDay(row) && row.category === "unclassified");
+  const operatingConfirmed = !hasUnclassified &&
+    (!recordedWork || (fuelConfirmed && expenses.some(row => row.category === "toll"))) &&
+    completeFare && jobs.every(job => job.review_state === "confirmed") &&
+    expenses.every(row => row.review_state === "confirmed");
+  const confirmed = jobs.length > 0 && operatingConfirmed && rentalKnown;
+  const rent = jobs.reduce((sum, job) =>
+    sum + Number(job.working_minutes || 0) / 60 * Number(job.rental_hourly_snapshot || 0), 0);
+  const operatingCost = tdSum(expenses,"amount") + fuelCost;
+  const cost = operatingCost + rent;
+  const net = confirmed ? gross - cost : null;
+  return {jobs,segments,expenses,fuel,manualFuel,fuelCost,operatingCost,operatingConfirmed,gross,hours,
+    completeTime,completeFare,confirmed,rentalKnown,rent,cost,net,
+    rate:net != null && hours > 0 ? net / hours : null,miles:tdSum(segments,"distance_mi")};
+}
+function ledgerLoading(head){
+  if(!calcUser){
+    h(head + '<div class="tdcard"><p>Sign in to access your driving ledger.</p>' +
+      '<button class="btn" id="ledger-login">Sign in with Google</button></div>');
+    document.getElementById("ledger-login").onclick = calcSignInGoogle;
+    return true;
+  }
+  if(tdLedger?.user === calcUser.id) return false;
+  h(head + '<div class="tdcard"><p role="status">' + esc(tdError || "Loading your driving records…") +
+    '</p>' + (tdError ? '<button class="btn" id="ledger-retry">Retry</button>' : '') + '</div>');
+  const retry = document.getElementById("ledger-retry");
+  if(retry) retry.onclick = tdLoad;
+  return true;
 }
 function renderToday(reload=true){
  view="today";inFlow=false;setStep(0,"Today");
  if(reload){tdLoad();return;}
  const head='<div class="tdhead"><h1>Today</h1><input id="td-date" aria-label="Business date" type="date" value="'+esc(tdDate)+'"></div>';
- if(!calcUser){h(head+'<div class="tdcard"><h2>Your driving history</h2><p class="tdnote">Sign in to load your private ledger. No sample data.</p><button class="btn" id="td-login">Sign in with Google</button></div>');document.getElementById("td-login").onclick=calcSignInGoogle;return;}
- if(!tdLedger||tdLedger.user!==calcUser.id){h(head+'<div class="tdcard"><p class="tdnote">'+esc(tdError||"Loading your driving records…")+'</p>'+(tdError?'<button class="btn" id="td-retry">Retry</button>':'')+'</div>');const retry=document.getElementById("td-retry");if(retry)retry.onclick=()=>tdLoad();return;}
- const s=tdDay(tdDate),l=tdLedger,month=l.jobs.filter(j=>j.business_date.slice(0,7)===tdDate.slice(0,7)&&j.status==="completed"),monthGross=tdSum(month,"fare"),monthHours=tdSum(month,"working_minutes")/60,monthIncomplete=month.some(j=>j.working_minutes==null),rental=l.rentals.find(r=>r.starts_on<=tdDate&&r.ends_before>tdDate),periodJobs=rental?l.jobs.filter(j=>j.business_date>=rental.starts_on&&j.business_date<rental.ends_before&&j.status==="completed"):month,periodHours=tdSum(periodJobs,"working_minutes")/60,goal=Number(rental?.hourly_goal||calcCfg.earningsTarget||40),target=Number(rental?.planned_hours||calcCfg.targetHours||160),color=tdColor(s.net,s.rate,goal,!s.confirmed),max=Math.max(1,goal*1.22),p=Math.max(0,Math.min(1,(s.rate||0)/max)),point=(f,r=77)=>[90-r*Math.cos(f*Math.PI),88-r*Math.sin(f*Math.PI)],a=point(p),b=point(goal/max,68),c=point(goal/max,86);
+ if(ledgerLoading(head)) return;
+ const s = tdDay(tdDate), l = tdLedger;
+ const month = l.jobs.filter(job => job.business_date.slice(0,7) === tdDate.slice(0,7) && job.status === "completed");
+ const rental = ledgerRental(tdDate);
+ const periodJobs = rental ? l.jobs.filter(job => job.business_date >= rental.starts_on &&
+   job.business_date < rental.ends_before && job.status === "completed") : month;
+ const periodHours = tdSum(periodJobs,"working_minutes") / 60;
+ const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
+ const target = Number(rental?.planned_hours ?? calcCfg.targetHours);
+ const color = tdColor(s.net,s.rate,goal,!s.confirmed);
+ const max = Math.max(1,goal*1.22);
+ const p = Math.max(0,Math.min(1,(s.rate || 0)/max));
+ const point = (fraction,radius=77) => [90-radius*Math.cos(fraction*Math.PI),88-radius*Math.sin(fraction*Math.PI)];
+ const a = point(p), b = point(goal/max,68), c = point(goal/max,86);
  const gauge='<button class="tdgauge tdplain" id="td-gauge" aria-label="Hourly performance details"><svg viewBox="0 0 180 112" aria-hidden="true"><path d="M13 88 A77 77 0 0 1 167 88" fill="none" stroke="var(--chip)" stroke-width="8" stroke-linecap="round"/>'+(p?'<path d="M13 88 A77 77 0 0 1 '+a.join(" ")+'" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round"/>':'')+'<path d="M'+b.join(" ")+' L'+c.join(" ")+'" stroke="var(--muted)" stroke-width="2"/></svg><div class="tdcopy"><div class="tdscore" style="color:'+color+'">'+(s.rate==null?"—":tdMoney(s.rate,2))+'<small>/hr</small></div><div class="tdmuted">'+tdMoney(goal)+'/hr goal</div></div></button>';
- const rows=s.jobs.map(j=>{const seg=s.segments.filter(x=>x.job_id===j.id),m=tdSum(seg,"distance_mi"),paid=tdSum(l.payments.filter(x=>x.job_id===j.id),"amount");return '<button class="tdrow" data-td-job="'+esc(j.id)+'"><span><b>'+esc([j.pickup,j.destination].filter(Boolean).join(" → ")||"Recorded job")+'</b><small class="tdmuted">'+(j.working_minutes==null?"Time pending":fmtNum(Number(j.working_minutes)/60)+"h")+' · '+fmtNum(m)+' recorded mi</small></span><span><b>'+(j.fare==null?"Pending":tdMoney(Number(j.fare)))+'</b><small class="tdmuted">'+(j.review_state==="confirmed"?"Confirmed":"Needs review")+'</small></span></button>'}).join("");
- const costs=["toll","parking","other"].map(k=>[({toll:"Tolls",parking:"Parking",other:"Other"})[k],s.expenses.filter(e=>e.category===k)]).map(([k,v])=>tdLine(k,v.length?tdMoney(tdSum(v,"amount"),2):"Pending")).join("");
+ const rows = s.jobs.map(job => {
+   const miles = tdSum(s.segments.filter(segment => segment.job_id === job.id),"distance_mi");
+   const detail = (job.working_minutes == null ? "Time pending" : fmtNum(Number(job.working_minutes)/60) + "h") +
+     " · " + fmtNum(miles) + " recorded mi";
+   return ledgerJobRow(job,detail);
+ }).join("");
+ const costs = Object.entries({toll:"Tolls",parking:"Parking",other:"Other"}).map(([key,label]) => {
+   const entries = s.expenses.filter(row => row.category === key);
+   return '<button class="tdrow tdexpense" data-td-expense="' + key + '"><span>' + label + '</span><b>' +
+     (entries.length ? tdMoney(tdSum(entries,"amount"),2) : "Add cost") + ' ›</b></button>';
+ }).join("");
  const tab=(k,l)=>'<button role="tab" data-td-tab="'+k+'" aria-selected="'+(tdTab===k)+'">'+l+'</button>';
- const dates=[...new Set(l.jobs.map(j=>j.business_date))].sort().reverse();
- h(head+'<div class="tdcard"><div class="tdmetrics">'+gauge+'<button class="tdnet tdplain" id="td-net"><div class="tdmuted">Take home</div><b>'+(s.net==null?"—":tdMoney(s.net))+'</b><div class="tdmuted">of '+tdMoney(s.gross)+' gross'+(s.completeFare?'':' recorded')+'</div></button></div><div class="tdgap" style="color:'+color+'">'+(!s.jobs.length?"No recorded jobs":!s.confirmed?"Pending reconciliation":tdMoney(Math.abs(s.rate-goal),2)+"/hr "+(s.rate>=goal?"above":"below")+" goal")+'</div><button class="tdhours tdplain" id="td-hours"><div><b>'+(s.completeTime?fmtNum(s.hours)+"h":"Pending")+'</b><div class="tdmuted">Trip hours</div></div><div style="text-align:right"><b>'+fmtNum(periodHours)+' / '+fmtNum(target)+'h</b><div class="tdmuted">'+(rental?"Rental":"Month")+' · '+(periodJobs.some(j=>j.working_minutes==null)?"partial":"planned")+'</div></div><div class="tdbar"><i style="width:'+Math.min(100,periodHours/target*100)+'%"></i></div></button></div><div class="tdtabs" role="tablist">'+tab("trips","Trips · "+s.jobs.length)+tab("expenses","Expenses · "+(s.confirmed?tdMoney(s.cost):"Pending"))+'</div><div class="tdlinks"><span class="tdmuted">'+fmtNum(s.miles)+' recorded business mi</span><button id="td-add">New quote</button></div>'+(tdTab==="trips"?'<div class="tdlist">'+(rows||'<div class="empty">No jobs recorded for this date.</div>')+'</div>':'<div class="tdcard">'+tdLine("Fuel consumed",s.fuel.length?tdMoney(tdSum(s.fuel,"allocated_cost"),2)+" recorded":"Pending")+costs+tdLine("Rental allocation",s.confirmed?tdMoney(s.rent,2):"Pending")+tdLine("Fuel purchased (cash)",l.purchases.some(x=>x.business_date===tdDate)?tdMoney(tdSum(l.purchases.filter(x=>x.business_date===tdDate),"amount"),2):"Not recorded")+'</div>')+'<div class="tdlinks"><button id="td-history">History · '+tdMoney(monthGross)+'</button><button id="td-refresh">Refresh</button></div><p class="tdnote">Only recorded ledger data. Missing costs are not zero. Before tax.</p>');
+ const dates = [...new Set([...l.jobs,...l.expenses,...l.purchases].map(row => row.business_date))].sort().reverse();
+ const pace = !s.jobs.length ? "No recorded jobs" : !s.confirmed ? "Pending reconciliation" :
+   s.rate == null ? "No working time recorded" : s.rate === goal ? "At goal" :
+   tdMoney(Math.abs(s.rate-goal),2) + "/hr " + (s.rate > goal ? "above" : "below") + " goal";
+ const progress = Math.min(100,periodHours/Math.max(1,target)*100);
+ const periodLabel = (rental ? "Rental" : "Month") +
+   (periodJobs.some(job => job.working_minutes == null) ? " · partial" : "");
+ const purchases = l.purchases.filter(row => row.business_date === tdDate);
+ const expensePanel = '<div class="tdcard"><button class="tdrow tdexpense" id="td-fuel"><span>Fuel consumed</span><b>' +
+   (s.manualFuel || s.fuel.length ? tdMoney(s.fuelCost,2) : "Add cost") + ' ›</b></button>' + costs +
+   tdLine("Rental allocation",s.jobs.length && s.rentalKnown ? tdMoney(s.rent,2) : "Pending") +
+   tdLine("Fuel purchased (cash)",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchase recorded") +
+   '</div>';
+ const tripsPanel = '<div class="tdlist">' + (rows || '<div class="empty">No jobs recorded for this date.</div>') + '</div>';
+ h(head + '<div class="tdcard"><div class="tdmetrics">' + gauge +
+   '<button class="tdnet tdplain" id="td-net"><div class="tdmuted">Take home</div><b>' +
+   (s.net == null ? "—" : tdMoney(s.net)) + '</b><div class="tdmuted">of ' +
+   tdMoney(s.gross) + (s.completeFare ? " gross" : " recorded gross") + '</div></button></div>' +
+   '<div class="tdgap" style="color:' + color + '">' + pace + '</div>' +
+   '<button class="tdhours tdplain" id="td-hours"><div><b>' +
+   (s.completeTime ? fmtNum(s.hours) + "h" : "Pending") + '</b><div class="tdmuted">Working hours</div></div>' +
+   '<div style="text-align:right"><b>' + fmtNum(periodHours) + " / " + fmtNum(target) +
+   'h</b><div class="tdmuted">' + periodLabel + '</div></div>' +
+   '<div class="tdbar"><i style="width:' + progress + '%"></i></div></button></div>' +
+   '<div class="tdtabs" role="tablist" aria-label="Daily ledger">' + tab("trips","Trips · " + s.jobs.length) +
+   tab("expenses","Expenses · " + (s.confirmed ? tdMoney(s.cost) : "Pending")) + '</div>' +
+   '<div class="tdlinks"><span class="tdmuted">' + fmtNum(s.miles) + ' recorded business mi</span>' +
+   '<button id="td-add">New quote</button></div>' + (tdTab === "trips" ? tripsPanel : expensePanel) +
+   '<div class="tdlinks"><button id="td-history">History · ' + tdMoney(tdSum(month,"fare")) +
+   '</button><button id="td-refresh">Refresh</button></div>');
+
  document.getElementById("td-date").onchange=e=>{if(e.target.value){tdDate=e.target.value;renderToday(false)}};
  $view.querySelectorAll("[data-td-tab]").forEach(e=>e.onclick=()=>{tdTab=e.dataset.tdTab;renderToday(false)});
- $view.querySelectorAll("[data-td-job]").forEach(e=>e.onclick=()=>{const j=l.jobs.find(x=>x.id===e.dataset.tdJob);if(!j)return;const seg=l.segments.filter(x=>x.job_id===j.id),pay=l.payments.filter(x=>x.job_id===j.id);openDrawer([j.pickup,j.destination].filter(Boolean).join(" → ")||"Job",tdLine("Fare",j.fare==null?"Pending":tdMoney(Number(j.fare),2))+tdLine("Payments recorded",pay.length?tdMoney(tdSum(pay,"amount"),2):"Pending entry")+tdLine("Working time",j.working_minutes==null?"Pending":fmtNum(Number(j.working_minutes)/60)+"h")+seg.map(x=>tdLine([x.origin,x.destination].filter(Boolean).join(" → ")||x.category,fmtNum(Number(x.distance_mi||0))+" mi")).join("")+'<p class="tdnote">'+esc(j.notes||"")+'</p>')});
+ wireLedgerJobRows();
+ $view.querySelectorAll("[data-td-expense]").forEach(button => {
+   const category = button.dataset.tdExpense;
+   button.onclick = () => openDailyExpense(tdDate,category,
+     s.expenses.find(row => row.source === "manual_day_" + category));
+ });
+ const fuelButton = document.getElementById("td-fuel");
+ if(fuelButton) fuelButton.onclick = () => openDailyExpense(tdDate,"fuel",s.manualFuel);
  document.getElementById("td-gauge").onclick=()=>openDrawer("Hourly performance",tdLine("Goal",tdMoney(goal)+"/hr")+tdLine("Current",s.rate==null?"Pending":tdMoney(s.rate,2)+"/hr")+'<p class="tdnote">Confirmed working time, fuel, tolls and rental allocation are needed before displaying profit.</p>');
  document.getElementById("td-net").onclick=()=>{tdTab="expenses";renderToday(false)};
- document.getElementById("td-hours").onclick=()=>openDrawer("Working hours",tdLine("Recorded hours",fmtNum(periodHours)+"h")+tdLine("Planned hours",fmtNum(target)+"h")+'<p class="tdnote">Hours may be incomplete. Working more does not automatically improve the hourly rate.</p>');
+ document.getElementById("td-hours").onclick=()=>openDrawer("Working hours",tdLine("Recorded hours",fmtNum(periodHours)+"h")+tdLine("Planned hours",fmtNum(target)+"h")+'<p class="tdnote">Working hours include recorded drive and wait time.</p>');
  document.getElementById("td-add").onclick=()=>goMode("calc");
  document.getElementById("td-refresh").onclick=()=>tdLoad();
  document.getElementById("td-history").onclick=()=>{openDrawer("Recorded history",dates.map(d=>{const x=tdDay(d);return '<button class="tdrow" data-td-day="'+esc(d)+'"><span>'+esc(d)+'</span><b>'+tdMoney(x.gross)+'</b></button>'}).join("")||'<p>No records</p>');document.querySelectorAll("[data-td-day]").forEach(e=>e.onclick=()=>{tdDate=e.dataset.tdDay;closeDrawer();renderToday(false)})};
 }
 
+function ledgerRental(date){
+  return tdLedger?.rentals.find(rental => rental.starts_on <= date && date < rental.ends_before);
+}
+function ledgerJobTitle(job){
+  return [job.pickup,job.destination].filter(Boolean).join(" → ") || "Recorded job";
+}
+function ledgerPaymentLabel(job, payments){
+  if(job.status !== "completed") return {quoted:"Quoted",scheduled:"Scheduled",cancelled:"Cancelled"}[job.status];
+  if(!payments.length) return "No payment recorded";
+  if(job.fare == null) return "Payment recorded";
+  return round2(tdSum(payments,"amount")) >= Number(job.fare) ? "Paid" : "Partially paid";
+}
+function ledgerJobRow(job, detail){
+  const payments = tdLedger.payments.filter(payment => payment.job_id === job.id);
+  return '<button class="tdrow" data-td-job="' + esc(job.id) + '"><span><b>' + esc(ledgerJobTitle(job)) +
+    '</b><small class="tdmuted">' + esc(detail) + '</small></span><span><b>' +
+    (job.fare == null ? "Pending" : tdMoney(Number(job.fare))) + '</b><small class="tdmuted">' +
+    ledgerPaymentLabel(job,payments) + '</small></span></button>';
+}
+function wireLedgerJobRows(){
+  $view.querySelectorAll("[data-td-job]").forEach(button => {
+    button.onclick = () => {
+      const job = tdLedger.jobs.find(row => row.id === button.dataset.tdJob);
+      if(job) openLedgerJob(job);
+    };
+  });
+}
+function openLedgerJob(job){
+  const payments = tdLedger.payments.filter(row => row.job_id === job.id);
+  const segments = tdLedger.segments.filter(row => row.job_id === job.id);
+  const active = job.status === "quoted" || job.status === "scheduled";
+  openDrawer(ledgerJobTitle(job),
+    tdLine("Date",job.business_date) +
+    (job.customer ? tdLine("Customer",job.customer) : "") +
+    tdLine("Status",ledgerPaymentLabel(job,payments)) +
+    tdLine(job.status === "completed" ? "Earned fare" : "Quoted fare",
+      job.fare == null ? "Pending" : tdMoney(Number(job.fare),2)) +
+    tdLine("Payments recorded",payments.length ? tdMoney(tdSum(payments,"amount"),2) : "Pending entry") +
+    tdLine("Working time",job.working_minutes == null ? "Pending" : fmtNum(Number(job.working_minutes)/60) + "h") +
+    segments.map(row => tdLine([row.origin,row.destination].filter(Boolean).join(" → ") || row.category,
+      row.distance_mi == null ? "Mileage pending" : fmtNum(Number(row.distance_mi)) + " mi")).join("") +
+    (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : "") +
+    (active ? '<button class="btn" id="ledger-edit">Update job</button>' : "") +
+    (job.status === "completed" ? '<button class="btn" id="ledger-payment">Record payment</button>' : ""));
+  const edit = document.getElementById("ledger-edit");
+  if(edit) edit.onclick = () => openLedgerJobForm(job);
+  const payment = document.getElementById("ledger-payment");
+  if(payment) payment.onclick = () => openLedgerPayment(job,payments);
+}
+let ledgerJobsFilter = "active";
+function renderLedgerJobs(reload){
+  view = "jobs";
+  inFlow = false;
+  setStep(0,"Jobs");
+  if(reload){ tdLoad(); return; }
+  const head = '<div class="tdhead"><h1>Jobs</h1></div>';
+  if(ledgerLoading(head)) return;
+  const jobs = tdLedger.jobs.filter(job => ledgerJobsFilter === "active"
+    ? job.status === "quoted" || job.status === "scheduled"
+    : job.status === "completed");
+  jobs.sort((a,b) => b.business_date.localeCompare(a.business_date));
+  const tab = (key,label) => '<button data-jobs-filter="' + key + '" aria-pressed="' +
+    (ledgerJobsFilter === key) + '">' + label + '</button>';
+  h(head + '<div class="tdtabs" aria-label="Job status">' + tab("active","Open") + tab("completed","Completed") +
+    '</div><div class="tdlinks"><button id="jobs-quote">New quote</button><button id="jobs-add">Add job</button></div>' +
+    '<div class="tdlist">' + (jobs.length ? jobs.map(job => ledgerJobRow(job,job.business_date)).join("") :
+      '<div class="empty">' + (ledgerJobsFilter === "active" ? "No open jobs." : "No completed jobs.") + '</div>') + '</div>');
+  $view.querySelectorAll("[data-jobs-filter]").forEach(button => {
+    button.onclick = () => { ledgerJobsFilter = button.dataset.jobsFilter; renderLedgerJobs(false); };
+  });
+  document.getElementById("jobs-quote").onclick = () => goMode("calc");
+  document.getElementById("jobs-add").onclick = () => openLedgerJobForm();
+  wireLedgerJobRows();
+}
+function ledgerInput(name,label,type,value,attributes=""){
+  return '<label class="field" for="ledger-' + name + '">' + label + '</label><input id="ledger-' + name +
+    '" name="' + name + '" type="' + type + '"' + (type === "date" ? ' class="ledger-date"' : '') +
+    ' value="' + esc(value ?? "") + '" ' + attributes + '>';
+}
+function openLedgerForm(title,fields,save,onSaved){
+  const user = calcUser?.id;
+  if(!user){
+    openDrawer(title,'<p>Sign in to save to your driving ledger.</p><button class="btn" id="ledger-form-login">Sign in with Google</button>');
+    document.getElementById("ledger-form-login").onclick = calcSignInGoogle;
+    return;
+  }
+  openDrawer(title,'<form class="ledger-form" id="ledger-form">' + fields +
+    '<p role="alert" hidden></p><button class="btn" type="submit">Save</button></form>');
+  const form = document.getElementById("ledger-form");
+  const submit = form.querySelector('button[type="submit"]');
+  const error = form.querySelector("[role=alert]");
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if(submit.disabled) return;
+    error.hidden = true;
+    submit.disabled = true;
+    submit.textContent = "Saving…";
+    try {
+      if(calcUser?.id !== user) throw new Error("Your session changed. Reopen this form.");
+      await save(new FormData(form),user);
+    } catch(errorValue){
+      error.textContent = errorValue.message.startsWith("DB ") ?
+        "Could not save to your ledger. Try again." : errorValue.message;
+      error.hidden = false;
+      submit.disabled = false;
+      submit.textContent = "Save";
+      return;
+    }
+    tdLedger = null;
+    if(!form.isConnected){
+      if(LEDGER_VIEWS.includes(view)) tdLoad();
+      return;
+    }
+    closeDrawer();
+    if(onSaved) onSaved();
+    if(LEDGER_VIEWS.includes(view)) tdLoad();
+  };
+}
+function ledgerWriteOnce(table,row){
+  return sbUser(table + "?on_conflict=user_id,source,source_key",{
+    method:"POST", headers:{Prefer:"resolution=ignore-duplicates"}, body:JSON.stringify(row)
+  });
+}
+function openLedgerJobForm(job = null,prefill = {}){
+  const initial = job || prefill;
+  const key = job ? null : crypto.randomUUID();
+  const fromQuote = view === "calc-result";
+  const status = initial.status || "quoted";
+  const statuses = {quoted:"Quoted",scheduled:"Scheduled"};
+  if(!fromQuote) statuses.completed = "Completed";
+  const fields = ledgerInput("date","Business date","date",initial.business_date || todayNY(),
+      initial.started_at ? 'readonly required' : 'required') +
+    ledgerInput("pickup","Pickup","text",initial.pickup,'maxlength="250"') +
+    ledgerInput("destination","Destination","text",initial.destination,'maxlength="250"') +
+    ledgerInput("customer","Customer","text",initial.customer,'maxlength="250"') +
+    '<label class="field" for="ledger-status">Status</label><select name="status" id="ledger-status">' +
+    Object.entries(statuses).map(([value,label]) =>
+      '<option value="' + value + '"' + (value === status ? ' selected' : '') + '>' + label + '</option>').join("") +
+    '</select>' + ledgerInput("fare","Fare ($)","number",initial.fare,'min="0" max="9999999999.99" step="0.01"') +
+    '<div id="ledger-actuals" hidden>' +
+    ledgerInput("minutes","Actual working minutes, including wait time","number",initial.working_minutes,
+      'min="0" max="9999999.999" step="0.001"') + '</div>';
+  openLedgerForm(job ? "Update job" : fromQuote ? "Save quote" : "Add job",fields,async (data,user) => {
+    const businessDate = data.get("date");
+    const jobStatus = data.get("status");
+    const fare = data.get("fare");
+    const minutes = data.get("minutes");
+    const rental = ledgerRental(businessDate);
+    const row = {
+      business_date:businessDate, pickup:data.get("pickup").trim() || null,
+      destination:data.get("destination").trim() || null, customer:data.get("customer").trim() || null,
+      status:jobStatus, fare:fare === "" ? null : Number(fare),
+      rental_id:rental?.id ?? (businessDate === job?.business_date ? job.rental_id : null)
+    };
+    if(!row.pickup && !row.destination) throw new Error("Enter a pickup or destination.");
+    if(jobStatus === "completed"){
+      row.working_minutes = Number(minutes);
+      row.review_state = "confirmed";
+      row.rental_hourly_snapshot = job?.rental_hourly_snapshot ??
+        (rental ? Number((rental.fixed_cost / rental.planned_hours).toFixed(4)) : null);
+    }
+    if(job){
+      const saved = await sbUser("fl2_jobs?id=eq." + encodeURIComponent(job.id) + "&user_id=eq." +
+        encodeURIComponent(user) + "&status=eq." + job.status,{
+        method:"PATCH", headers:{Prefer:"return=representation"}, body:JSON.stringify(row)
+      });
+      if(!saved?.length) throw new Error("This job changed. Close the form and refresh your ledger.");
+    } else {
+      await ledgerWriteOnce("fl2_jobs",{...row,user_id:user,source:"manual",source_key:key});
+    }
+    ledgerJobsFilter = jobStatus === "completed" ? "completed" : "active";
+  },() => {
+    if(fromQuote) { screenStack = []; renderLedgerJobs(false); }
+  });
+  const select = document.getElementById("ledger-status");
+  if(select){
+    select.onchange = () => {
+      const completed = select.value === "completed";
+      document.getElementById("ledger-actuals").hidden = !completed;
+      document.getElementById("ledger-minutes").required = completed;
+      document.getElementById("ledger-fare").required = completed;
+    };
+    select.onchange();
+  }
+}
+function openLedgerPayment(job,payments){
+  const key = crypto.randomUUID();
+  const due = job.fare == null ? null : round2(Number(job.fare) - tdSum(payments,"amount"));
+  const fields = ledgerInput("amount","Amount received ($)","number",due > 0 ? due : "",
+    'required min="0.01" max="9999999999.99" step="0.01"') +
+    ledgerInput("date","Date received","date",todayNY(),'required') +
+    ledgerInput("method","Payment method (optional)","text","",'maxlength="100"');
+  openLedgerForm("Record payment",fields,(data,user) => ledgerWriteOnce("fl2_payments",{
+    user_id:user, job_id:job.id, received_on:data.get("date"), amount:Number(data.get("amount")),
+    method:data.get("method").trim() || null, source:"manual", source_key:key
+  }));
+}
+function openDailyExpense(date,category,previous){
+  const fuel = category === "fuel";
+  const labels = {fuel:"Fuel consumed",toll:"Tolls",parking:"Parking",other:"Other expenses"};
+  const source = fuel ? MANUAL_FUEL : "manual_day_" + category;
+  const fields = '<p class="tdnote">' + esc(date) + (fuel
+    ? " · This amount will be used for the day’s fuel consumption." : " · Enter the day’s costs that haven’t been recorded on a job.") +
+    '</p>' + ledgerInput("amount","Amount ($)","number",previous?.amount,
+    'required min="0" max="9999999999.99" step="0.01"');
+  openLedgerForm(labels[category],fields,(data,user) =>
+    sbUser("fl2_expenses?on_conflict=user_id,source,source_key",{
+      method:"POST", headers:{Prefer:"resolution=merge-duplicates"}, body:JSON.stringify({
+        user_id:user,business_date:date,category:fuel ? "other" : category,amount:Number(data.get("amount")),
+        review_state:"confirmed",source,source_key:date
+      })
+    }));
+}
+let moneyRentalId = null;
+function openLedgerRental(){
+  const amount = ledgerInput("amount","Total rental cost ($)","number","",
+    'required min="0" max="9999999999.99" step="0.01"');
+  openLedgerForm("Add rental period",
+    ledgerInput("start","First rental day","date",todayNY(),'required') +
+    ledgerInput("end","Return date (excluded)","date","",'required') + amount +
+    ledgerInput("hours","Planned working hours","number",calcCfg.targetHours,
+      'required min="0.001" max="9999999.999" step="0.001"') +
+    ledgerInput("goal","Take-home goal per hour ($)","number",calcCfg.earningsTarget,
+      'required min="0" max="99999999.99" step="0.01"'), async (data,user) => {
+    const startsOn = data.get("start"), endsBefore = data.get("end");
+    if(endsBefore <= startsOn) throw new Error("Enter a return date after the first rental day.");
+    if(tdLedger.rentals.some(row => startsOn < row.ends_before && endsBefore > row.starts_on)){
+      throw new Error("These dates overlap a recorded rental period.");
+    }
+    const rows = await sbUser("fl2_rentals?on_conflict=user_id,starts_on",{
+      method:"POST", headers:{Prefer:"resolution=ignore-duplicates,return=representation"},
+      body:JSON.stringify({user_id:user,starts_on:startsOn,ends_before:endsBefore,
+        fixed_cost:Number(data.get("amount")),planned_hours:Number(data.get("hours")),hourly_goal:Number(data.get("goal"))})
+    });
+    moneyRentalId = rows?.[0]?.id ?? null;
+  });
+}
+function renderLedgerMoney(reload){
+  view = "money";
+  inFlow = false;
+  setStep(0,"Money");
+  if(reload){ tdLoad(); return; }
+  const head = '<div class="tdhead"><h1>Money</h1></div>';
+  const addRental = '<div class="tdlinks"><button id="money-add">Add rental period</button></div>';
+  if(ledgerLoading(head)) return;
+  const rentals = [...tdLedger.rentals].sort((a,b) => b.starts_on.localeCompare(a.starts_on));
+  const rental = rentals.find(row => row.id === moneyRentalId) || ledgerRental(tdDate) || rentals[0];
+  if(!rental){
+    h(head + '<div class="tdcard"><p class="tdnote">No rental period recorded.</p></div>' + addRental);
+    document.getElementById("money-add").onclick = openLedgerRental;
+    return;
+  }
+  const inPeriod = date => rental.starts_on <= date && date < rental.ends_before;
+  const jobs = tdLedger.jobs.filter(job => job.status === "completed" && inPeriod(job.business_date));
+  const jobIds = new Set(jobs.map(job => job.id));
+  const payments = tdLedger.payments.filter(payment => jobIds.has(payment.job_id));
+  const dates = new Set(jobs.map(job => job.business_date));
+  tdLedger.expenses.filter(row => !row.job_id && inPeriod(row.business_date))
+    .forEach(row => dates.add(row.business_date));
+  tdLedger.segments.filter(row => !row.job_id && row.category !== "personal" && inPeriod(row.business_date))
+    .forEach(row => dates.add(row.business_date));
+  const days = [...dates].map(tdDay);
+  const complete = days.length > 0 && days.every(day => day.operatingConfirmed);
+  const earned = tdSum(jobs,"fare");
+  const operating = tdSum(days,"operatingCost");
+  const fixedCost = Number(rental.fixed_cost);
+  const remaining = Math.max(0,fixedCost - (earned - operating));
+  const purchases = tdLedger.purchases.filter(row => inPeriod(row.business_date));
+  h(head + '<label class="field" for="money-period">Rental period (end date exclusive)</label>' +
+    '<select id="money-period">' + rentals.map(row => '<option value="' + esc(row.id) + '"' +
+      (row.id === rental.id ? ' selected' : '') + '>' + esc(row.starts_on + " to " + row.ends_before) + '</option>').join("") +
+    '</select><div class="tdcard" style="margin-top:12px">' +
+    tdLine("Earned fare" + (jobs.some(job => job.fare == null) ? " recorded" : ""),tdMoney(earned,2)) +
+    tdLine("Payments recorded for these jobs",tdMoney(tdSum(payments,"amount"),2)) +
+    tdLine("Recorded working hours",fmtNum(tdSum(jobs,"working_minutes")/60) + " / " + fmtNum(Number(rental.planned_hours)) + "h") +
+    tdLine("Operating costs",complete ? tdMoney(operating,2) : "Pending reconciliation") +
+    tdLine("Full rental cost",tdMoney(fixedCost,2)) +
+    tdLine("Rental cost remaining",complete ? tdMoney(remaining,2) : "Pending reconciliation") +
+    tdLine("Period take-home before tax",complete ? tdMoney(earned - operating - fixedCost,2) : "Pending reconciliation") +
+    tdLine("Fuel purchased (cash)",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchases recorded") +
+    '</div>' + addRental);
+  document.getElementById("money-add").onclick = openLedgerRental;
+  document.getElementById("money-period").onchange = event => {
+    moneyRentalId = event.target.value;
+    renderLedgerMoney(false);
+  };
+}
+
 async function init(){
-  calcHandleAuthCallback();
+  const restoredSession = calcHandleAuthCallback();
+  const signInDestination = restoredSession ? sessionStorage.getItem("fl_signin_destination") : null;
+  if(restoredSession) sessionStorage.removeItem("fl_signin_destination");
   if(!SB || !KEY){
     h('<div class="empty">This app is being set up — the price database is not connected yet.</div>');
     setStep(0, "");
@@ -2704,13 +3134,15 @@ async function init(){
     const q = new URLSearchParams(location.search);
     const shRow = q.get("sh") ? await sb("shares?code=eq." + encodeURIComponent(q.get("sh")) + "&select=*").catch(() => null) : null;
     const shared = shRow && shRow[0];
-    const viewParam = q.get("view");
+    const viewParam = signInDestination || q.get("view");
     if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
       backTarget = "step1";
       if(viewParam === "calc"){ if(!calcOpenFromShare(q)) renderCalc(); } // v4.4.2: a share link opens a new trip on the result
       else if(viewParam === "calc-month") renderCalcHistory("calc"); // "calc-month" still works as an alias
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
-    } else if(viewParam==="today" || !location.search){renderToday();} else if(shared){
+    } else if(LEDGER_VIEWS.includes(viewParam) || [...q.keys()].every(key => key.startsWith("utm_"))){
+      tdRenderView(viewParam || "today",true);
+    } else if(shared){
       sel.wait = { amount: shared.wait_amount != null ? String(shared.wait_amount) : "", unit: shared.wait_unit || "hour", hours: shared.wait_hours || 1 };
       sel.addons = (shared.addons || []).map(a => ({ name: a.name, amount: String(a.amount) }));
       sel.customPrice = shared.custom_price != null ? { trip: shared.grid ? "flatbush" : (shared.trip === "round" ? "round" : "oneway"), price: Number(shared.custom_price) } : null;
