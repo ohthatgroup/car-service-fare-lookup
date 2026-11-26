@@ -57,8 +57,6 @@
   #step-row .dot.cur::after{ background:var(--muted); opacity:1; }
   /* v4.3: the comparison card opens the fare-sheet quote for the
      route — it is a tappable card, with a chevron. */
-  .cmp-card{ position:relative; cursor:pointer; text-align:left; padding-right:34px; }
-  .cmp-chev{ position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:22px; font-weight:400; }
   #nav-logo{ display:flex; align-items:baseline; font-weight:800; font-size:19px; letter-spacing:-.03em; white-space:nowrap; }
   #nav-logo .wm-b{ color:var(--accent); }
   nav.in-flow #nav-logo{ display:none; }
@@ -107,8 +105,6 @@
     vertical-align:2px; margin-left:4px;
   }
   .badge.hidden{ display:none; }
-  #menu-pill button{ position:relative; }
-  #menu-pill button .badge{ position:absolute; top:1px; right:4px; margin:0; }
   #scroll{ flex:1; overflow-y:auto; overscroll-behavior:contain; }
   .col{ max-width:600px; margin:0 auto; padding:20px 16px 180px; }
   .sub{ color:var(--muted); font-size:15px; margin:-8px 0 16px; }
@@ -174,25 +170,12 @@
   .set-chip{ display:inline-flex; align-items:center; background:var(--chip); border-radius:980px; padding:4px 4px 4px 14px; }
   .set-chip button{ background:none; border:0; color:var(--text); font-size:15px; padding:8px 4px; cursor:pointer; min-height:36px; }
   .set-chip .set-chip-x{ color:var(--muted); width:32px; height:32px; min-height:32px; border-radius:50%; padding:0; font-size:13px; flex:none; }
-  .stepper{ display:flex; align-items:center; gap:16px; margin:4px 0 12px; }
   /* Duration Picker (v4.1, Rare UI pattern): hours + minutes as ONE
      uniform control — one background, one border — with a small "h"
      after hours and "min" after minutes, so the field reads as a
      duration on its own ("2 h 30 min"). Distances are steppers, times
      are selectors; the two halves of a time field never differ. */
-  .time-field{ display:flex; align-items:center; gap:6px; margin:4px 0 12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:0 14px; }
-  .time-field input[type="number"], .time-field select{ flex:1; min-width:0; text-align:center; background:transparent; border:0; padding:12px 0; font-size:17px; color:var(--text); }
-  .time-field select{ appearance:none; }
-  .time-unit{ color:var(--muted); font-size:15px; flex:none; }
-  .time-colon{ color:var(--muted); font-size:17px; font-weight:600; flex:none; }
   /* Month widget (v4): summary card on the Account screen */
-  .month-pick{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-  .month-pick .month-label{ font-size:17px; font-weight:600; }
-  .month-nav{ border:0; background:var(--chip); color:var(--text); width:36px; height:36px; border-radius:50%; font-size:18px; line-height:1; cursor:pointer; flex:none; }
-  .month-nav:disabled{ opacity:.35; cursor:default; }
-  .month-sec{ margin-top:14px; }
-  .stepper button{ width:44px; height:44px; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:20px; line-height:1; cursor:pointer; flex:none; }
-  .stepper .step-val{ font-size:17px; min-width:72px; text-align:center; }
   #x-wait-amt, #x-wait-unit, .xa-name, .xa-amt{ margin-bottom:12px; }
   .breakdown{ max-width:340px; margin:18px auto 0; font-size:15px; }
   .breakdown .line{ display:flex; justify-content:space-between; padding:5px 0; color:var(--muted); }
@@ -225,36 +208,53 @@
     border:0; background:var(--surface); color:var(--muted); width:22px; height:22px;
     border-radius:50%; font-size:13px; line-height:1; cursor:pointer; padding:0;
   }
-  /* floating glass menu (v4.2, restored from v3): bottom-center pill,
-     three sections, icons only. Hides wherever the loop bar shows. */
+  #topnav.simple-root{ display:none; }
   #menu-pill{
-    position:fixed; left:16px; right:16px; bottom:calc(14px + env(safe-area-inset-bottom)); z-index:30;
-    display:flex; gap:2px; padding:5px;
-    background:color-mix(in srgb, var(--surface) 68%, transparent);
-    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-    border:1px solid var(--border); border-radius:980px;
-    box-shadow:0 8px 28px rgba(0,0,0,.18);
-  }
-  @media (min-width:560px){
-    #menu-pill{ left:50%; right:auto; transform:translateX(-50%); width:345px; }
+    position:fixed; inset:auto 0 0; width:100%; z-index:30;
+    display:flex; justify-content:center; padding:4px 12px calc(4px + env(safe-area-inset-bottom));
+    background:var(--surface); border-top:1px solid var(--border);
   }
   #menu-pill button{
-    flex:1; border:0; background:transparent; color:var(--text);
-    padding:10px 4px; border-radius:980px; cursor:pointer; white-space:nowrap;
+    flex:1; max-width:140px; min-height:48px; border:0; background:none; color:var(--muted);
+    font:inherit; font-size:13px; cursor:pointer; white-space:nowrap;
   }
-  #menu-pill button svg{ width:20px; height:20px; display:block; margin:0 auto 3px; }
-  #menu-pill button span.menu-label{ display:block; font-size:11px; }
+  #menu-pill button[aria-current=page]{ color:var(--link); font-weight:700; }
+  .simple-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 20px; }
+  .simple-head h1{ font-size:28px; margin:0; letter-spacing:-.035em; }
+  .simple-date-wrap{ position:relative; display:grid; place-items:center; width:44px; height:44px; color:var(--muted); }
+  .simple-date-wrap:focus-within{ outline:2px solid var(--accent); border-radius:8px; }
+  .simple-date{ position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
+  .simple-date::-webkit-calendar-picker-indicator{ position:absolute; inset:0; width:100%; height:100%; padding:0; cursor:pointer; }
+  .simple-label{ font-weight:600; color:var(--muted); font-size:14px; }
+  .day-total{ margin:0 0 18px; font-variant-numeric:tabular-nums; }
+  .day-total strong{ display:block; font-size:clamp(38px,12vw,56px); line-height:1.08;
+    letter-spacing:-.055em; font-weight:720; overflow-wrap:anywhere; margin:4px 0 8px; }
+  .simple-caption,.simple-empty,.simple-action p{ color:var(--muted); font-size:14px; line-height:1.45; }
+  .simple-action{ margin-bottom:20px; }
+  .simple-action .btn{ margin:0; }
+  .simple-action p{ margin:8px 0 0; }
+  .simple-section-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .simple-section-head h2{ font-size:16px; margin:0; }
+  .simple-section-head .quiet-link,.simple-head .quiet-link{ min-height:44px; margin:0; font-size:14px; }
+  .simple-details{ margin-top:12px; border-top:1px solid var(--border); }
+  .simple-details summary{ min-height:44px; align-content:center; cursor:pointer; font-size:14px; font-weight:600; }
+  .simple-fields{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .simple-field{ display:grid; gap:6px; font-size:14px; color:var(--muted); }
+  .simple-field input{ min-height:46px; }
+  .simple-space{ margin-top:12px; }
+  .stepper{ display:flex; align-items:center; gap:12px; margin:4px 0 12px; }
+  .stepper button{ min-width:44px; min-height:44px; border:1px solid var(--border); border-radius:50%;
+    background:var(--surface); color:var(--text); font-size:20px; cursor:pointer; }
+  .list > .tdline{ padding-inline:16px; }
+  .simple-review-status{ font-weight:650; }
+  #c-result{ margin-top:18px; }
+  #topnav.simple-root + #scroll .col{ padding-top:calc(18px + env(safe-area-inset-top)); padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
+  @media (max-width:380px){ .simple-head{ gap:6px; } }
   .ledger-date{ font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:10px; }
   .ledger-form .ledger-date{ width:100%; }
   .ledger-form p[role=alert]{ color:var(--danger); }
   .ledger-evidence{ margin:10px 0; font-size:14px; }
   .ledger-evidence summary{ min-height:44px; align-content:center; cursor:pointer; }
-  .closeout-card{ margin-bottom:12px; }
-  .closeout-heading{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
-  .closeout-heading h2{ font-size:17px; margin:0 0 3px; }
-  .closeout-heading button,.closeout-costs{ min-height:44px; }
-  .closeout-sources{ margin:10px 0 4px; font-size:14px; }
-  .closeout-costs{ text-align:left; font-size:13px; }
   .closeout-table{ width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
   .closeout-table td,.closeout-table th{ text-align:left; padding:8px 4px; border-bottom:1px solid var(--border); }
   .closeout-check{ display:flex; align-items:center; gap:8px; min-height:44px; margin:10px 0; font-size:14px; }
@@ -263,20 +263,17 @@
   .drive-row > span:last-child{ max-width:44%; }
   .tdrow.tdexpense{ min-height:44px; border:0; padding:10px 0; color:var(--link); }
   .tdlist + .tdlist{ margin-top:12px; }
-  #menu-pill button.on{ background:var(--surface); color:var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.12); }
   /* calculator */
   .set-row{ display:flex; align-items:center; gap:10px; padding:12px 2px; border-bottom:1px solid var(--border); font-size:16px; }
   .set-row:last-child{ border-bottom:0; }
   .set-row .set-label{ flex:1; }
   .set-row .set-val{ color:var(--muted); font-size:14px; text-align:right; }
   .set-row input{ width:112px; text-align:right; padding:9px 10px; font-size:16px; }
-  .stepper input{ flex:1; min-width:0; text-align:center; }
   .fare-edit-btn{ display:block; width:100%; background:none; border:0; padding:0; cursor:pointer; color:var(--text); font-family:inherit; }
   .trip-x{ border:0; background:var(--chip); color:var(--muted); width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:13px; flex:none; margin-left:auto; }
-  #c-fare-edit{ width:100%; text-align:center; font-size:52px; font-weight:700; letter-spacing:-.03em; border:0; background:transparent; color:var(--text); padding:0; margin:32px 0 4px; }
   .hidden{ display:none !important; }
-.tdhead{display:flex;align-items:center;justify-content:space-between;margin:10px 0 16px;gap:8px}.tdhead h1{font-size:30px;margin:0;letter-spacing:-.045em}.tdhead input{font-size:14px;max-width:145px;border:0;background:transparent;color:var(--muted);min-height:44px}.tdcard{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:15px;font-variant-numeric:tabular-nums}.tdmetrics{display:grid;grid-template-columns:1.18fr 1fr;gap:10px;align-items:center}.tdgauge{position:relative;aspect-ratio:1.55;text-align:center;min-width:0}.tdgauge svg{width:100%;height:100%}.tdcopy{position:absolute;inset:43% 0 auto;line-height:1.12}.tdscore{font-size:clamp(23px,6.7vw,34px);font-weight:760;letter-spacing:-.05em;white-space:nowrap}.tdscore small{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:0}.tdmuted{font-size:12px;color:var(--muted);line-height:1.45}.tdnet{border-left:1px solid var(--border);padding-left:12px}.tdnet b{font-size:clamp(26px,7.3vw,38px);display:block;letter-spacing:-.05em;margin:6px 0;overflow-wrap:anywhere}.tdgap{text-align:center;font-size:12px;font-weight:650;margin:5px 0 14px}.tdhours{border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}.tdhours b{font-size:19px}.tdbar{grid-column:1/-1;height:5px;border-radius:6px;background:var(--chip);overflow:hidden}.tdbar i{display:block;height:100%;background:var(--accent);border-radius:6px}.tdtabs{display:flex;gap:22px;margin-top:12px;border-bottom:1px solid var(--border)}.tdtabs button{border:0;background:none;color:var(--muted);font:inherit;font-weight:650;padding:0 3px;min-height:48px;position:relative}.tdtabs button:is([aria-selected=true],[aria-pressed=true]){color:var(--text)}.tdtabs button:is([aria-selected=true],[aria-pressed=true]):after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:3px;background:var(--accent)}.tdlist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}.tdrow{width:100%;border:0;border-bottom:1px solid var(--border);background:none;color:var(--text);font:inherit;text-align:left;padding:14px;min-height:72px;display:flex;justify-content:space-between;gap:10px;align-items:center}.tdrow:last-child{border:0}.tdrow span:first-child{min-width:0;flex:1}.tdrow span:last-child{text-align:right;flex:none}.tdrow b{display:block;font-size:15px;overflow-wrap:anywhere}.tdrow small{display:block;font-size:12px;margin-top:5px}.tdline{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);font-size:14px}.tdline:last-child{border:0}.tdlinks{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:48px}.tdlinks button{min-height:44px;color:var(--link);background:none;border:0;font:inherit;font-weight:600;font-size:14px}.tdnote{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0}
-.tdplain{border:0;background:none;color:var(--text);font:inherit;width:100%;cursor:pointer}.tdnet.tdplain{border-left:1px solid var(--border);text-align:left}.tdhours.tdplain{border-top:1px solid var(--border);text-align:left}.tdplain:focus-visible{outline:2px solid var(--accent);outline-offset:3px}</style>
+.tdhead{display:flex;align-items:center;justify-content:space-between;margin:10px 0 16px;gap:8px}.tdhead h1{font-size:30px;margin:0;letter-spacing:-.045em}.tdhead input{font-size:14px;max-width:145px;border:0;background:transparent;color:var(--muted);min-height:44px}.tdcard{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:15px;font-variant-numeric:tabular-nums}.tdmuted{font-size:12px;color:var(--muted);line-height:1.45}.tdlist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}.tdrow{width:100%;border:0;border-bottom:1px solid var(--border);background:none;color:var(--text);font:inherit;text-align:left;padding:14px;min-height:72px;display:flex;justify-content:space-between;gap:10px;align-items:center}.tdrow:last-child{border:0}.tdrow span:first-child{min-width:0;flex:1}.tdrow span:last-child{text-align:right;flex:none}.tdrow b{display:block;font-size:15px;overflow-wrap:anywhere}.tdrow small{display:block;font-size:12px;margin-top:5px}.tdline{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--border);font-size:14px}.tdline:last-child{border:0}.tdlinks{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:48px}.tdlinks button{min-height:44px;color:var(--link);background:none;border:0;font:inherit;font-weight:600;font-size:14px}.tdnote{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0}
+</style>
 </head>
 <body>
 <nav id="topnav">
@@ -291,16 +288,14 @@
     <div id="view"></div>
   </div>
 </div>
-<div id="menu-pill" role="navigation" aria-label="Menu">
-  <button data-menu="today" aria-label="Today"></button>
-  <button data-menu="calc" aria-label="Quote"></button>
-  <button data-menu="jobs" aria-label="Jobs"></button>
-  <button data-menu="money" aria-label="Money"></button>
-  <button data-menu="account" aria-label="Account"></button>
+<div id="menu-pill" role="navigation" aria-label="Main">
+  <button data-menu="today">Today</button>
+  <button data-menu="calc">Quote</button>
+  <button data-menu="money">Money</button>
 </div>
 <div id="modal" class="hidden">
   <div class="backdrop" id="modal-backdrop"></div>
-  <div class="sheet" role="dialog" aria-modal="true" aria-label="Details">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
     <div class="grab"></div>
     <div class="sheet-head"><span id="sheet-title">Details</span><button id="modal-close" aria-label="Close">✕</button></div>
     <div id="sheet-body">
@@ -314,7 +309,7 @@
     <div class="drawer-section">
       <div class="group-label">Links</div>
       <div class="list">
-        <a class="row link-row" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener"><span>Download PDF<span class="row-sub">May 2023 price sheets — out of date</span></span><span class="chev">›</span></a>
+        <a class="row link-row" href="https://axmamofelrnewhbtkwlu.supabase.co/storage/v1/object/public/site-files/price-sheets-2023-05-22.pdf" target="_blank" rel="noopener"><span>Download PDF<span class="row-sub">May 2023 price sheets — out of date</span></span><span class="chev" aria-hidden="true">›</span></a>
       </div>
       <div class="list prose" style="margin-top:10px">
         <p>The PDF is out of date. We're looking for a volunteer to provide the updated one — <a href="https://wa.me/13476613902">message Shimmy</a> if you have it.</p>
@@ -326,8 +321,8 @@
         <p>Built free to use for the community by Shimmy Landau, who likes to solve problems by building things — using LLMs and a bit of creativity.</p>
       </div>
       <div class="list" style="margin-top:10px">
-        <a class="row link-row" href="https://github.com/ohthatgroup/car-service-fare-lookup" target="_blank" rel="noopener"><span>View on GitHub<span class="row-sub">This project is open source</span></span><span class="chev">›</span></a>
-        <a class="row link-row" href="https://wa.me/13476613902" target="_blank" rel="noopener"><span>Message Shimmy</span><span class="chev">›</span></a>
+        <a class="row link-row" href="https://github.com/ohthatgroup/car-service-fare-lookup" target="_blank" rel="noopener"><span>View on GitHub<span class="row-sub">This project is open source</span></span><span class="chev" aria-hidden="true">›</span></a>
+        <a class="row link-row" href="https://wa.me/13476613902" target="_blank" rel="noopener"><span>Message Shimmy</span><span class="chev" aria-hidden="true">›</span></a>
       </div>
     </div>
     </div>
@@ -818,7 +813,7 @@ function summaryLine(withOptions){
 /* ---------- rendering helpers ---------- */
 /* Calculator + Account views (v3 layers included). The fare wizard views
    (step1/step2/quote/flatbush/notlisted/pending) are not in this list. */
-const CALC_VIEWS = ["calc", "account", "calc-pick", "calc-result", "account-rates", "account-aliases"];
+const CALC_VIEWS = ["calc", "account", "calc-pick", "account-rates", "account-aliases"];
 function isCalcViewName(v){ return CALC_VIEWS.includes(v); }
 /* Layered screens: layers pushed on top of a root calc/account
    screen; nav back pops. Root jumps (icon bar, deep links) clear it. */
@@ -848,7 +843,7 @@ function popScreen(){
    its place there so the step row's right-aligned slot stays put. Mode
    switching lives in the bottom bar, not the header. */
 const WIZARD_STEP_NAMES = ["From", "To", "Price"];
-const LOOP_VIEWS = ["quote", "flatbush", "calc-result"];
+const LOOP_VIEWS = ["quote", "flatbush"];
 let lastNotListedMsg = "";
 function renderHeader(){
   const row = document.getElementById("step-row");
@@ -858,11 +853,7 @@ function renderHeader(){
     items = WIZARD_STEP_NAMES.map((n, i) => ({ label: n, step: i + 1 }));
     cur = currentStep - 1;
     curName = view === "notlisted" ? "Not listed" : WIZARD_STEP_NAMES[cur];
-  } else if(view === "calc" || view === "calc-pick"){
-    const l = calcStepList();
-    items = l.map(n => ({ label: CALC_STEP_NAMES[n], step: n }));
-    cur = l.indexOf(calcStep);
-    curName = CALC_STEP_NAMES[calcStep];
+
   }
   if(!items || cur < 0 || LOOP_VIEWS.includes(view)){
     row.innerHTML = "";
@@ -894,7 +885,7 @@ function goMode(next){
   screenStack = [];
   if(next === "calc"){
     if(!isCalcViewName(view)) backTarget = view;
-    calcReset(); calcStep = 1;
+    if(!calc) calcReset();
     renderCalc(); return;
   }
   // fares: restore the wizard from its kept state
@@ -912,29 +903,14 @@ function goMode(next){
   if(sel.from){ inFlow = true; renderPlacePicker(2); return; }
   inFlow = false; sel = {}; renderPlacePicker(1);
 }
-/* Icon menu (v4.2, restored from v3): icons only, inline SVG in
-   currentColor. The bottom bar is the only way between modes — the
-   calculator is a top-level screen, never reached by a back link. */
-const MENU_ICONS = {today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4m8-4v4M4 10h16m-12 4h8"/></svg>',
-  jobs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="7" width="16" height="13" rx="3"/><path d="M8 7V4h8v3M4 12h16m-10 2h4"/></svg>',
-  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 6v12m3-9h-4a1.5 1.5 0 0 0 0 3h2a1.5 1.5 0 0 1 0 3H9"/></svg>',
-  calc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7.5h8M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/></svg>',
-  account: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/></svg>'
-};
 function updateMenu(){
   const pill = document.getElementById("menu-pill");
-  if(!pill) return;
-  // The icon bar hides wherever the loop bar shows.
-  const loopViews = ["quote", "flatbush", "calc-result"];
-  pill.style.display = loopViews.includes(view) ? "none" : "";
-  const section = ["today","jobs","money"].includes(view) ? view : view === "pending" ? "account"
-    : view === "account" || view.indexOf("account-") === 0 ? "account"
-    : view === "calc" || view.indexOf("calc") === 0 ? "calc" : "account";
-  pill.querySelectorAll("[data-menu]").forEach(b => {
-    const active = b.dataset.menu === section;
-    b.classList.toggle("on", active);
-    if(active) b.setAttribute("aria-current","page");
-    else b.removeAttribute("aria-current");
+  const section = view === "jobs" ? "today" : view.startsWith("account") ? "money" :
+    view.startsWith("calc") ? "calc" : view;
+  pill.style.display = LOOP_VIEWS.includes(view) ? "none" : "";
+  pill.querySelectorAll("[data-menu]").forEach(button => {
+    if(button.dataset.menu === section) button.setAttribute("aria-current","page");
+    else button.removeAttribute("aria-current");
   });
 }
 function goMenu(section){
@@ -946,50 +922,25 @@ function goMenu(section){
   if(section === "fares" || section === "calc"){ goMode(section); return; }
   if(section === "community"){ screenStack = []; renderPending(); return; }
   if(section === "account"){
-    if(!isCalcViewName(view)) backTarget = view;
+    backTarget = "money";
     renderAccount(); return;
   }
 }
 let currentStep = 1;
-function setStep(n, label){
+function setStep(n,label){
   currentStep = n;
-  const isCalcView = isCalcViewName(view);
-  const $t = document.getElementById("nav-title");
-  // The nav title shows on screens with no step row; the step row
-  // carries the name on the wizard and calculator forms.
-  /* The result screen has no form step behind it when it was reached
-     without one in this session — then the wordmark shows instead of
-     a back link, matching the wizard's From step. */
-  const noCalcResultBack = view === "calc-result" && calcResultStep == null;
-  /* v4.4: Account and the Board (Community tab) are tab roots — no
-     back link, the wordmark shows, like the fare sheet's From step.
-     Sub-screens keep named backs to Account (see backTxt below). */
-  const isTabRoot = view === "account" || view === "pending";
-  const showTitle = !isTabRoot && isCalcView && view !== "calc" && view !== "calc-pick" && !noCalcResultBack;
-  $t.style.display = showTitle ? "" : "none";
-  $t.textContent = label || "Fare Lookup";
-  const calcPrev = isCalcView && view === "calc" ? calcPrevStep() : null;
-  /* The result's back names the form step that produced the fare —
-     never the fare sheet. */
-  const calcResultBack = view === "calc-result" && calcResultStep != null ? CALC_STEP_NAMES[calcResultStep] : null;
-  /* A quote opened from the comparison card returns to the calculator
-     layer it came from — its back names that layer, not the wizard. */
-  const quoteBack = view === "quote" && quoteFromCalc ? quoteFromCalcBack : null;
-  const backTxt = calcPrev != null ? CALC_STEP_NAMES[calcPrev]
-    : calcResultBack != null ? calcResultBack
-    : quoteBack != null ? quoteBack
-    : view === "account-rates" || view === "account-aliases" ? "Account"
-    : isCalcView ? "Back"
-    : (view === "notlisted" || n === 3) ? "Where to?"
-    : n === 2 ? "Where from?"
-    : "Start over";
-  document.getElementById("nav-back").textContent = "‹ " + backTxt;
-  // No back link on the calculator's Route step — the wordmark shows
-  // there instead, matching the wizard's From step. The calculator is
-  // a top-level screen; the bottom bar is the way between modes.
-  const onCalcHome = view === "calc" && calcStep === 1;
-  const onTabRoot = ["account","pending","today","jobs","money"].includes(view);
-  document.getElementById("topnav").classList.toggle("in-flow", (inFlow || view !== "step1") && !onCalcHome && !noCalcResultBack && !onTabRoot);
+  const simpleRoot = ["today","calc","money"].includes(view);
+  const title = document.getElementById("nav-title");
+  const nav = document.getElementById("topnav");
+  title.style.display = simpleRoot || !isCalcViewName(view) ? "none" : "";
+  title.textContent = label || "Fare Lookup";
+  const back = view === "jobs" ? "Today" : view === "account" ? "Money" :
+    view === "account-rates" || view === "account-aliases" ? "Account" :
+    view === "calc-pick" ? "Quote" : view === "quote" && quoteFromCalc ? quoteFromCalcBack :
+    (view === "notlisted" || n === 3) ? "Where to?" : n === 2 ? "Where from?" : "Start over";
+  document.getElementById("nav-back").textContent = "‹ " + back;
+  nav.classList.toggle("simple-root",simpleRoot);
+  nav.classList.toggle("in-flow",!simpleRoot && view !== "step1" && view !== "pending");
   renderHeader();
   updateMenu();
   $scroll.scrollTop = 0;
@@ -1007,6 +958,7 @@ function goBackFromCalc(){
   const t = backTarget || "step1";
   if(t === "calc") renderCalc();
   else if(t === "jobs") goMenu("jobs");
+  else if(t === "money") goMenu("money");
   else if(t === "account") renderAccount();
   else if(t === "quote" && sel.resolved) renderQuote();
   else if(t === "flatbush" && sel.fb) renderFlatbush(sel.fb.base);
@@ -1032,7 +984,7 @@ function placeListHTML(query,exclude,extra,custom){
   };
   const row = (place,matchedName) => '<button class="row" data-place="' + esc(place) + '"><span class="row-main">' +
     esc(place) + (matchedName && place !== matchedName ? '<span class="row-sub">' + esc(matchedName) + '</span>' : '') +
-    '</span><span class="chev">›</span></button>';
+    '</span><span class="chev" aria-hidden="true">›</span></button>';
   const allowed = name => name !== exclude;
   const saved = (extra || []).filter(allowed);
   const group = (label,rows) => rows.length ? '<div class="group-label">' + label +
@@ -1048,7 +1000,7 @@ function placeListHTML(query,exclude,extra,custom){
     const typed = (custom || "").trim();
     if(typed && !matches.some(hit => hit.score === 0)){
       rows.push('<button class="row" data-custom="' + esc(typed) + '">Use “' + esc(typed) +
-        '”<span class="chev">›</span></button>');
+        '”<span class="chev" aria-hidden="true">›</span></button>');
     }
     return rows.length ? '<div class="list">' + rows.join("") + '</div>' : '<div class="empty">No places match.</div>';
   }
@@ -1070,7 +1022,7 @@ function renderPlacePicker(step){
     (isFrom ? "" : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
     '<div class="search-wrap"><input type="search" id="q" placeholder="Search places" autocomplete="off"></div>' +
     (showFlatbush
-      ? '<div class="list"><button class="row" data-place="' + esc(zoneLabel(sel.from)) + '">' + esc(sel.from + " zone fare") + '<span class="chev">›</span></button></div>'
+      ? '<div class="list"><button class="row" data-place="' + esc(zoneLabel(sel.from)) + '">' + esc(sel.from + " zone fare") + '<span class="chev" aria-hidden="true">›</span></button></div>'
       : "") +
     '<div id="plist">' + placeListHTML("", other) + "</div>" +
     '<button class="quiet-link" id="add-link">Add a price</button>'
@@ -1310,16 +1262,22 @@ function categoriesFor(from, to){
   return [...cats, "Other"];
 }
 let DETAILS_HTML = "";
+let drawerFocus = null;
 function openDrawer(title, bodyHtml){
+  if($modal.classList.contains("hidden")) drawerFocus = document.activeElement;
   document.getElementById("sheet-title").textContent = title;
   document.getElementById("sheet-body").innerHTML = bodyHtml;
   $modal.classList.remove("hidden");
+  for(const id of ["topnav","scroll","menu-pill"]) document.getElementById(id).inert = true;
+  document.getElementById("modal-close").focus();
 }
-function closeDrawer(){
+function closeDrawer(keepReview = false){
+  if(!keepReview) reviewFlowDate = null;
   $modal.classList.add("hidden");
-  /* v4.4: clear the body so a closed drawer leaves no stale ids (e.g. a
-     trip drawer's #c-cmp-card) behind for a later document-wide lookup. */
   document.getElementById("sheet-body").innerHTML = "";
+  for(const id of ["topnav","scroll","menu-pill"]) document.getElementById(id).inert = false;
+  if(drawerFocus?.isConnected) drawerFocus.focus();
+  drawerFocus = null;
 }
 function openDetails(){
   openDrawer("Details", DETAILS_HTML);
@@ -1570,9 +1528,9 @@ async function sbUser(path, opts){
   return t ? JSON.parse(t) : null;
 }
 function calcSignInGoogle(){
-  const resumeQuote = view === "calc-result" && calc;
+  const resumeQuote = view === "calc" && calc;
   const target = resumeQuote ? "resume-quote" : LEDGER_VIEWS.includes(view) ? view : "account";
-  if(resumeQuote) sessionStorage.setItem("fl_signin_quote",JSON.stringify({calc,step:calcStep}));
+  if(resumeQuote) sessionStorage.setItem("fl_signin_quote",JSON.stringify({calc}));
   else sessionStorage.removeItem("fl_signin_quote");
   sessionStorage.setItem("fl_signin_destination",target);
   const redirect = location.origin + "/?view=account";
@@ -1584,7 +1542,6 @@ function calcSignOut(){
   tdLedger=null;tdLoading=false;tdLoadToken++;
   closeoutDrafts.clear();
   moneyRentalId = null;
-  ledgerJobsFilter = null;
   calcLoadLocal();
   renderAccount(); // sign-out only happens from the Account screen
 }
@@ -1664,50 +1621,6 @@ function fmtWait(h){
   const hrs = Math.floor(m / 60), rem = m % 60;
   return hrs + " hr" + (rem ? " " + rem + " min" : "");
 }
-/* v4.1: Duration Picker (Rare UI pattern) — every time field in the
-   calculator is hours + "h" and minutes + "min" in ONE uniform control,
-   so it reads as a duration on its own ("2 h 30 min"). Empty renders
-   as a real 0, never a grey placeholder next to a white minutes value.
-   Minutes snap to 15-minute steps (the granularity the old wait
-   stepper had). Hours clamp at 24 (bindTimeField). */
-function timeParts(dec){
-  let total = Math.max(0, Math.round((parseFloat(dec) || 0) * 60));
-  total = Math.round(total / 15) * 15; // snap to the selector steps
-  return { h: Math.floor(total / 60), m: total % 60 };
-}
-function timeFieldHtml(prefix, decValue){
-  const empty = decValue === "" || decValue == null;
-  const p = empty ? { h: 0, m: 0 } : timeParts(decValue);
-  return '<div class="time-field"><input type="number" id="' + prefix + '-h" inputmode="numeric" min="0" max="24" placeholder="0" value="' + p.h + '" aria-label="Hours">' +
-    '<span class="time-unit">h</span><span class="time-colon">:</span>' +
-    '<select id="' + prefix + '-m" aria-label="Minutes">' +
-    [0, 15, 30, 45].map(m => '<option value="' + m + '"' + (p.m === m ? " selected" : "") + '>' + (m < 10 ? "0" + m : m) + "</option>").join("") +
-    '</select><span class="time-unit">min</span></div>';
-}
-/* Distance stepper wiring, shared by every miles field (trip miles,
-   return miles, actual miles): −/+ in whole miles, free typing. */
-function bindMilesField(prefix, get, set){
-  const inp = document.getElementById(prefix);
-  const setMiles = (v) => { set(v); if(inp) inp.value = v; updateCalcForm(); };
-  if(inp) inp.addEventListener("input", () => { set(inp.value); updateCalcForm(); });
-  const mm = document.getElementById(prefix + "-minus");
-  if(mm) mm.addEventListener("click", () => setMiles(String(Math.max(0, (parseFloat(get()) || 0) - 1))));
-  const mp = document.getElementById(prefix + "-plus");
-  if(mp) mp.addEventListener("click", () => setMiles(String((parseFloat(get()) || 0) + 1)));
-}
-function bindTimeField(prefix, set){
-  const hEl = document.getElementById(prefix + "-h");
-  const mEl = document.getElementById(prefix + "-m");
-  if(!hEl || !mEl) return;
-  const upd = () => {
-    const h = Math.max(0, Math.min(24, parseInt(hEl.value, 10) || 0));
-    const m = parseInt(mEl.value, 10) || 0;
-    set(round2(h + m / 60));
-    updateCalcForm();
-  };
-  hEl.addEventListener("input", upd);
-  mEl.addEventListener("change", upd);
-}
 /* v3 rule: endsAtHub = (To is set). Adding a location to To means the
    trip ends at a hub; no To means a return leg to the closest hub.
    The rule is uniform in both modes (answer 1): even in round-trip
@@ -1782,8 +1695,6 @@ let calc = null;
 function calcReset(){
   calc = { mode: "oneway", from: null, to: null, miles: "", hours: "", waitHours: 0,
     tolls: "", parking: "", returnMiles: "", returnHours: "", returnTolls: "", adjustedFare: null };
-  calcStep = 1;
-  calcResultStep = null;
 }
 function calcListFare(){
   if(!calc.from || !calc.to) return null;
@@ -1792,88 +1703,6 @@ function calcListFare(){
   const f = res.fare;
   if(calc.mode === "round" && f.round_trip) return plainPrice(f.round_trip);
   return plainPrice(f.price);
-}
-/* ---------- trip calculator: multi-step form (v3) ---------- */
-/* One topic per screen, wizard-style. Step 1 choices decide the later
-   steps: the Return step appears only when To is not a fare-sheet
-   place (v4.3: a custom To is not a hub, so the return leg still
-   applies). Step numbers are canonical (1 Route, 2 Trip,
-   3 Return, 4 Waiting & costs); the header step row shows only the
-   steps in the current path (v4: one unified row for both modes).
-   Back is the nav back link; Next is the button at the bottom of
-   each step; "See my fare" sits on the last step only and stays
-   gated on miles > 0 and hours > 0, as before. */
-const CALC_STEP_NAMES = { 1: "Route", 2: "Trip", 3: "Return", 4: "Waiting & costs" };
-let calcStep = 1;
-/* v4.2 follow-up: the form step that produced the fare on the
-   calculator result screen. The result's nav back returns there,
-   named — never to the fare sheet. Null until a fare is shown. */
-let calcResultStep = null;
-function calcStepList(){ return calcEndsAtHub(calc) ? [1, 2, 4] : [1, 2, 3, 4]; }
-function calcNextStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return (i >= 0 && i < l.length - 1) ? l[i + 1] : null; }
-function calcPrevStep(){ const l = calcStepList(); const i = l.indexOf(calcStep); return i > 0 ? l[i - 1] : null; }
-function calcGoStep(n){ calcStep = n; renderCalc(); }
-/* First step that still needs input — where "My take-home" and
-   "Reopen in calculator" land. Step 1 never blocks: From and To are
-   optional (answer 1) — they only matter for the standard-price
-   comparison. A step counts as filled when its required values are
-   entered; Waiting & costs never blocks (0 waiting and $0 tolls/parking
-   are all legitimate), so a fully-filled trip lands on the last step,
-   where "See my fare" is right there. */
-function calcFirstIncompleteStep(){
-  const steps = calcStepList();
-  const r = calcFare(calc, calcCfg);
-  if(!(r.miles > 0 && r.hours > 0)) return 2;
-  if(steps.includes(3)){
-    const rm = parseFloat(calc.returnMiles) || 0, rh = parseFloat(calc.returnHours) || 0, rt = parseFloat(calc.returnTolls) || 0;
-    if(!(rm > 0 || rh > 0 || rt > 0)) return 3;
-  }
-  return steps[steps.length - 1];
-}
-function calcHtml(){
-  let out = "";
-  if(calcStep === 1){
-    out += '<div class="seg" id="calc-mode" role="group" aria-label="Trip type">' +
-        '<button data-mode="oneway">One way</button>' +
-        '<button data-mode="round">Round trip</button></div>' +
-      '<div class="list" style="margin-top:14px">' +
-        '<button class="row" id="c-from"><span class="row-label">From</span><span class="row-val">' + (calc.from ? esc(calc.from) : '<span style="color:var(--muted)">Optional — only for the standard price</span>') + '</span><span class="chev">›</span></button>' +
-        '<button class="row" id="c-to"><span class="row-label">To</span><span class="row-val">' + (calc.to ? esc(calc.to) : '<span style="color:var(--muted)">Optional — only if this is a hub trip and you want the standard price</span>') + '</span><span class="chev">›</span></button>' +
-      '</div>' +
-      ((calc.from || calc.to) ? '<button class="quiet-link" id="c-clear-route">Clear route</button>' : "") +
-      '<button class="btn" id="c-next">Next</button>';
-  } else if(calcStep === 2){
-    out += '<div class="stepper"><button id="c-miles-minus" aria-label="Fewer miles">−</button>' +
-        '<input id="c-miles" inputmode="decimal" placeholder="Trip miles" value="' + esc(calc.miles) + '">' +
-        '<button id="c-miles-plus" aria-label="More miles">+</button></div>' +
-      timeFieldHtml("c-dur", calc.hours) +
-      '<button class="btn" id="c-next">Next</button>';
-  } else if(calcStep === 3){
-    /* Return step (answer 2: "Both"): miles to the closest hub AND how
-       long the drive back takes — return miles + return hours + return
-       tolls, exactly as the old return drawer had them. The return math
-       needs the hours for the $15.63/hr recovery. */
-    out += '<div class="group-label" style="margin-top:0">Back to the nearest hub</div>' +
-      (calc.mode === "round" && calc.from ? '<div class="sub">From ' + esc(calc.from) + '</div>' : "") +
-      '<div class="stepper"><button id="c-rmiles-minus" aria-label="Fewer return miles">−</button>' +
-        '<input id="c-rmiles" inputmode="decimal" placeholder="Return miles" value="' + esc(calc.returnMiles) + '">' +
-        '<button id="c-rmiles-plus" aria-label="More return miles">+</button></div>' +
-      timeFieldHtml("c-rh", calc.returnHours) +
-      '<input type="text" id="c-rtolls" inputmode="decimal" placeholder="Return tolls ($)" value="' + esc(calc.returnTolls) + '" style="margin-top:12px">' +
-      '<button class="btn" id="c-next">Next</button>';
-  } else {
-    out += timeFieldHtml("c-wait", calc.waitHours) +
-      '<div style="display:flex;gap:10px;margin-top:12px"><input type="text" id="c-tolls" inputmode="decimal" placeholder="Tolls ($)" value="' + esc(calc.tolls) + '">' +
-      '<input type="text" id="c-parking" inputmode="decimal" placeholder="Parking ($)" value="' + esc(calc.parking) + '"></div>' +
-      '<button class="btn" id="c-see-fare" disabled>See my fare</button>';
-  }
-  return out;
-}
-function updateCalcForm(){
-  const btn = document.getElementById("c-see-fare");
-  if(!btn) return;
-  const r = calcFare(calc, calcCfg);
-  btn.disabled = !(r.miles > 0 && r.hours > 0);
 }
 /* v2 breakdown lines (design §8): Time, Waiting, Fuel at cost, Tolls +
    parking, Return — no mileage-fee line anywhere. */
@@ -1892,169 +1721,92 @@ function calcBreakdownLines(r){
   }
   return lines;
 }
-/* Shared result body: big fare + breakdown + comparison + take-home.
-   Used by the result layer (editable fare) and the trip drawer layer
-   (read-only). opts: { editable, mode, from, to }. */
-function calcResultHtml(r, listFare, opts){
-  opts = opts || {};
-  const fare = r.fare;
-  const adjusted = fare !== r.suggestedFare;
-  const goal = Number(calcCfg.earningsTarget);
-  const goalLabel = money(goal);
-  let cmp = "";
-  if(listFare != null){
-    const listTakeHome = round2(listFare - r.expenses);
-    const listPerHour = r.totalHours > 0 ? round2(listTakeHome / r.totalHours) : null;
-    let cmpLine = "";
-    if(listPerHour != null){
-      cmpLine = listPerHour >= goal
-        ? "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr · meets your " + goalLabel + "/hr goal"
-        : "At the list price you'd take home " + money(listTakeHome) + ", " + money(listPerHour) + "/hr — " + money(goal - listPerHour) + "/hr below goal";
-    }
-    cmp = '<div class="card cmp-card" id="c-cmp-card" role="button" tabindex="0"><span class="cmp-chev">›</span><div class="route">List price ' + money(listFare) + " · Suggested " + money(r.suggestedFare) + "</div>" +
-      (cmpLine ? '<div class="change">' + esc(cmpLine) + "</div>" : "") + "</div>";
-  }
-  const routeLine = (opts.from && opts.to) ? '<div class="route-line">' + esc(opts.from) + " → " + esc(opts.to) + "</div>" : "";
-  const fareHtml = opts.editable
-    ? '<button class="price-big fare-edit-btn" id="c-fare-show">' + money(fare) + "</button>" +
-      '<input id="c-fare-edit" class="hidden" inputmode="decimal" value="' + esc(fare) + '">'
-    : '<div class="price-big">' + money(fare) + "</div>";
-  return routeLine + fareHtml +
-    '<div class="q-summary">' + (opts.mode === "round" ? "Round trip" : "One way") + "</div>" +
-    (adjusted ? '<div class="note-line">Suggested ' + money(r.suggestedFare) + "</div>" : "") +
-    ((opts.editable && listFare != null && fare !== listFare) ? '<div style="text-align:center"><button class="quiet-link" id="c-use-list">Use list price ' + money(listFare) + "</button></div>" : "") +
-    '<div class="card" id="c-takehome">' + calcTakeHomeHtml(r, fare) + "</div>" +
-    breakdownHtml(calcBreakdownLines(r), fare) + cmp;
+function quoteInput(id,label,value,step="1"){
+  return '<label class="simple-field" for="' + id + '"><span>' + label + '</span><input type="number" id="' + id +
+    '" min="0" step="' + step + '" value="' + esc(value ?? "") + '" inputmode="' +
+    (label.includes("minutes") ? "numeric" : "decimal") + '"></label>';
 }
-function calcTakeHomeHtml(result, fare){
-  const takeHome = round2(fare - result.expenses);
-  const rate = result.totalHours > 0 ? round2(takeHome / result.totalHours) : null;
-  const goal = Number(calcCfg.earningsTarget);
-  const pace = rate == null ? "" : rate >= goal ? "Meets goal" : money(goal - rate) + "/hr below goal";
-  return '<div class="route">Estimated take-home ' + money(takeHome) +
-    (rate == null ? "" : " · " + money(rate) + "/hr") + '</div>' +
-    '<div class="change">' + money(goal) + '/hr goal' + (pace ? " · " + pace : "") + '</div>';
-}
-/* v2: the result is its own screen layer, pushed from the form. ‹ Back
-   returns to the form with inputs intact. */
-function renderCalcResult(){
-  const r0 = calcFare(calc, calcCfg);
-  if(!(r0.miles > 0 && r0.hours > 0)){ renderCalc(); return; }
-  /* Record the form step that produced this fare. calcStep is
-     unchanged while the result is on screen, so re-renders (fare
-     edit, Cancel fallback) keep the same step. pushScreen already set
-     view to "calc-result" before calling this, so view can't tell a
-     fresh entry from a re-render — and doesn't need to. */
-  calcResultStep = calcStep;
-  view = "calc-result"; setStep(0, "My fare");
-  const listFare = calcListFare();
-  h('<div id="calc-result">' + calcResultHtml(r0, listFare, { editable: true, mode: calc.mode, from: calc.from, to: calc.to }) + "</div>" +
-    '<button class="btn secondary" id="c-job" style="margin-top:18px">Save quote to Jobs</button>' +
-    '<div class="loop-bar" id="c-loop"><button class="btn" id="c-share">Share fare</button>' +
-    '<button class="btn secondary" id="c-new">New rate</button></div>');
-  wireCalcResult();
-}
-function wireCalcResult(){
-  const box = document.getElementById("calc-result");
-  box.addEventListener("click", (e) => {
-    const cmpCard = e.target.closest("#c-cmp-card");
-    if(cmpCard){ openQuoteFromCalc(calc.from, calc.to, calc.mode, () => renderCalcResult()); return; }
-    const show = e.target.closest("#c-fare-show");
-    if(show){
-      show.classList.add("hidden");
-      const inp = document.getElementById("c-fare-edit");
-      inp.classList.remove("hidden");
-      inp.focus(); inp.select();
-      return;
-    }
-    const useList = e.target.closest("#c-use-list");
-    if(useList){
-      const lf = calcListFare();
-      if(lf != null){ calc.adjustedFare = lf; renderCalcResult(); }
-      return;
-    }
-  });
-  box.addEventListener("focusout", (e) => {
-    if(e.target && e.target.id === "c-fare-edit"){
-      const v = parseFloat(String(e.target.value).replace(/[$,]/g, ""));
-      if(v > 0) calc.adjustedFare = round2(v);
-      else calc.adjustedFare = null;
-      const result = calcFare(calc, calcCfg);
-      box.innerHTML = calcResultHtml(result, calcListFare(), {
-        editable:true, mode:calc.mode, from:calc.from, to:calc.to
-      });
-    }
-  });
-  /* Live update while typing: take-home + $/hr follow the typed fare
-     immediately. Only the take-home card is rewritten — never the input —
-     so focus and cursor are untouched. Commit still happens on blur/Enter. */
-  box.addEventListener("input", (e) => {
-    if(!(e.target && e.target.id === "c-fare-edit")) return;
-    const card = document.getElementById("c-takehome");
-    if(!card) return;
-    const v = parseFloat(String(e.target.value).replace(/[$,]/g, ""));
-    const r = calcFare(calc, calcCfg); // expenses / hours are fare-independent
-    const fare = (v > 0) ? round2(v) : r.suggestedFare;
-    card.innerHTML = calcTakeHomeHtml(r, fare);
-  });
-  box.addEventListener("keydown", (e) => {
-    if(e.target && e.target.id === "c-fare-edit" && e.key === "Enter"){ e.target.blur(); }
-  });
-  document.getElementById("c-job").onclick = () => {
-    const quote = calcFare(calc, calcCfg);
-    openLedgerJobForm(null, {pickup:calc.from, destination:calc.to, fare:quote.fare});
-  };
-  const share = document.getElementById("c-share");
-  if(share) share.addEventListener("click", (e) => shareCalc(e.target));
-  const nw = document.getElementById("c-new");
-  if(nw) nw.addEventListener("click", () => { calcReset(); screenStack = []; renderCalc(); });
-}
-function wireCalc(){
-  const modeBtns = $view.querySelectorAll("#calc-mode button");
-  modeBtns.forEach(b => {
-    b.classList.toggle("on", b.dataset.mode === calc.mode);
-    b.addEventListener("click", () => {
-      if(calc.mode === b.dataset.mode) return;
-      calc.mode = b.dataset.mode;
-      calc.adjustedFare = null;
-      if(calc.mode === "round"){ if(!(parseFloat(calc.waitHours) > 0)) calc.waitHours = 0.75; }
-      else { calc.waitHours = 0; }
-      modeBtns.forEach(x => x.classList.toggle("on", x.dataset.mode === calc.mode));
-      updateCalcForm();
-    });
-  });
-  const fromBtn = document.getElementById("c-from");
-  if(fromBtn) fromBtn.addEventListener("click", () => pushScreen("calc-pick", () => renderCalc(), () => renderCalcPicker("from")));
-  const toBtn = document.getElementById("c-to");
-  if(toBtn) toBtn.addEventListener("click", () => pushScreen("calc-pick", () => renderCalc(), () => renderCalcPicker("to")));
-  const clr = document.getElementById("c-clear-route");
-  if(clr) clr.addEventListener("click", () => { calc.from = null; calc.to = null; calc.adjustedFare = null; renderCalc(); });
-  bindMilesField("c-miles", () => calc.miles, v => { calc.miles = v; });
-  bindTimeField("c-dur", v => { calc.hours = v; });
-  bindMilesField("c-rmiles", () => calc.returnMiles, v => { calc.returnMiles = v; });
-  bindTimeField("c-rh", v => { calc.returnHours = v; });
-  const rt = document.getElementById("c-rtolls");
-  if(rt) rt.addEventListener("input", () => { calc.returnTolls = rt.value; });
-  const tolls = document.getElementById("c-tolls");
-  if(tolls) tolls.addEventListener("input", () => { calc.tolls = tolls.value; updateCalcForm(); });
-  const park = document.getElementById("c-parking");
-  if(park) park.addEventListener("input", () => { calc.parking = park.value; updateCalcForm(); });
-  const next = document.getElementById("c-next");
-  if(next) next.addEventListener("click", () => { const n = calcNextStep(); if(n != null) calcGoStep(n); });
-  const seeFare = document.getElementById("c-see-fare");
-  if(seeFare) seeFare.addEventListener("click", () => pushScreen("calc-result", () => renderCalc(), renderCalcResult));
-  bindTimeField("c-wait", v => { calc.waitHours = v; });
-  updateCalcForm();
+function quoteMinutes(hours){
+  return Number(hours) > 0 ? round3(Number(hours) * 60) : "";
 }
 function renderCalc(){
   view = "calc";
+  inFlow = false;
   if(!calc) calcReset();
-  const steps = calcStepList();
-  if(!steps.includes(calcStep)) calcStep = steps[steps.length - 1]; // guard: the step vanished (e.g. To set while on the Return step)
-  setStep(0, CALC_STEP_NAMES[calcStep]);
-  h(calcHtml());
-  wireCalc();
+  setStep(0,"Quote");
+
+  const routeRow = (id,label,value) => '<button class="row" id="' + id + '"><span class="row-label">' + label +
+    '</span><span class="row-val">' + esc(value || "Choose a stop") + '</span><span class="chev" aria-hidden="true">›</span></button>';
+  h('<header class="simple-head"><h1>Quote</h1></header>' +
+    '<div class="simple-fields">' + quoteInput("c-miles","Trip miles",calc.miles,"0.001") +
+      quoteInput("c-dur","Drive minutes",quoteMinutes(calc.hours),"0.001") + '</div>' +
+    '<section id="c-result" hidden><div class="day-total"><div class="simple-label" id="c-fare-label"></div>' +
+      '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div>' +
+      '<button class="btn" id="c-job">Save quote</button>' +
+      '<details class="simple-details"><summary>Quote details</summary>' +
+      quoteInput("c-fare-edit","Custom fare ($)",calc.adjustedFare,"0.01") +
+      '<div class="list simple-space" id="c-breakdown"></div>' +
+      '<button class="quiet-link" id="c-share">Share fare</button></details></section>' +
+    '<details class="simple-details" id="c-route"' + (calc.from || calc.to ? ' open' : '') +
+    '><summary>Trip options</summary><div class="list">' +
+      routeRow("c-from","From",calc.from) + routeRow("c-to","To",calc.to) + '</div>' +
+      '<label class="closeout-check"><input type="checkbox" id="c-round"' +
+      (calc.mode === "round" ? ' checked' : '') + '> Round trip</label><div class="simple-fields">' +
+      quoteInput("c-wait","Waiting minutes",quoteMinutes(calc.waitHours),"0.001") +
+      quoteInput("c-tolls","Tolls ($)",calc.tolls,"0.01") +
+      quoteInput("c-parking","Parking ($)",calc.parking,"0.01") + '</div>' +
+      (calcEndsAtHub(calc) ? '' : '<div class="simple-fields simple-space">' +
+        quoteInput("c-rmiles","Return miles",calc.returnMiles,"0.001") +
+        quoteInput("c-rh","Return minutes",quoteMinutes(calc.returnHours),"0.001") +
+        quoteInput("c-rtolls","Return tolls ($)",calc.returnTolls,"0.01") + '</div>') + '</details>');
+  const bind = (id,key,scale = 1) => {
+    const input = document.getElementById(id);
+    if(input) input.oninput = () => {
+      if(key === "adjustedFare"){
+        calc[key] = input.value !== "" && input.validity.valid ? Number(input.value) : null;
+      } else calc[key] = input.value === "" || !input.validity.valid ? "" : Number(input.value) * scale;
+      updatePrice();
+    };
+  };
+  [
+    ["c-miles","miles"],["c-dur","hours",1/60],["c-wait","waitHours",1/60],
+    ["c-tolls","tolls"],["c-parking","parking"],["c-rmiles","returnMiles"],
+    ["c-rh","returnHours",1/60],["c-rtolls","returnTolls"],["c-fare-edit","adjustedFare"]
+  ].forEach(args => bind(...args));
+  document.getElementById("c-round").onchange = event => {
+    calc.mode = event.target.checked ? "round" : "oneway";
+    updatePrice();
+  };
+  document.getElementById("c-from").onclick = () => pushScreen("calc-pick",renderCalc,() => renderCalcPicker("from"));
+  document.getElementById("c-to").onclick = () => pushScreen("calc-pick",renderCalc,() => renderCalcPicker("to"));
+  document.getElementById("c-job").onclick = () => {
+    const quote = calcFare(calc,calcCfg);
+    if(quote.miles > 0 && quote.hours > 0) openLedgerJobForm(null,{
+      pickup:calc.from,destination:calc.to,fare:quote.fare
+    });
+  };
+  document.getElementById("c-share").onclick = event => shareCalc(event.currentTarget);
+  document.getElementById("c-breakdown").onclick = event => {
+    if(event.target.closest("#c-list-price")) openQuoteFromCalc(calc.from,calc.to,calc.mode,renderCalc,"Quote");
+  };
+  updatePrice();
 }
+function updatePrice(){
+  const r = calcFare(calc,calcCfg);
+  const output = document.getElementById("c-result");
+  output.hidden = !(r.miles > 0 && r.hours > 0);
+  if(output.hidden) return;
+  document.getElementById("c-fare-label").textContent = calc.adjustedFare == null ? "Suggested fare" : "Your quote";
+  document.getElementById("c-fare-show").textContent = money(r.fare);
+  document.getElementById("c-takehome").textContent = money(r.takeHome) + " estimated take-home" +
+    (r.effectivePerHour == null ? "" : " · " + money(r.effectivePerHour) + "/hr");
+  const listFare = calcListFare();
+  document.getElementById("c-breakdown").innerHTML = calcBreakdownLines(r).map(row =>
+    tdLine(row.label,money(row.amount))).join("") +
+    (listFare == null ? "" : '<button class="row" id="c-list-price"><span class="row-main">Fare sheet</span><b>' +
+      money(listFare) + '</b><span class="chev" aria-hidden="true">›</span></button>');
+}
+
 function renderCalcPicker(which){
   view = "calc-pick"; setStep(0, which === "from" ? "Where from?" : "Where to?");
   const other = which === "to" ? calc.from : null;
@@ -2141,10 +1893,7 @@ function calcOpenFromShare(q){
   const rhours = num("rhours"); if(rhours != null) calc.returnHours = rhours;
   const rtolls = num("rtolls"); if(rtolls != null) calc.returnTolls = String(rtolls);
   const adj = num("adj"); calc.adjustedFare = adj; // null when absent — the suggested fare stands
-  const r = calcFare(calc, calcCfg);
-  if(!(r.miles > 0 && r.hours > 0)){ renderCalc(); return true; }
-  calcStep = 2; // Back from the result lands on the Trip step, values in place
-  pushScreen("calc-result", () => renderCalc(), renderCalcResult);
+  renderCalc();
   return true;
 }
 /* v4.3: the comparison card opens the fare-sheet quote for that route.
@@ -2193,7 +1942,6 @@ function openCalcFromQuote(){
   });
   calc.tolls = tolls > 0 ? String(tolls) : "";
   calc.parking = parking > 0 ? String(parking) : "";
-  calcStep = calcFirstIncompleteStep(); // v3: land on the first step that still needs input
   renderCalc();
 }
 
@@ -2218,11 +1966,11 @@ function renderAccount(){
   setStep(0,"Account");
   h(
     '<div class="tdhead"><h1>Account</h1></div><div class="list">' +
-      '<button class="row" id="a-fares"><span>Fare sheet</span><span class="chev">›</span></button>' +
-      '<button class="row" id="a-community"><span>Community</span>' + (proposals.length ? '<span class="tag" id="community-count">' + proposals.length + '</span>' : '') + '<span class="chev">›</span></button>' +
-      '<button class="row" id="a-rates"><span>Rates</span><span class="chev">›</span></button>' +
-      '<button class="row" id="a-aliases"><span>Stops &amp; aliases</span><span class="chev">›</span></button>' +
-      '<button class="row" id="a-details"><span>Details</span><span class="chev">›</span></button>' +
+      '<button class="row" id="a-fares"><span>Fare sheet</span><span class="chev" aria-hidden="true">›</span></button>' +
+      '<button class="row" id="a-community"><span>Community</span>' + (proposals.length ? '<span class="tag" id="community-count">' + proposals.length + '</span>' : '') + '<span class="chev" aria-hidden="true">›</span></button>' +
+      '<button class="row" id="a-rates"><span>Rates</span><span class="chev" aria-hidden="true">›</span></button>' +
+      '<button class="row" id="a-aliases"><span>Stops &amp; aliases</span><span class="chev" aria-hidden="true">›</span></button>' +
+      '<button class="row" id="a-details"><span>Details</span><span class="chev" aria-hidden="true">›</span></button>' +
     "</div>" +
     (calcUser
       ? '<div class="card"><div class="route">Signed in as ' + esc(calcUser.email || calcUser.id) + '</div><div class="change">Your rates and trips sync across devices.</div></div>' +
@@ -2263,7 +2011,7 @@ function renderAliases(query = "",load = true){
       '<button class="row" data-edit-aliases="' + esc(stop.place) + '"><span class="row-main">' + esc(stop.place) +
       (stop.defaults.length || stop.custom.length ? '<span class="row-sub">' +
         esc([...stop.defaults,...stop.custom].join(" · ")) + '</span>' : '') +
-      '</span><span class="chev">›</span></button>').join("") + '</div>' : '<div class="empty">No matching stops.</div>';
+      '</span><span class="chev" aria-hidden="true">›</span></button>').join("") + '</div>' : '<div class="empty">No matching stops.</div>';
     $view.querySelectorAll("[data-edit-aliases]").forEach(button => button.onclick = () =>
       openAliasEditor(index,button.dataset.editAliases));
   };
@@ -2404,12 +2152,8 @@ async function shareCalc(btn){
 
 /* ---------- init ---------- */
 document.getElementById("nav-back").addEventListener("click", () => {
-  if(view === "calc" && calcStep > 1){ const p = calcPrevStep(); if(p != null) calcGoStep(p); return; }
-  if(view === "calc-result"){
-    // Back returns to the form step that produced the fare — never the fare sheet.
-    if(calcResultStep != null && !popScreen()) calcGoStep(calcResultStep);
-    return;
-  }
+  if(view === "jobs"){ goMenu("today"); return; }
+  if(view === "account"){ goMenu("money"); return; }
   if(isCalcViewName(view)){ goBackFromCalc(); return; }
   if(view === "quote"){
     /* v4.3: a quote opened from the comparison card returns to the
@@ -2430,26 +2174,22 @@ document.getElementById("step-row").addEventListener("click", e => {
   if(!d) return;
   const n = Number(d.dataset.ustep);
   if(view === "step1" || view === "step2" || view === "notlisted") goToStep(n);
-  else if(view === "calc" || view === "calc-pick"){
-    if(view === "calc-pick") screenStack = []; // a dot jump leaves the picker layer
-    calcGoStep(n);
-  }
 });
 document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b => {
-  b.innerHTML = (MENU_ICONS[b.dataset.menu] || "") +
-    '<span class="menu-label" aria-hidden="true">' + esc(b.getAttribute("aria-label")) + '</span>';
   b.addEventListener("click", () => goMenu(b.dataset.menu));
 });
 const $modal = document.getElementById("modal");
 DETAILS_HTML = document.getElementById("sheet-body").innerHTML;
 document.getElementById("modal-close").addEventListener("click", () => closeDrawer());
 document.getElementById("modal-backdrop").addEventListener("click", () => closeDrawer());
+$modal.addEventListener("keydown",event => {
+  if(event.key === "Escape"){ event.preventDefault(); closeDrawer(); }
+});
 
 
 function todayNY(){const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const g=k=>p.find(x=>x.type===k).value;return g("year")+"-"+g("month")+"-"+g("day")}
-let tdDate=todayNY(),tdTab="trips";
+let tdDate=todayNY(), reviewFlowDate=null;
 function tdMoney(n,d=0){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:d,maximumFractionDigits:2}).format(n)}
-function tdColor(n,r,g,u){return u||r==null?"var(--muted)":n<0?"#bf443a":r>=g?"#16844b":"#b27613"}
 
 const LEDGER_VIEWS = ["today","jobs","money"];
 const MANUAL_FUEL = "manual_day_fuel";
@@ -2639,195 +2379,215 @@ function aximoteComparisonHtml(rows,reference){
       (metric.expected == null ? "—" : esc(metric.format(metric.expected))) + '</td><td>' +
       esc(metric.differenceLabel) + '</td></tr>').join("") + '</tbody></table>';
 }
-function closeoutCard(data){
-  const count = data.needsMatch.length + data.needsJob.length + data.pendingTrips.length;
-  const detail = [
-    data.needsMatch.length ? data.needsMatch.length + " driving " + (data.needsMatch.length === 1 ? "entry" : "entries") : "",
-    data.needsJob.length ? data.needsJob.length + " " + (data.needsJob.length === 1 ? "job" : "jobs") : "",
-    data.pendingTrips.length ? data.pendingTrips.length + " saved to reconcile" : ""
-  ].filter(Boolean).join(" · ");
-  const status = data.reviewed ? "Driving reviewed" : data.changed ? "Driving records changed" :
-    count ? detail + " to review" : "Ready to compare";
-  const actuals = data.aximote.length + " Aximote " + (data.aximote.length === 1 ? "trip" : "trips");
-  const other = data.tripRows.filter(row => !isAximoteTrip(row)).length;
-  return '<section class="tdcard closeout-card" aria-label="Day closeout"><div class="closeout-heading">' +
-    '<div><h2>Day closeout</h2><span class="tdmuted">' + esc(status) + '</span></div>' +
-    '<button class="quiet-link" id="td-closeout">' + (data.reviewed ? "View review" : "Review day") + '</button></div>' +
-    '<div class="closeout-sources">' + esc(actuals + (other ? " · " + other + " other driving " + (other === 1 ? "entry" : "entries") : "")) +
-    '</div>' +
-    (data.returnPending.length ? '<div class="tdmuted">Return trip missing for ' +
-      esc(data.returnPending.map(ledgerJobTitle).join(", ")) + '</div>' : '') +
-    (data.finance.length ? '<button class="quiet-link closeout-costs" id="td-costs-pending">Pending costs · ' +
-      esc(data.finance.join(", ")) + '</button>' : '') +
-    '<div class="tdmuted">' + tdMoney(data.received,2) + ' received this day' +
-    (data.due ? ' · ' + tdMoney(data.due,2) + ' still due on these jobs' : '') + '</div></section>';
-}
-function jumpToCloseoutSection(id){
-  closeDrawer();
-  tdTab = "trips";
-  renderToday(false);
-  document.getElementById(id)?.scrollIntoView({block:"start"});
-}
 function openDayCloseout(date,data){
   const draftKey = calcUser?.id + ":" + date;
-  const previous = closeoutDrafts.get(draftKey) || data.note.reference || {};
-  const blockers = (data.needsMatch.length ?
-    '<button type="button" class="row" id="closeout-trips"><span>Match or categorize driving entries</span>' +
-    '<span class="tag">' + data.needsMatch.length + '</span><span class="chev">›</span></button>' : '') +
-    (data.needsJob.length || data.pendingTrips.length ? '<button type="button" class="row" id="closeout-jobs"><span>Review job actuals</span>' +
-    '<span class="tag">' + (data.needsJob.length + data.pendingTrips.length) + '</span><span class="chev">›</span></button>' : '');
-  const fields = '<p class="tdnote">' + esc(fmtDateShort(date)) +
-    ' · Include all Aximote trips for the day, including personal driving.</p>' +
-    '<div id="closeout-comparison" aria-live="polite">' + aximoteComparisonHtml(data.aximote,previous) + '</div>' +
-    AXIMOTE_METRICS.map(metric => ledgerInput(metric.key,metric.label + " shown in Aximote (optional)",
-      "number",previous[metric.key],'min="0" step="' + metric.step + '" max="' + metric.max + '"')).join("") +
-    '<label class="closeout-check"><input name="checked" type="checkbox" required' +
-    (data.reviewed ? ' checked' : '') + '> I compared this day’s trips with Aximote.</label>' +
-    (blockers ? '<div class="list">' + blockers + '</div>' : '') +
-    (data.finance.length ? '<p class="tdnote">You can review driving now and return for ' +
-      esc(data.finance.join(", ").toLowerCase()) + '.</p>' : '');
-  openLedgerForm("Review driving day",fields,async (values,user) => {
-    const reference = Object.fromEntries(AXIMOTE_METRICS.map(metric => {
-      const value = values.get(metric.key);
-      return [metric.key,value === "" ? null : Number(value)];
-    }));
-    if(values.get("checked") !== "on") throw new Error("Confirm that you compared the day with Aximote.");
-    if(data.needsMatch.length || data.needsJob.length || data.pendingTrips.length) throw new Error("Review the remaining driving entries and job actuals first.");
-    if(aximoteComparison(data.aximote,reference).some(metric => metric.unresolved)){
-      throw new Error("The Aximote totals differ. Check the entries or add the missing trips.");
-    }
-
-    const notes = CLOSEOUT_PREFIX + JSON.stringify({
-      reference,snapshot:data.snapshot,previousNotes:data.note.previousNotes || null
-    });
-    const row = {user_id:user,business_date:date,state:"reviewed",reviewed_at:new Date().toISOString(),notes};
-    const base = "fl2_reconciliations?user_id=eq." + encodeURIComponent(user) + "&business_date=eq." + encodeURIComponent(date);
-    const saved = data.row ? await sbUser(base + "&state=eq." + data.row.state + "&reviewed_at=" +
-      (data.row.reviewed_at == null ? "is.null" : "eq." + encodeURIComponent(data.row.reviewed_at)),{
-        method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(row)
-      }) : await sbUser("fl2_reconciliations?on_conflict=user_id,business_date",{
-        method:"POST",headers:{Prefer:"resolution=ignore-duplicates,return=representation"},body:JSON.stringify(row)
+  const reference = closeoutDrafts.get(draftKey) || data.note.reference || {};
+  reviewFlowDate = data.reviewed ? null : date;
+  const job = data.returnPending[0] || data.needsJob[0];
+  const missingReturn = job?.return_pending && !dayReturnOnFile(data,job);
+  const saved = data.pendingTrips[0];
+  const trip = data.needsMatch[0];
+  const next = job ? {
+    label:missingReturn ? "Add missing return" : "Check " + ledgerJobTitle(job),
+    action:() => missingReturn ? openCarTrip(date,null,job.id,"empty_return") :
+      job.status === "scheduled" ? openLedgerJobForm(job) : openJobActuals(job,tdLedger.segments.filter(row => row.job_id === job.id))
+  } : saved ? {label:"Review saved job",action:() => openSavedTripMerge(saved)} :
+    trip ? {label:"Match driving entry",action:() => openCarTrip(date,trip)} : null;
+  const row = (id,label) => '<button type="button" class="row" id="' + id + '"><span class="row-main">' +
+    esc(label) + '</span><span class="chev" aria-hidden="true">›</span></button>';
+  const pending = data.finance.length ? '<p class="simple-caption">You can add ' +
+    esc(data.finance.join(", ").toLowerCase()) + ' when available.</p>' : '';
+  const sources = '<p class="simple-caption">' + data.aximote.length + ' Aximote ' +
+    (data.aximote.length === 1 ? 'trip' : 'trips') + ' on ' + esc(fmtDateShort(date)) + '</p>';
+  if(next){
+    openDrawer("Review day",sources + '<p class="simple-review-status">' + esc(dayActions(data)) + '</p>' +
+      '<button class="btn" id="closeout-next">' + esc(next.label) + '</button>' +
+      '<div class="list simple-space">' + row("closeout-driving","Driving log") + row("closeout-add","Add job") +
+      (missingReturn ? row("closeout-actuals","Edit job details") : '') + '</div>' + pending);
+    document.getElementById("closeout-next").onclick = next.action;
+    const actuals = document.getElementById("closeout-actuals");
+    if(actuals) actuals.onclick = () => openJobActuals(job,tdLedger.segments.filter(row => row.job_id === job.id));
+  } else {
+    const comparison = '<details class="simple-details"' +
+      (Object.values(reference).some(value => value != null) ? ' open' : '') + '><summary>Compare totals</summary>' +
+      '<div id="closeout-comparison" aria-live="polite">' + aximoteComparisonHtml(data.aximote,reference) + '</div>' +
+      AXIMOTE_METRICS.map(metric => ledgerInput(metric.key,metric.label + " in Aximote",
+        "number",reference[metric.key],'min="0" step="' + metric.step + '" max="' + metric.max + '"')).join("") +
+      '</details>';
+    const actions = '<div class="list simple-space">' + row("closeout-driving","Driving log") +
+      row("closeout-add","Add job") + '</div>';
+    if(data.reviewed){
+      openDrawer("Review day",sources + '<p class="simple-review-status">Driving reviewed</p>' +
+        aximoteComparisonHtml(data.aximote,reference) + actions + pending);
+    } else {
+      openLedgerForm("Review day",sources + '<p>Compare the driving log with Aximote, then finish the review.</p>' +
+        comparison + actions + pending,async (fields,user) => {
+        const totals = closeoutReference(fields);
+        if(aximoteComparison(data.aximote,totals).some(metric => metric.unresolved)){
+          throw new Error("Aximote totals differ. Check the driving log.");
+        }
+        await saveDayReview(date,data,totals,user);
+        closeoutDrafts.delete(draftKey);
+        reviewFlowDate = null;
+      },null,"Finish review");
+      const form = document.getElementById("ledger-form");
+      if(form) form.addEventListener("input",() => {
+        const totals = closeoutReference(new FormData(form));
+        closeoutDrafts.set(draftKey,totals);
+        document.getElementById("closeout-comparison").innerHTML = aximoteComparisonHtml(data.aximote,totals);
       });
-    if(!saved?.length) throw new Error("The day review changed. Refresh the day and try again.");
-    closeoutDrafts.delete(draftKey);
-  },null,"Mark driving reviewed");
-  const form = document.getElementById("ledger-form");
-  if(!form) return;
-  const tripButton = document.getElementById("closeout-trips");
-  if(tripButton) tripButton.onclick = () => jumpToCloseoutSection("td-drive-entries");
-  const jobButton = document.getElementById("closeout-jobs");
-  if(jobButton) jobButton.onclick = () => jumpToCloseoutSection("td-day-jobs");
-  form.addEventListener("input",() => {
-    const values = new FormData(form);
-    const reference = Object.fromEntries(AXIMOTE_METRICS.map(metric => [
-      metric.key,values.get(metric.key) === "" ? null : Number(values.get(metric.key))
-    ]));
-    closeoutDrafts.set(draftKey,reference);
-    document.getElementById("closeout-comparison").innerHTML = aximoteComparisonHtml(data.aximote,reference);
+    }
+  }
+  document.getElementById("closeout-driving").onclick = () => openDayDriving(date,data);
+  document.getElementById("closeout-add").onclick = () => openLedgerJobForm(null,{business_date:date,status:"completed"});
+}
+function closeoutReference(values){
+  return Object.fromEntries(AXIMOTE_METRICS.map(metric => {
+    const value = values.get(metric.key);
+    return [metric.key,value === "" ? null : Number(value)];
+  }));
+}
+async function saveDayReview(date,data,reference,user){
+  const notes = CLOSEOUT_PREFIX + JSON.stringify({
+    reference,snapshot:data.snapshot,previousNotes:data.note.previousNotes || null
   });
+  const row = {user_id:user,business_date:date,state:"reviewed",reviewed_at:new Date().toISOString(),notes};
+  const headers = {Prefer:"return=representation"};
+  const body = JSON.stringify(row);
+  const base = "fl2_reconciliations?user_id=eq." + encodeURIComponent(user) + "&business_date=eq." + encodeURIComponent(date);
+  const saved = data.row ? await sbUser(base + "&state=eq." + data.row.state + "&reviewed_at=" +
+    (data.row.reviewed_at == null ? "is.null" : "eq." + encodeURIComponent(data.row.reviewed_at)),{
+      method:"PATCH",headers,body
+    }) : await sbUser("fl2_reconciliations?on_conflict=user_id,business_date",{
+      method:"POST",headers:{Prefer:"resolution=ignore-duplicates,return=representation"},body
+    });
+  if(!saved?.length) throw new Error("The day review changed. Refresh the day and try again.");
 }
 
-function renderToday(reload=true){
- view="today";inFlow=false;setStep(0,"Today");
- if(reload){tdLoad();return;}
- const head='<div class="tdhead"><h1>Today</h1><input id="td-date" aria-label="Business date" type="date" value="'+esc(tdDate)+'"></div>';
- if(ledgerLoading(head)) return;
- const s = tdDay(tdDate), l = tdLedger, closeout = closeoutData(tdDate,s);
- const month = l.jobs.filter(job => job.business_date.slice(0,7) === tdDate.slice(0,7) && job.status === "completed");
- const rental = ledgerRental(tdDate);
- const periodJobs = rental ? l.jobs.filter(job => job.business_date >= rental.starts_on &&
-   job.business_date < rental.ends_before && job.status === "completed") : month;
- const periodHours = tdSum(periodJobs,"working_minutes") / 60;
- const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
- const target = Number(rental?.planned_hours ?? calcCfg.targetHours);
- const color = tdColor(s.net,s.rate,goal,!s.confirmed);
- const max = Math.max(1,goal*1.22);
- const p = Math.max(0,Math.min(1,(s.rate || 0)/max));
- const point = (fraction,radius=77) => [90-radius*Math.cos(fraction*Math.PI),88-radius*Math.sin(fraction*Math.PI)];
- const a = point(p), b = point(goal/max,68), c = point(goal/max,86);
- const gauge='<button class="tdgauge tdplain" id="td-gauge" aria-label="Hourly performance details"><svg viewBox="0 0 180 112" aria-hidden="true"><path d="M13 88 A77 77 0 0 1 167 88" fill="none" stroke="var(--chip)" stroke-width="8" stroke-linecap="round"/>'+(p?'<path d="M13 88 A77 77 0 0 1 '+a.join(" ")+'" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round"/>':'')+'<path d="M'+b.join(" ")+' L'+c.join(" ")+'" stroke="var(--muted)" stroke-width="2"/></svg><div class="tdcopy"><div class="tdscore" style="color:'+color+'">'+(s.rate==null?"—":tdMoney(s.rate,2))+'<small>/hr</small></div><div class="tdmuted">'+tdMoney(goal)+'/hr goal</div></div></button>';
- const rows = [...closeout.jobs].sort((a,b) =>
-   Number(closeout.needsJob.includes(b)) - Number(closeout.needsJob.includes(a))).map(job => {
-   if(job.status === "scheduled") return ledgerJobRow(job,"Confirm whether this job took place");
-   const miles = tdSum(s.segments.filter(segment => segment.job_id === job.id),"distance_mi");
-   const sourceRows = s.segments.filter(segment => segment.job_id === job.id);
-   const detail = (job.working_minutes == null ? "Working time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked") +
-     (sourceRows.some(row => row.distance_mi != null) ? " · " + fmtNum(miles) + " mi on file" : "") +
-     (job.return_pending ? " · Return pending" : closeout.needsJob.includes(job) ? " · Review actuals" : "");
-   return ledgerJobRow(job,detail);
- }).join("");
- const costs = Object.entries({toll:"Tolls",parking:"Parking",other:"Other"}).map(([key,label]) => {
-   const entries = s.expenses.filter(row => row.category === key);
-   return '<button class="tdrow tdexpense" data-td-expense="' + key + '"><span>' + label + '</span><b>' +
-     (entries.length ? tdMoney(tdSum(entries,"amount"),2) : "Add cost") + ' ›</b></button>';
- }).join("");
- const tab=(k,l)=>'<button role="tab" data-td-tab="'+k+'" aria-selected="'+(tdTab===k)+'">'+l+'</button>';
- const dates = [...new Set([...l.jobs,...l.segments,...l.expenses,...l.purchases,...(l.reconciliations || [])]
-   .map(row => row.business_date).concat(pendingSavedTrips().map(trip => trip.date).filter(Boolean)))].sort().reverse();
- const pace = !s.jobs.length ? "No recorded jobs" : !s.confirmed ? "Pending reconciliation" :
-   s.rate == null ? "No working time recorded" : s.rate === goal ? "At goal" :
-   tdMoney(Math.abs(s.rate-goal),2) + "/hr " + (s.rate > goal ? "above" : "below") + " goal";
- const progress = Math.min(100,periodHours/Math.max(1,target)*100);
- const periodLabel = (rental ? "Rental" : "Month") +
-   (periodJobs.some(job => job.working_minutes == null) ? " · partial" : "");
- const purchases = l.purchases.filter(row => row.business_date === tdDate);
- const expensePanel = '<div class="tdcard"><button class="tdrow tdexpense" id="td-fuel"><span>Fuel consumed</span><b>' +
-   (s.manualFuel || s.fuel.length ? tdMoney(s.fuelCost,2) : "Add cost") + ' ›</b></button>' + costs +
-   tdLine("Rental allocation",s.jobs.length && s.rentalKnown ? tdMoney(s.rent,2) : "Pending") +
-   tdLine("Fuel purchased (cash)",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchase recorded") +
-   '</div>';
- const carTrips = closeout.tripRows;
- const tripsPanel = '<section id="td-day-jobs" aria-label="Recorded jobs"><div class="tdlinks"><b>Jobs · ' + closeout.jobs.length +
-   '</b><button id="td-add-job">Add job</button></div><div class="tdlist">' +
-   (rows || '<div class="empty">No completed jobs recorded for this day.</div>') + '</div>' + savedTripEntries(closeout.pendingTrips) + '</section>' +
-   '<section id="td-drive-entries" aria-label="Driving entries" style="margin-top:16px"><b>Driving entries · ' + carTrips.length + '</b>' +
-   renderDayCarTrips(tdDate,carTrips) + '</section>';
- h(head + closeoutCard(closeout) + '<div class="tdcard"><div class="tdmetrics">' + gauge +
-   '<button class="tdnet tdplain" id="td-net"><div class="tdmuted">Take home</div><b>' +
-   (s.net == null ? "—" : tdMoney(s.net)) + '</b><div class="tdmuted">of ' +
-   tdMoney(s.gross) + (s.completeFare ? " gross" : " recorded gross") + '</div></button></div>' +
-   '<div class="tdgap" style="color:' + color + '">' + pace + '</div>' +
-   '<button class="tdhours tdplain" id="td-hours"><div><b>' +
-   (s.completeTime ? fmtNum(s.hours) + "h" : "Pending") + '</b><div class="tdmuted">Working hours</div></div>' +
-   '<div style="text-align:right"><b>' + fmtNum(periodHours) + " / " + fmtNum(target) +
-   'h</b><div class="tdmuted">' + periodLabel + '</div></div>' +
-   '<div class="tdbar"><i style="width:' + progress + '%"></i></div></button></div>' +
-   '<div class="tdtabs" role="tablist" aria-label="Daily ledger">' + tab("trips","Trips · " + s.jobs.length) +
-   tab("expenses","Expenses · " + (s.confirmed ? tdMoney(s.cost) : "Pending")) + '</div>' +
-   '<div class="tdlinks"><span class="tdmuted">' + fmtNum(s.miles) + ' recorded business mi</span>' +
-   '<button id="td-history">Past days</button></div>' + (tdTab === "trips" ? tripsPanel : expensePanel) +
-   '<div class="tdlinks"><button id="td-add">New quote</button><button id="td-refresh">Refresh</button></div>');
+function dayReturnOnFile(data,job){
+  return data.tripRows.some(row => row.job_id === job.id && row.category === "empty_return");
+}
+function dayActions(data){
+  if(data.returnPending.some(job => !dayReturnOnFile(data,job))) return "Return trip missing";
+  if(data.returnPending.length) return "Return trip ready to check";
+  const count = data.needsJob.length + data.needsMatch.length + data.pendingTrips.length;
+  if(count === 1){
+    const job = data.needsJob[0];
+    if(!job) return data.needsMatch.length ? "Driving entry to match" : "Saved job to check";
+    if(job.status === "scheduled") return "Scheduled job to confirm";
+    if(job.working_minutes == null) return "Working time missing";
+    if(job.fare == null) return "Fare missing";
+    return "Job details to check";
+  }
+  if(count) return count + " items to check";
+  return data.changed ? "Records changed since review" : "Ready to compare with Aximote";
+}
 
- document.getElementById("td-date").onchange=e=>{if(e.target.value){tdDate=e.target.value;renderToday(false)}};
- $view.querySelectorAll("[data-td-tab]").forEach(e=>e.onclick=()=>{tdTab=e.dataset.tdTab;renderToday(false)});
- wireLedgerJobRows();
- wireSavedTripEntries();
- document.getElementById("td-closeout").onclick = () => openDayCloseout(tdDate,closeout);
- const pendingCosts = document.getElementById("td-costs-pending");
- if(pendingCosts) pendingCosts.onclick = () => { tdTab = "expenses"; renderToday(false); };
- if(tdTab === "trips"){
-   document.getElementById("td-add-job").onclick = () => openLedgerJobForm(null,{business_date:tdDate,status:"completed"});
-   document.getElementById("td-add-car").onclick = () => openCarTrip(tdDate);
-   $view.querySelectorAll("[data-car-trip]").forEach(button => {
-     button.onclick = () => {
-       const segment = carTrips.find(row => row.id === button.dataset.carTrip);
-       if(segment) openCarTrip(tdDate,segment);
-     };
-   });
- }
- $view.querySelectorAll("[data-td-expense]").forEach(button => {
-   const category = button.dataset.tdExpense;
-   button.onclick = () => openDailyExpense(tdDate,category,
-     s.expenses.find(row => row.source === "manual_day_" + category));
- });
- const fuelButton = document.getElementById("td-fuel");
- if(fuelButton) fuelButton.onclick = () => openDailyExpense(tdDate,"fuel",s.manualFuel);
- document.getElementById("td-gauge").onclick=()=>openDrawer("Hourly performance",tdLine("Goal",tdMoney(goal)+"/hr")+tdLine("Current",s.rate==null?"Pending":tdMoney(s.rate,2)+"/hr")+'<p class="tdnote">Confirmed working time, fuel, tolls and rental allocation are needed before displaying profit.</p>');
- document.getElementById("td-net").onclick=()=>{tdTab="expenses";renderToday(false)};
- document.getElementById("td-hours").onclick=()=>openDrawer("Working hours",tdLine("Recorded hours",fmtNum(periodHours)+"h")+tdLine("Planned hours",fmtNum(target)+"h")+'<p class="tdnote">Working hours include recorded drive and wait time.</p>');
- document.getElementById("td-add").onclick=()=>goMode("calc");
- document.getElementById("td-refresh").onclick=()=>tdLoad();
- document.getElementById("td-history").onclick=()=>{openDrawer("Past days",dates.map(d=>{const x=tdDay(d);return '<button class="tdrow" data-td-day="'+esc(d)+'"><span>'+esc(d)+'</span><b>'+tdMoney(x.gross)+'</b></button>'}).join("")||'<p>No records</p>');document.querySelectorAll("[data-td-day]").forEach(e=>e.onclick=()=>{tdDate=e.dataset.tdDay;closeDrawer();renderToday(false)})};
+function dayCostRows(date,day){
+  const purchases = tdLedger.purchases.filter(row => row.business_date === date);
+  return '<div class="list">' +
+    '<button class="row" id="td-fuel"><span class="row-main">Fuel used</span><span>' +
+    (day.manualFuel || day.fuel.length ? tdMoney(day.fuelCost,2) : "Pending") + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+    Object.entries({toll:"Tolls",parking:"Parking",other:"Other costs"}).map(([category,label]) => {
+      const rows = day.expenses.filter(row => row.category === category);
+      return '<button class="row" data-td-expense="' + category + '"><span class="row-main">' + label +
+        '</span><span>' + (rows.length ? tdMoney(tdSum(rows,"amount"),2) : "—") + '</span><span class="chev" aria-hidden="true">›</span></button>';
+    }).join("") +
+    (purchases.length ? tdLine("Fuel bought",tdMoney(tdSum(purchases,"amount"),2)) : "") + '</div>';
+}
+function openDayCosts(date){
+  const day = tdDay(date);
+  const rental = ledgerRental(date);
+  const pace = day.rate == null ? "" : tdLine("Take-home per hour",tdMoney(day.rate,2) + " · " +
+    tdMoney(Number(rental?.hourly_goal ?? calcCfg.earningsTarget)) + " goal");
+  openDrawer("Costs",dayCostRows(date,day) + (day.net == null ? "" :
+    '<div class="list simple-space">' + tdLine("Take-home",tdMoney(day.net,2)) + pace + '</div>'));
+  document.getElementById("td-fuel").onclick = () => openDailyExpense(date,"fuel",day.manualFuel);
+  document.getElementById("sheet-body").querySelectorAll("[data-td-expense]").forEach(button => {
+    const category = button.dataset.tdExpense;
+    button.onclick = () => openDailyExpense(date,category,
+      day.expenses.find(row => row.source === "manual_day_" + category));
+  });
+}
+function openDayDriving(date,data){
+  openDrawer("Driving log",renderDayCarTrips(date,data.tripRows));
+  document.getElementById("td-add-car").onclick = () => openCarTrip(date);
+  document.getElementById("sheet-body").querySelectorAll("[data-car-trip]").forEach(button => {
+    button.onclick = () => {
+      const segment = data.tripRows.find(row => row.id === button.dataset.carTrip);
+      if(segment) openCarTrip(date,segment);
+    };
+  });
+}
+function renderToday(reload=true){
+  view = "today";
+  inFlow = false;
+  setStep(0,"Today");
+  if(reload){ tdLoad(); return; }
+
+  const date = tdDate;
+  const heading = date === todayNY() ? "Today" : fmtDateShort(date);
+  const head = '<header class="simple-head"><h1>' + esc(heading) + '</h1>' +
+    (calcUser ? '<div class="simple-date-wrap"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">' +
+      '<rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 3v5m8-5v5M4 10h16"/></svg>' +
+      '<input class="simple-date" id="td-date" aria-label="Business date" type="date" value="' + esc(date) +
+      '"></div>' : '') + '</header>';
+  if(ledgerLoading(head)){
+    if(!calcUser){
+      $view.insertAdjacentHTML("beforeend",'<button class="quiet-link" id="today-public-fares">Browse fare sheet</button>');
+      document.getElementById("today-public-fares").onclick = () => goMode("fares");
+    }
+    return;
+  }
+  const day = tdDay(date);
+  const data = closeoutData(date,day);
+  const hasWork = data.jobs.length || data.tripRows.length || data.pendingTrips.length;
+  const active = tdLedger.jobs.filter(job => job.status === "scheduled" || job.status === "quoted").length;
+  const summary = [];
+  if(day.jobs.length && day.completeFare){
+    summary.push(data.due ? tdMoney(data.due) + " to collect" : "Paid in full");
+  }
+  if(day.hours) summary.push(driveTimeLabel(day.hours * 60) + (day.completeTime ? " worked" : " recorded"));
+  const primary = data.reviewed ? '' :
+    '<div class="simple-action"><button class="btn" id="' + (hasWork ? "td-closeout" : "td-add-job") + '">' +
+    (hasWork ? "Review day" : "Add job") + '</button>' +
+    (hasWork ? '<p role="status">' + esc(dayActions(data)) + '</p>' : '') + '</div>';
+  const rows = data.jobs.map(job => {
+    const detail = job.status === "scheduled" ? "Scheduled" :
+      job.return_pending ? (dayReturnOnFile(data,job) ? "Check return trip" : "Return trip missing") :
+      job.working_minutes == null ? "Time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked";
+    return ledgerJobRow(job,detail);
+  }).join("");
+  const costsLabel = data.finance.length ? "Pending" : day.cost ? tdMoney(day.cost) : "";
+  h(head +
+    '<section class="day-total"><div class="simple-label">Earned</div><strong>' + tdMoney(day.gross) + '</strong>' +
+    (summary.length ? '<div class="simple-caption">' + esc(summary.join(" · ")) + '</div>' : '') +
+    (data.reviewed ? '<div class="simple-caption">Driving reviewed</div>' : '') + '</section>' +
+    primary +
+    '<section aria-label="Jobs for this day" id="td-day-jobs"><div class="simple-section-head"><h2>Jobs</h2>' +
+    '<button class="quiet-link" id="td-all-jobs">All jobs' + (active ? ' <span class="tdmuted">(' + active + ' open)</span>' : '') +
+    ' <span aria-hidden="true">›</span></button></div>' +
+    (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this day.</p>') +
+    savedTripEntries(data.pendingTrips) + '</section>' +
+    '<details class="simple-details" id="td-records"><summary>Day details</summary><div class="list">' +
+    '<button class="row" id="td-driving"><span class="row-main">Driving log</span><span>' + data.tripRows.length +
+    '</span><span class="chev" aria-hidden="true">›</span></button>' +
+    '<button class="row" id="td-costs-pending"><span class="row-main">Costs</span><span>' + esc(costsLabel) +
+    '</span><span class="chev" aria-hidden="true">›</span></button>' +
+    (data.reviewed ? '<button class="row" id="td-closeout"><span class="row-main">Review details</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
+    '</div></details>');
+  document.getElementById("td-date").onchange = event => {
+    if(event.target.value){ tdDate = event.target.value; renderToday(false); }
+  };
+  document.getElementById("td-all-jobs").onclick = () => goMenu("jobs");
+  document.getElementById("td-driving").onclick = () => openDayDriving(date,data);
+  document.getElementById("td-costs-pending").onclick = () => openDayCosts(date);
+  const review = document.getElementById("td-closeout");
+  if(review) review.onclick = () => openDayCloseout(date,data);
+  const add = document.getElementById("td-add-job");
+  if(add) add.onclick = () => openLedgerJobForm(null,{business_date:date,status:"completed"});
+  wireLedgerJobRows();
+  wireSavedTripEntries();
 }
 
 const CAR_CATEGORIES = {
@@ -2869,15 +2629,16 @@ function renderDayCarTrips(date,segments){
         (carTripNeedsReview(segment) || (job && job.status !== "completed") ? "Review" : "›") + '</small></span></button>';
     }).join("") : '<div class="empty">No driving entries for ' + esc(fmtDateShort(date)) + '.</div>') + '</div>';
 }
-function openCarTrip(date,segment = null){
+function openCarTrip(date,segment = null,jobId = null,categoryChoice = null){
   const key = segment ? null : crypto.randomUUID();
   const editable = !segment || segment.source === "manual_car_trip";
-  const selectedJob = segment?.job_id;
+  const selectedJob = segment?.job_id || jobId;
   const segmentDate = segment?.business_date || date;
   const earliest = new Date(new Date(segmentDate + "T12:00:00Z").getTime() - 86400000).toISOString().slice(0,10);
   const jobs = tdLedger.jobs.filter(job => job.id === selectedJob || (job.status === "completed" &&
     (job.business_date === segmentDate || (job.return_pending && job.business_date >= earliest && job.business_date < segmentDate))));
-  const fields = tdLine("Business date",segment?.business_date || date) +
+  const fields = (segment ? tdLine("Business date",segment.business_date || date) :
+    ledgerInput("trip-date","Date in Aximote","date",date,"required")) +
     (segment ? tdLine("Source",CAR_SOURCE_LABELS[segment.source] || "Other source") : "") +
     (editable ? stopOptionsHtml("car-stops") +
       ledgerInput("origin","From","text",segment?.origin,'list="car-stops" maxlength="250"') +
@@ -2887,7 +2648,7 @@ function openCarTrip(date,segment = null){
       tdLine("Recorded trip",carTripFacts(segment))) +
     '<label class="field" for="ledger-car-category">Trip type</label><select id="ledger-car-category" name="category">' +
     Object.entries(CAR_CATEGORIES).map(([category,label]) => '<option value="' + category + '"' +
-      (segment?.category === category ? ' selected' : '') + '>' + esc(label) + '</option>').join("") +
+      ((segment?.category || categoryChoice) === category ? ' selected' : '') + '>' + esc(label) + '</option>').join("") +
     '</select><div id="car-job-field"><label class="field" for="ledger-car-job">Match to job</label>' +
     '<select id="ledger-car-job" name="job"><option value="">Unmatched</option>' +
     jobs.map(job => '<option value="' + esc(job.id) + '"' + (job.id === selectedJob ? ' selected' : '') + '>' +
@@ -2920,7 +2681,7 @@ function openCarTrip(date,segment = null){
       return;
     }
     await ledgerWriteOnce("fl2_segments",{
-      ...row,user_id:user,business_date:date,source:"manual_car_trip",source_key:key
+      ...row,user_id:user,business_date:data.get("trip-date"),source:"manual_car_trip",source_key:key
     });
   });
   const category = document.getElementById("ledger-car-category");
@@ -2963,28 +2724,29 @@ function openLedgerJob(job){
   const payments = tdLedger.payments.filter(row => row.job_id === job.id);
   const segments = tdLedger.segments.filter(row => row.job_id === job.id);
   const active = job.status === "quoted" || job.status === "scheduled";
+  const completed = job.status === "completed";
   const undated = payments.filter(row => row.received_on == null);
-  const canRecordPayment = job.status === "completed" &&
-    (job.fare == null || round2(tdSum(payments,"amount")) < Number(job.fare));
-  openDrawer(ledgerJobTitle(job),
-    tdLine("Date",job.business_date) +
+  const payOpen = completed && (job.fare == null || round2(tdSum(payments,"amount")) < Number(job.fare));
+  const needsActuals = completed && (job.review_state !== "confirmed" || job.return_pending || job.working_minutes == null || job.fare == null);
+  const primary = active ? '<button class="btn" id="ledger-edit">Update job</button>' :
+    needsActuals ? '<button class="btn" id="ledger-actual-review">Review job</button>' :
+    payOpen ? '<button class="btn" id="ledger-payment">Record payment</button>' : "";
+  const details = '<details class="simple-details"><summary>Job details</summary><div class="list">' +
     (job.customer ? tdLine("Customer",job.customer) : "") +
-    tdLine("Status",ledgerPaymentLabel(job,payments)) +
-    tdLine(job.status === "completed" ? "Earned fare" : "Quoted fare",
-      job.fare == null ? "Pending" : tdMoney(Number(job.fare),2)) +
-    tdLine("Payments recorded",payments.length ? tdMoney(tdSum(payments,"amount"),2) : "Pending entry") +
-    undated.map(payment => '<button class="tdrow tdexpense" data-undated-payment="' + esc(payment.id) +
-      '"><span>Set payment date</span><b>' + tdMoney(Number(payment.amount),2) + ' ›</b></button>').join("") +
-    (job.return_pending ? tdLine("Return trip","Still missing") : "") +
-    tdLine("Working time",job.working_minutes == null ? "Pending" : fmtNum(Number(job.working_minutes)/60) + "h") +
-    segments.map(row => tdLine([row.origin,row.destination].filter(Boolean).join(" → ") || row.category,
-      row.distance_mi == null ? "Mileage pending" : fmtNum(Number(row.distance_mi)) + " mi")).join("") +
-    (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : "") + linkedEvidence(job) +
-    (active ? '<button class="btn" id="ledger-edit">Update job</button>' : "") +
-    (job.status === "completed" ? '<button class="btn" id="ledger-actual-review">Review job actuals</button>' : "") +
-    (canRecordPayment ? '<button class="btn secondary" id="ledger-payment">Record payment</button>' : "") +
-    (job.status === "completed" && view === "jobs" ?
-      '<button class="btn secondary" id="ledger-review">Review this day</button>' : ""));
+    tdLine("Working time",job.working_minutes == null ? "Pending" : driveTimeLabel(Number(job.working_minutes))) +
+    (payments.length ? tdLine("Payments recorded",tdMoney(tdSum(payments,"amount"),2)) : "") +
+    segments.map(row => tdLine(carTripTitle(row),carTripFacts(row))).join("") +
+    undated.map(payment => '<button class="row" data-undated-payment="' + esc(payment.id) +
+      '"><span class="row-main">Set payment date</span><b>' + tdMoney(Number(payment.amount),2) + '</b><span class="chev" aria-hidden="true">›</span></button>').join("") +
+    (completed && !needsActuals ? '<button class="row" id="ledger-actual-review"><span class="row-main">Edit actuals</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
+    (payOpen && needsActuals ? '<button class="row" id="ledger-payment"><span class="row-main">Record payment</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
+    (completed && view === "jobs" ? '<button class="row" id="ledger-review"><span class="row-main">Go to day</span><span class="chev" aria-hidden="true">›</span></button>' : '') +
+    '</div>' + (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : '') + linkedEvidence(job) + '</details>';
+  openDrawer(ledgerJobTitle(job),
+    '<div class="day-total"><div class="simple-label">' + esc(fmtDateShort(job.business_date)) + '</div><strong>' +
+    (job.fare == null ? "—" : tdMoney(Number(job.fare))) + '</strong><div class="simple-caption">' +
+    esc(ledgerPaymentLabel(job,payments)) + (job.return_pending ? " · Return trip missing" : "") +
+    '</div></div>' + primary + details);
   const edit = document.getElementById("ledger-edit");
   if(edit) edit.onclick = () => openLedgerJobForm(job);
   const actuals = document.getElementById("ledger-actual-review");
@@ -3001,7 +2763,6 @@ function openLedgerJob(job){
   if(review) review.onclick = () => {
     closeDrawer();
     tdDate = job.business_date;
-    tdTab = "trips";
     goMenu("today");
   };
 }
@@ -3125,38 +2886,30 @@ function openPaymentDate(payment){
     },null,"Save receipt date");
 }
 
-let ledgerJobsFilter = null;
 function renderLedgerJobs(reload){
   view = "jobs";
   inFlow = false;
   setStep(0,"Jobs");
   if(reload){ tdLoad(); return; }
-  const head = '<div class="tdhead"><h1>Jobs</h1></div>';
+  const head = '<header class="simple-head"><h1>Jobs</h1>' +
+    '<button class="quiet-link" id="jobs-add">Add job</button></header>';
   if(ledgerLoading(head)) return;
-  const pendingTrips = pendingSavedTrips();
-  const allJobs = tdLedger.jobs;
-  const quotes = allJobs.filter(job => job.status === "quoted").sort((a,b) => b.business_date.localeCompare(a.business_date));
-  const scheduled = allJobs.filter(job => job.status === "scheduled").sort((a,b) => a.business_date.localeCompare(b.business_date));
-  const completed = allJobs.filter(job => job.status === "completed").sort((a,b) => b.business_date.localeCompare(a.business_date));
-  ledgerJobsFilter ??= quotes.length || scheduled.length ? "active" : "completed";
-  const tab = (key,label) => '<button data-jobs-filter="' + key + '" aria-pressed="' +
-    (ledgerJobsFilter === key) + '">' + label + '</button>';
-  const group = (label,jobs) => jobs.length ? (label ? '<div class="group-label">' + label + '</div>' : '') +
-    '<div class="tdlist">' + jobs.map(job => ledgerJobRow(job,[fmtDateShort(job.business_date),job.customer].filter(Boolean).join(" · "))).join("") + '</div>' : "";
-  const result = ledgerJobsFilter === "completed" ? group("",completed) + savedTripEntries(pendingTrips) :
-    group("Scheduled",scheduled) + group("Quotes",quotes);
-  h(head + '<div class="tdtabs" aria-label="Job status">' + tab("active","Open · " + (quotes.length + scheduled.length)) +
-    tab("completed","Completed · " + completed.length + (pendingTrips.length ? " · " + pendingTrips.length + " to review" : "")) + '</div>' +
-    '<div class="tdlinks"><button id="jobs-quote">New quote</button><button id="jobs-add">Add job</button></div>' +
-    (result || '<div class="empty">' + (ledgerJobsFilter === "active" ? "No open jobs." : "No completed jobs.") + '</div>'));
-  $view.querySelectorAll("[data-jobs-filter]").forEach(button => {
-    button.onclick = () => { ledgerJobsFilter = button.dataset.jobsFilter; renderLedgerJobs(false); };
-  });
-  document.getElementById("jobs-quote").onclick = () => goMode("calc");
+  const jobs = tdLedger.jobs;
+  const open = jobs.filter(job => job.status === "scheduled" || job.status === "quoted")
+    .sort((a,b) => a.business_date.localeCompare(b.business_date));
+  const completed = jobs.filter(job => job.status === "completed")
+    .sort((a,b) => b.business_date.localeCompare(a.business_date));
+  const list = rows => '<div class="list">' + rows.map(job => ledgerJobRow(job,
+    [fmtDateShort(job.business_date),job.customer,job.return_pending ? "Return trip missing" : ""].filter(Boolean).join(" · ")
+  )).join("") + '</div>';
+  h(head + (open.length ? '<div class="simple-section-head"><h2>Open</h2></div>' + list(open) : '') +
+    (completed.length ? '<div class="simple-section-head simple-space"><h2>Completed</h2></div>' + list(completed) :
+      !open.length ? '<p class="simple-empty">No jobs yet.</p>' : '') + savedTripEntries(pendingSavedTrips()));
   document.getElementById("jobs-add").onclick = () => openLedgerJobForm();
   wireLedgerJobRows();
   wireSavedTripEntries();
 }
+
 function ledgerInput(name,label,type,value,attributes=""){
   return '<label class="field" for="ledger-' + name + '">' + label + '</label><input id="ledger-' + name +
     '" name="' + name + '" type="' + type + '"' + (type === "date" ? ' class="ledger-date"' : '') +
@@ -3197,11 +2950,12 @@ function openLedgerForm(title,fields,save,onSaved,submitLabel = "Save"){
       if(LEDGER_VIEWS.includes(view)) tdLoad();
       return;
     }
-    closeDrawer();
+    closeDrawer(true);
     if(onSaved) onSaved();
     if(LEDGER_VIEWS.includes(view)){
       await tdLoad();
       if(view === startingView) $scroll.scrollTop = startingScroll;
+      if(view === "today" && reviewFlowDate === tdDate && tdLedger) openDayCloseout(tdDate,closeoutData(tdDate));
     }
   };
 }
@@ -3213,7 +2967,7 @@ function ledgerWriteOnce(table,row){
 function openLedgerJobForm(job = null,prefill = {}){
   const initial = job || prefill;
   const key = job ? null : crypto.randomUUID();
-  const fromQuote = view === "calc-result";
+  const fromQuote = view === "calc";
   const status = initial.status || "quoted";
   const statuses = {quoted:"Quoted",scheduled:"Scheduled"};
   if(!fromQuote) statuses.completed = "Completed";
@@ -3259,9 +3013,8 @@ function openLedgerJobForm(job = null,prefill = {}){
     } else {
       await ledgerWriteOnce("fl2_jobs",{...row,user_id:user,source:"manual",source_key:key});
     }
-    ledgerJobsFilter = jobStatus === "completed" ? "completed" : "active";
   },() => {
-    if(fromQuote) { screenStack = []; renderLedgerJobs(false); }
+    if(fromQuote) { calcReset(); screenStack = []; renderLedgerJobs(false); }
   });
   const select = document.getElementById("ledger-status");
   if(select){
@@ -3331,8 +3084,12 @@ function renderLedgerMoney(reload){
   inFlow = false;
   setStep(0,"Money");
   if(reload){ tdLoad(); return; }
-  const head = '<div class="tdhead"><h1>Money</h1></div>';
-  if(ledgerLoading(head)) return;
+  const head = '<header class="simple-head"><h1>Money</h1>' +
+    '<button class="quiet-link" id="money-account">Settings</button></header>';
+  if(ledgerLoading(head)){
+    document.getElementById("money-account").onclick = () => goMenu("account");
+    return;
+  }
   const ledger = tdLedger;
   const rentals = [...ledger.rentals].sort((a,b) => b.starts_on.localeCompare(a.starts_on));
   const months = [...new Set([tdDate,...ledger.jobs.map(row => row.business_date),
@@ -3365,24 +3122,30 @@ function renderLedgerMoney(reload){
   const rentalOptions = rentals.map(row => periodOption(row.id,"Rental · " + row.starts_on + " to " + row.ends_before,row.id === rental?.id));
   const monthOptions = months.map(key => periodOption(key,new Date(key + "-01T12:00:00").toLocaleDateString("en-US",{
     year:"numeric",month:"long"}),!rental && month === key));
-  h(head + '<label class="field" for="money-period">Period</label><select id="money-period">' +
-    rentalOptions.join("") + monthOptions.join("") + '</select><div class="tdcard" style="margin-top:12px">' +
-    tdLine("Earned fare" + (expectedDates.length || jobs.some(job => job.fare == null) ? " recorded" : ""),tdMoney(earned,2)) +
-    tdLine("Payments confirmed for these jobs",tdMoney(tdSum(payments,"amount"),2)) +
-    tdLine("Still due on these jobs",tdMoney(outstanding,2)) +
-    tdLine("Cash received on dates in this period",tdMoney(tdSum(ledger.payments.filter(row => inPeriod(row.received_on)),"amount"),2)) +
-    (undated.length ? tdLine("Confirmed payments awaiting receipt dates",tdMoney(tdSum(undated,"amount"),2)) : "") +
+  const net = rental && complete ? earned - operating - fixedCost : null;
+  const tallies = '<div class="list">' +
+    tdLine("Paid",tdMoney(tdSum(payments,"amount"),2)) +
+    (outstanding ? tdLine("Still due",tdMoney(outstanding,2)) : "") +
+    (net != null ? tdLine("Earned",tdMoney(earned,2)) : "") + '</div>';
+  const detail = '<details class="simple-details"><summary>Money details</summary><div class="list">' +
+    tdLine("Cash received in this period",tdMoney(tdSum(ledger.payments.filter(row => inPeriod(row.received_on)),"amount"),2)) +
+    (undated.length ? tdLine("Paid, receipt dates pending",tdMoney(tdSum(undated,"amount"),2)) : "") +
     tdLine("Recorded working hours",fmtNum(tdSum(jobs,"working_minutes")/60) +
       (rental ? " / " + fmtNum(Number(rental.planned_hours)) : "") + "h") +
-    tdLine("Operating costs",complete ? tdMoney(operating,2) : "Pending reconciliation") +
-    (rental ? tdLine("Full rental cost",tdMoney(fixedCost,2)) +
-      tdLine("Rental cost remaining",complete ? tdMoney(remaining,2) : "Pending reconciliation") +
-      tdLine("Period take-home before tax",complete ? tdMoney(earned - operating - fixedCost,2) : "Pending reconciliation") :
-      tdLine("Rental costs","Select a rental period")) +
-    tdLine("Fuel purchased",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "No purchases recorded") +
-    (expectedDates.length ? '<button class="tdrow tdexpense" id="money-saved"><span>Reconcile saved jobs</span><b>' +
-      expectedDates.length + ' ›</b></button>' : "") + '</div>' +
-    '<div class="tdlinks"><button id="money-add">Add rental period</button></div>');
+    tdLine("Operating costs",complete ? tdMoney(operating,2) : "Pending") +
+    (rental ? tdLine("Rental cost",tdMoney(fixedCost,2)) +
+      tdLine("Rental cost remaining",complete ? tdMoney(remaining,2) : "Pending") : "") +
+    tdLine("Fuel bought",purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "—") +
+    '<button class="row" id="money-add"><span class="row-main">Add rental period</span><span class="chev" aria-hidden="true">›</span></button>' +
+    (expectedDates.length ? '<button class="row" id="money-saved"><span class="row-main">Review saved jobs</span><span>' +
+      expectedDates.length + '</span><span class="chev" aria-hidden="true">›</span></button>' : '') + '</div></details>';
+  h(head + '<select id="money-period" aria-label="Period">' + rentalOptions.join("") + monthOptions.join("") +
+    '</select><section class="day-total simple-space"><div class="simple-label">' +
+    (net == null ? "Earned" : "Take-home before tax") + '</div><strong>' +
+    tdMoney(net ?? earned,2) + '</strong>' +
+    (net == null && jobs.length ? '<div class="simple-caption">Take-home pending costs' +
+      (rental ? '' : ' and rental') + '</div>' : '') + '</section>' + tallies + detail);
+  document.getElementById("money-account").onclick = () => goMenu("account");
   document.getElementById("money-add").onclick = openLedgerRental;
   document.getElementById("money-period").onchange = event => {
     moneyRentalId = event.target.value;
@@ -3390,7 +3153,6 @@ function renderLedgerMoney(reload){
   };
   const pending = document.getElementById("money-saved");
   if(pending) pending.onclick = () => {
-    ledgerJobsFilter = "completed";
     goMenu("jobs");
   };
 }
@@ -3418,16 +3180,14 @@ async function init(){
       if(quote?.calc){
         calcReset();
         Object.assign(calc,quote.calc);
-        calcStep = calcStepList().includes(quote.step) ? quote.step : calcFirstIncompleteStep();
-        renderCalcResult();
+        renderCalc();
         document.getElementById("c-job")?.click();
       } else renderCalc();
     } else if(viewParam === "calc" || viewParam === "calc-month" || viewParam === "account" || viewParam === "settings"){
       backTarget = "step1";
       if(viewParam === "calc"){ if(!calcOpenFromShare(q)) renderCalc(); } // v4.4.2: a share link opens a new trip on the result
       else if(viewParam === "calc-month"){
-        ledgerJobsFilter = "completed";
-        renderLedgerJobs(true);
+            renderLedgerJobs(true);
       }
       else renderAccount(); // "settings" still works as an alias for the old redirect URL
     } else if(LEDGER_VIEWS.includes(viewParam) || [...q.keys()].every(key => key.startsWith("utm_"))){
