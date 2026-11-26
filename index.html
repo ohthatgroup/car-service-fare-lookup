@@ -228,7 +228,8 @@
   .today-hours button{ min-height:44px; text-align:left; }
   .today-tabs{ display:flex; gap:4px; margin-bottom:16px; padding:3px; border-radius:14px; background:var(--chip); }
   .today-tabs button{ flex:1; min-height:44px; border:0; border-radius:11px; background:none; color:var(--muted); font:inherit; cursor:pointer; }
-  .today-tabs button[aria-selected=true]{ background:var(--surface); color:var(--link); font-weight:650; }
+  [hidden]{ display:none !important; }
+  .today-tabs button[aria-selected=true],.today-tabs button[aria-pressed=true]{ background:var(--surface); color:var(--link); font-weight:650; }
   .today-gauge svg{ display:block; width:100%; }
   .today-gauge-label{ position:absolute; left:0; right:0; bottom:4px; text-align:center; }
   .today-gauge-label strong,.today-net strong{ display:block; font-size:clamp(20px,6vw,32px); letter-spacing:-.045em; }
@@ -423,15 +424,19 @@
 <div id="menu-pill" role="navigation" aria-label="Main">
   <button data-menu="today">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="15" rx="3"/><path d="M8 3.5v5m8-5v5M4 11h16m-12 4h3m2 0h3"/></svg>
-    <span>Today</span>
+    <span>Home</span>
   </button>
   <button data-menu="pricing">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h8l8 8-8 8-8-8z"/><circle cx="8.5" cy="8.5" r="1.2"/></svg>
     <span>Quote</span>
   </button>
-  <button data-menu="money">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/></svg>
-    <span>Money</span>
+  <button data-menu="community">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 5h16v11H11l-5 4v-4H4zM8 9h8m-8 3h5"/></svg>
+    <span>Community</span>
+  </button>
+  <button data-menu="account">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="var(--surface)"/><circle cx="15" cy="12" r="2" fill="var(--surface)"/><circle cx="9" cy="18" r="2" fill="var(--surface)"/></svg>
+    <span>Settings</span>
   </button>
 </div>
 <div id="modal" class="hidden">
@@ -991,7 +996,7 @@ function renderHeader(){
   const row = document.getElementById("step-row");
   const spacer = document.getElementById("nav-spacer");
   let items = null, cur = -1, curName = "";
-  if(view === "step1" || view === "step2" || view === "notlisted"){
+  if(["step1","step2","notlisted","quote-rates"].includes(view)){
     items = WIZARD_STEP_NAMES.map((n, i) => ({ label: n, step: i + 1 }));
     cur = currentStep - 1;
     curName = view === "notlisted" ? "Not listed" : WIZARD_STEP_NAMES[cur];
@@ -1041,17 +1046,18 @@ function goMode(next){
     if(fr) fr.dispatchEvent(new Event("change"));
     return;
   }
-  if(sel.from && sel.to){ renderNotListed(lastNotListedMsg); return; }
+  if(sel.from && sel.to){ renderRouteRates(); return; }
   if(sel.from){ inFlow = true; renderPlacePicker(2); return; }
   inFlow = false; sel = {}; renderPlacePicker(1);
 }
 let pricingView = "fares";
 function updateMenu(){
   const pill = document.getElementById("menu-pill");
-  const faresView = ["step1","step2","quote","flatbush","notlisted","pending"].includes(view);
+  const faresView = ["step1","step2","quote","quote-rates","flatbush","notlisted"].includes(view);
   if(faresView) pricingView = "fares";
   else if(view === "calc") pricingView = "calc";
-  const section = view === "jobs" ? "today" : view.startsWith("account") ? "money" :
+  const section = ["jobs","money"].includes(view) ? "today" : view.startsWith("account") ? "account" :
+    view === "pending" ? "community" :
     faresView || view === "calc" ? "pricing" : view;
   pill.querySelectorAll("[data-menu]").forEach(button => {
     if(button.dataset.menu === section) button.setAttribute("aria-current","page");
@@ -1074,21 +1080,22 @@ function goMenu(section){
   if(section === "fares" || section === "calc"){ goMode(section); return; }
   if(section === "community"){ screenStack = []; renderPending(); return; }
   if(section === "account"){
-    backTarget = "money";
+    backTarget = "today";
     renderAccount(); return;
   }
 }
 let currentStep = 1;
 function setStep(n,label){
   currentStep = n;
-  const simpleRoot = ["today","calc","money","step1"].includes(view);
+  const simpleRoot = ["today","money","step1","pending","account"].includes(view);
   const title = document.getElementById("nav-title");
   const nav = document.getElementById("topnav");
   title.style.display = simpleRoot || !isCalcViewName(view) ? "none" : "";
   title.textContent = label || "Fare Lookup";
   const back = view === "jobs" ? "Today" : view === "account" ? "Money" :
     view.startsWith("account-") ? "Account" :
-    view === "pending" ? "Fare Sheet" : view === "quote" && quoteFromCalc ? quoteFromCalcBack :
+    view === "calc" ? (calcStage === "result" ? "Trip details" : "Rates") :
+    view === "pending" ? "Quote" : view === "quote" && quoteFromCalc ? quoteFromCalcBack :
     (view === "notlisted" || n === 3) ? "Where to?" : n === 2 ? "Where from?" : "Start over";
   document.getElementById("nav-back").textContent = "‹ " + back;
   nav.classList.toggle("simple-root",simpleRoot);
@@ -1106,12 +1113,14 @@ function goToStep(n){
 /* ---------- bottom-bar mode switch (v4.2): see goMode/goMenu above ---------- */
 let backTarget = "step1"; // view the nav back link returns to from calc/settings views
 function goBackFromCalc(){
+  if(view === "calc" && calcStage === "result"){ calcStage = "details"; renderCalc(); return; }
   if(popScreen()) return;
   const t = backTarget || "step1";
   if(t === "calc") renderCalc();
   else if(t === "jobs") goMenu("jobs");
   else if(t === "money") goMenu("money");
   else if(t === "account") renderAccount();
+  else if(t === "quote-rates" && sel.from && sel.to) renderRouteRates();
   else if(t === "quote" && sel.resolved) renderQuote();
   else if(t === "flatbush" && sel.fb) renderFlatbush(sel.fb.base);
   else if(t === "pending") renderPending();
@@ -1165,27 +1174,25 @@ function placeListHTML(query,exclude,extra,custom){
 
 function renderPlacePicker(step){
   const isFrom = step === 1;
-  if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; sel.customPrice = null; }
+  if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; sel.customPrice = null; sel.resolved = null; sel.fb = null; sel.to = null; }
   view = isFrom ? "step1" : "step2";
   setStep(step);
   const other = isFrom ? null : sel.from;
   const showFlatbush = !isFrom && !!gridFor(sel.from);
   h(
-    (isFrom ? '<header class="simple-head"><h1>Fare Sheet</h1><button class="quiet-link" id="fare-calculator">Calculator</button></header><div class="tdlinks"><span></span><button class="quiet-link" id="fares-community">Community<span class="tag' + (proposals.length ? '' : ' hidden') + '" id="community-count" aria-hidden="true">' + proposals.length + '</span></button></div>' : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
+    (isFrom ? '<header class="simple-head"><h1>Quote</h1><button class="quiet-link" id="fare-calculator">Calculate without stops</button></header>' : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
     '<div class="search-wrap"><input type="search" id="q" aria-label="' + (isFrom ? "Search pickup" : "Search destination") + '" placeholder="' + (isFrom ? "Search pickup" : "Search destination") + '" autocomplete="off"></div>' +
     (showFlatbush
       ? '<div class="list"><button class="row" data-place="' + esc(zoneLabel(sel.from)) + '">' + esc(sel.from + " zone fare") + '<span class="chev" aria-hidden="true">›</span></button></div>'
       : "") +
-    '<div id="plist">' + placeListHTML("", other) + "</div>" +
+    '<div id="plist">' + placeListHTML("",other,calcHistoryPlaces()) + "</div>" +
     '<button class="quiet-link" id="add-link">Add a price</button>'
   );
   const input = document.getElementById("q");
   const calculator = document.getElementById("fare-calculator");
-  if(calculator) calculator.onclick = () => goMode("calc");
-  const community = document.getElementById("fares-community");
-  if(community) community.onclick = () => goMenu("community");
+  if(calculator) calculator.onclick = () => startCalculatedQuote();
   input.addEventListener("input", () => {
-    document.getElementById("plist").innerHTML = placeListHTML(input.value, other);
+    document.getElementById("plist").innerHTML = placeListHTML(input.value,other,calcHistoryPlaces(),input.value);
     bindPlaceRows(step);
   });
   bindPlaceRows(step);
@@ -1197,8 +1204,8 @@ function renderPlacePicker(step){
   });
 }
 function bindPlaceRows(step){
-  $view.querySelectorAll("[data-place]").forEach(b => {
-    b.addEventListener("click", () => pickPlace(step, b.dataset.place));
+  $view.querySelectorAll("[data-place],[data-custom]").forEach(b => {
+    b.addEventListener("click", () => pickPlace(step,b.dataset.place ?? b.dataset.custom));
   });
 }
 function pickPlace(step, place){
@@ -1218,12 +1225,69 @@ function afterRoutePicked(){
     renderNotListed("The zone fare only runs to and from " + zb + ".");
     return;
   }
-  const res = findFare(sel.from, sel.to);
-  if(!res){ renderNotListed(""); return; }
-  quoteFromCalc = false;
-  sel.resolved = res;
-  sel.trip = "oneway"; sel.minivan = false; sel.airport = false; sel.customPrice = null;
-  renderQuote();
+  renderRouteRates();
+}
+const QUOTE_SNAPSHOT_PREFIX = "FareLookup quote: ";
+function quoteSnapshot(notes){
+  if(!notes?.startsWith(QUOTE_SNAPSHOT_PREFIX)) return null;
+  try { return JSON.parse(notes.slice(QUOTE_SNAPSHOT_PREFIX.length)); } catch(error){ return null; }
+}
+function routeCalculatedRates(from,to){
+  const same = (first,second) => placeKey(resolvePlace(first)) === placeKey(resolvePlace(second));
+  const legacy = calcTripsArr.filter(trip => trip.fareCharged != null && same(trip.from,from) && same(trip.to,to))
+    .map(trip => ({date:trip.date,fare:Number(trip.fareCharged),snapshot:trip}));
+  const jobs = (tdLedger?.jobs || []).filter(job => job.status !== "cancelled" && same(job.pickup,from) && same(job.destination,to))
+    .flatMap(job => {
+      const snapshot = quoteSnapshot(job.notes);
+      return snapshot ? [{date:job.business_date,fare:Number(snapshot.fare),snapshot}] : [];
+    });
+  return [...jobs,...legacy].filter(row => row.snapshot.fare !== null && Number.isFinite(row.fare))
+    .sort((a,b) => (b.date || "").localeCompare(a.date || ""));
+}
+function renderRouteRates(){
+  const from = sel.from, to = sel.to;
+  if(!from || !to){ renderPlacePicker(from ? 2 : 1); return; }
+  view = "quote-rates";
+  setStep(3,"Rates");
+  const sheet = findFare(from,to);
+  const history = routeCalculatedRates(from,to);
+  h('<div class="route-line">' + esc(from) + ' → ' + esc(to) + '</div>' +
+    '<div class="list">' + (sheet ? detailRow("quote-sheet","Community rate",printedMoney(sheet.fare.price)) : "") +
+    history.map((row,index) => detailRow("quote-history-" + index,
+      "Calculated rate" + (row.date ? " · " + fmtDateShort(row.date) : ""),money(row.fare))).join("") +
+    '</div>' + (!sheet && !history.length ? '<p class="simple-empty">No saved rates for this route.</p>' : '') +
+    '<button class="btn" id="quote-calculate">Create calculated rate</button>' +
+    (!sheet ? '<button class="quiet-link" id="quote-add-price">Add a price</button>' : ''));
+  const sheetButton = document.getElementById("quote-sheet");
+  if(sheetButton) sheetButton.onclick = () => openQuoteFromCalc(from,to,"oneway",renderRouteRates,"Rates");
+  document.getElementById("quote-calculate").onclick = () => startCalculatedQuote(from,to);
+  const add = document.getElementById("quote-add-price");
+  if(add) add.onclick = () => openAddDrawer({from,to});
+  history.forEach((row,index) => {
+    document.getElementById("quote-history-" + index).onclick = () => startCalculatedQuote(from,to,row);
+  });
+  if(calcUser && !tdLedger && !tdLoading && !tdError){
+    tdLoad().then(() => {
+      if(view === "quote-rates" && sel.from === from && sel.to === to && tdLedger) renderRouteRates();
+    });
+  }
+}
+function startCalculatedQuote(from = null,to = null,saved = null){
+  calcReset();
+  calc.from = from;
+  calc.to = to;
+  if(saved){
+    const snapshot = saved.snapshot;
+    for(const name of ["mode","miles","hours","waitHours","tolls","parking","returnMiles","returnHours","returnTolls"]){
+      if(snapshot[name] != null) calc[name] = snapshot[name];
+    }
+    calc.adjustedFare = saved.fare;
+    if(snapshot.endAtDropoff != null) calc.endAtDropoff = snapshot.endAtDropoff;
+    calcStage = calc.miles > 0 && calc.hours > 0 ? "result" : "details";
+  } else calcPrefillFromJobs();
+  backTarget = from && to ? "quote-rates" : "step1";
+  screenStack = [];
+  renderCalc();
 }
 
 function quoteText(priceStr){
@@ -1292,7 +1356,7 @@ function renderQuote(){
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
     '<div id="q-breakdown"></div>' +
     '<button class="btn secondary" id="customize">Customize price</button>' +
-    '<button class="btn secondary" id="takehome">Calculate take-home</button>' +
+     '<button class="btn secondary" id="takehome">Calculate take-home</button>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
     '<div class="drawer-actions"><button class="btn" id="share">Share price</button>' +
@@ -1877,6 +1941,7 @@ function fmtWait(h){
 }
 // Shared quotes carry their original return inputs. Fresh quotes use the driver's zones.
 function calcEndsAtHub(t,cfg = calcCfg){
+  if(t.endAtDropoff != null) return t.endAtDropoff;
   if(t.sharedReturnIncluded != null) return !t.sharedReturnIncluded;
   const zones = Array.isArray(cfg.operatingZones) ? cfg.operatingZones : places;
   return !!t.to && zones.includes(resolvePlace(t.to));
@@ -1939,8 +2004,9 @@ function calcFare(t, cfg){
 }
 
 /* ---------- trip calculator: screen ---------- */
-let calc = null;
+let calc = null, calcStage = "details";
 function calcReset(){
+  calcStage = "details";
   calc = { mode: "oneway", from: null, to: null, miles: "", hours: "", waitHours: 0,
     tolls: "", parking: "", returnMiles: "", returnHours: "", returnTolls: "", adjustedFare: null };
 }
@@ -1965,7 +2031,7 @@ function calcBreakdownLines(r){
     if(r.returnMiles > 0) parts.push(fmtNum(r.returnMiles) + " mi fuel " + money(round2(r.returnMiles * r.rates.fuelPerMile)));
     if(r.returnHours > 0) parts.push(fmtWait(r.returnHours) + " × " + money(r.rates.vehiclePerHr));
     if(r.returnTolls > 0) parts.push("tolls " + money(r.returnTolls));
-    lines.push({ label: "Return (" + parts.join(" + ") + ")", amount: r.returnCharge });
+    lines.push({ label: "Onward driving (" + parts.join(" + ") + ")", amount: r.returnCharge });
   }
   return lines;
 }
@@ -1995,30 +2061,48 @@ function renderCalc(){
   view = "calc";
   inFlow = false;
   if(!calc) calcReset();
+  if(calcStage === "result" && !(calc.miles > 0 && calc.hours > 0)) calcStage = "details";
   setStep(0,"Quote");
   const route = [calc.from,calc.to].filter(Boolean).join(" → ");
-  h('<header class="simple-head"><h1>Calculator</h1><button class="quiet-link" id="calc-fares">Fare Sheet</button></header>' +
-    (route ? '<p class="simple-caption">' + esc(route) + '</p>' : '') +
-    '<div class="simple-fields">'  + quoteInput("c-miles","Trip miles",calc.miles,"0.001") +
-      quoteInput("c-dur","Drive minutes",quoteMinutes(calc.hours),"0.001") + '</div>' +
-    '<section id="c-result" hidden><div class="day-total"><div class="simple-label" id="c-fare-label"></div>' +
-      '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div>' +
-      '<button class="btn" id="c-job">Save quote</button></section>' +
-    '<div class="list simple-space">' + detailRow("c-options","Quote options") + '</div>');
-  document.getElementById("calc-fares").onclick = () => goMenu("fares");
-  bindQuoteInput("c-miles","miles");
-  bindQuoteInput("c-dur","hours",1/60);
-  document.getElementById("c-options").onclick = openQuoteOptions;
-  document.getElementById("c-job").onclick = () => {
-    const quote = calcFare(calc,calcCfg);
-    if(quote.miles > 0 && quote.hours > 0) openLedgerJobForm(null,{
-      pickup:calc.from,destination:calc.to,fare:quote.fare
+  const head = '<header class="simple-head"><h1>' + (calcStage === "result" ? "Your rate" : "Trip details") + '</h1></header>' +
+    (route ? '<p class="simple-caption">' + esc(route) + '</p>' : '');
+  if(calcStage === "result"){
+    h(head + '<section id="c-result"><div class="day-total"><div class="simple-label" id="c-fare-label"></div>' +
+      '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div></section>' +
+      '<div class="list" id="c-result-breakdown"></div>' +
+      '<button class="btn" id="c-share-result">Share rate</button>' +
+      '<button class="btn secondary" id="c-customize">Customize</button>' +
+      '<button class="quiet-link" id="c-job">Save quote</button>');
+    document.getElementById("c-share-result").onclick = event => shareCalc(event.currentTarget);
+    document.getElementById("c-customize").onclick = openQuoteOptions;
+    document.getElementById("c-job").onclick = () => openLedgerJobForm(null,{
+      pickup:calc.from,destination:calc.to,fare:calcFare(calc,calcCfg).fare
     });
-  };
+  } else {
+    h(head + '<div class="simple-fields">' + quoteInput("c-miles","Trip miles",calc.miles,"0.001") +
+      quoteInput("c-dur","Drive minutes",quoteMinutes(calc.hours),"0.001") + '</div>' +
+      '<label class="toggle-row"><input type="checkbox" id="c-end-here"' + (calcEndsAtHub(calc) ? " checked" : "") +
+      '> End at drop-off</label><div id="c-onward" class="simple-fields"' + (calcEndsAtHub(calc) ? " hidden" : "") + '>' +
+      quoteInput("c-rmiles","Onward miles",calc.returnMiles,"0.001") +
+      quoteInput("c-rh","Onward minutes",quoteMinutes(calc.returnHours),"0.001") +
+      quoteInput("c-rtolls","Onward tolls ($)",calc.returnTolls,"0.01") + '</div>' +
+      '<div class="list simple-space">' + detailRow("c-options","Trip options") + '</div>' +
+      '<button class="btn" id="c-next">See rate</button>');
+    document.getElementById("c-options").onclick = openQuoteOptions;
+    [
+      ["c-miles","miles"],["c-dur","hours",1/60],["c-rmiles","returnMiles"],
+      ["c-rh","returnHours",1/60],["c-rtolls","returnTolls"]
+    ].forEach(args => bindQuoteInput(...args));
+    document.getElementById("c-end-here").onchange = event => {
+      calc.endAtDropoff = event.target.checked;
+      document.getElementById("c-onward").hidden = event.target.checked;
+    };
+    document.getElementById("c-next").onclick = () => { calcStage = "result"; renderCalc(); };
+  }
   updatePrice();
 }
 function openQuoteOptions(){
-  const hasPrice = !document.getElementById("c-result").hidden;
+  const hasPrice = calcStage === "result";
   openDrawer("Quote options",
     '<div class="list">' + detailRow("c-from","From",calc.from || "Choose a stop") +
     detailRow("c-to","To",calc.to || "Choose a stop") + '</div>' +
@@ -2029,16 +2113,11 @@ function openQuoteOptions(){
       quoteInput("c-wait","Waiting minutes",quoteMinutes(calc.waitHours),"0.001") +
       quoteInput("c-tolls","Tolls ($)",calc.tolls,"0.01") +
       quoteInput("c-parking","Parking ($)",calc.parking,"0.01") + '</div>' +
-    (calcEndsAtHub(calc) ? '' : '<div class="simple-fields simple-space">' +
-      quoteInput("c-rmiles","Return miles",calc.returnMiles,"0.001") +
-      quoteInput("c-rh","Return minutes",quoteMinutes(calc.returnHours),"0.001") +
-      quoteInput("c-rtolls","Return tolls ($)",calc.returnTolls,"0.01") + '</div>') +
     (hasPrice ? '<div class="simple-space">' + quoteInput("c-fare-edit","Custom fare ($)",calc.adjustedFare,"0.01") +
       '<div class="list simple-space" id="c-breakdown"></div>' +
       '<button class="quiet-link" id="c-share">Share fare</button></div>' : ''));
   [
-    ["c-wait","waitHours",1/60],["c-tolls","tolls"],["c-parking","parking"],["c-rmiles","returnMiles"],
-    ["c-rh","returnHours",1/60],["c-rtolls","returnTolls"],["c-fare-edit","adjustedFare"]
+    ["c-wait","waitHours",1/60],["c-tolls","tolls"],["c-parking","parking"],["c-fare-edit","adjustedFare"]
   ].forEach(args => bindQuoteInput(...args));
   document.getElementById("c-trip-type").onchange = event => {
     calc.mode = event.target.value;
@@ -2060,12 +2139,15 @@ function openQuoteOptions(){
 function updatePrice(){
   const r = calcFare(calc,calcCfg);
   const output = document.getElementById("c-result");
-  output.hidden = !(r.miles > 0 && r.hours > 0);
-  if(output.hidden) return;
+  const next = document.getElementById("c-next");
+  if(next) next.disabled = !(r.miles > 0 && r.hours > 0);
+  if(!output) return;
   document.getElementById("c-fare-label").textContent = calc.adjustedFare == null ? "Suggested fare" : "Your quote";
   document.getElementById("c-fare-show").textContent = money(r.fare);
   document.getElementById("c-takehome").textContent = money(r.takeHome) + " estimated take-home" +
     (r.effectivePerHour == null ? "" : " · " + money(r.effectivePerHour) + "/hr");
+  const resultBreakdown = document.getElementById("c-result-breakdown");
+  resultBreakdown.innerHTML = calcBreakdownLines(r).map(row => tdLine(row.label,money(row.amount))).join("");
   const breakdown = document.getElementById("c-breakdown");
   if(!breakdown) return;
   const listFare = calcListFare();
@@ -2088,6 +2170,7 @@ function openQuotePlace(which){
     if(!row) return;
     calc[which] = row.dataset.place ?? row.dataset.custom;
     delete calc.sharedReturnIncluded;
+    delete calc.endAtDropoff;
     calc.adjustedFare = null;
     calcPrefillFromJobs();
     renderCalc();
@@ -2153,6 +2236,7 @@ function calcOpenFromShare(q){
   const rtolls = num("rtolls"); if(rtolls != null) calc.returnTolls = String(rtolls);
   const adj = num("adj"); calc.adjustedFare = adj; // null when absent — the suggested fare stands
   if(hasInputs) calc.sharedReturnIncluded = [rmiles,rhours,rtolls].some(value => value > 0);
+  if(calc.miles > 0 && calc.hours > 0) calcStage = "result";
   renderCalc();
   return true;
 }
@@ -2226,10 +2310,11 @@ function renderAccount(){
   view = "account";
   setStep(0,"Account");
   h(
-    '<div class="tdhead"><h1>Account</h1></div><div class="list">' +
+    '<div class="tdhead"><h1>Settings</h1></div><div class="list">' +
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-aliases"><span>Stops &amp; aliases</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-zones"><span>Operating zones</span><span class="chev" aria-hidden="true">›</span></button>' +
+      '<button class="row" id="a-rentals"><span>Rental periods</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-details"><span>Details</span><span class="chev" aria-hidden="true">›</span></button>' +
     "</div>" +
     (calcUser
@@ -2243,6 +2328,10 @@ function renderAccount(){
   const aliases = document.getElementById("a-aliases");
   if(aliases) aliases.addEventListener("click", () => pushScreen("account-aliases", () => renderAccount(), renderAliases));
   document.getElementById("a-zones").onclick = () => pushScreen("account-zones",renderAccount,renderAccountZones);
+  document.getElementById("a-rentals").onclick = () => {
+    todayPeriod = "month";
+    goMenu("today");
+  };
   const details = document.getElementById("a-details");
   if(details) details.addEventListener("click", openDetails);
   const signin = document.getElementById("a-signin");
@@ -2474,7 +2563,7 @@ async function shareCalc(btn){
   } catch(e){ url = null; }
   if(!url){
     btn.textContent = "Couldn't share — try again";
-    setTimeout(() => { const b = document.getElementById("c-share"); if(b) b.textContent = "Share fare"; }, 1600);
+    setTimeout(() => { if(btn.isConnected) btn.textContent = btn.id === "c-share-result" ? "Share rate" : "Share fare"; }, 1600);
     return;
   }
   if(navigator.share){
@@ -2483,15 +2572,16 @@ async function shareCalc(btn){
   }
   try { await navigator.clipboard.writeText(url); btn.textContent = "✓ Link copied"; }
   catch(e){ btn.textContent = url; }
-  setTimeout(() => { const b = document.getElementById("c-share"); if(b) b.textContent = "Share fare"; }, 1600);
+  setTimeout(() => { if(btn.isConnected) btn.textContent = btn.id === "c-share-result" ? "Share rate" : "Share fare"; }, 1600);
 }
 
 /* ---------- init ---------- */
 document.getElementById("nav-back").addEventListener("click", () => {
   if(view === "jobs"){ goMenu("today"); return; }
   if(view === "pending"){ goMenu("fares"); return; }
-  if(view === "account"){ goMenu("money"); return; }
+  if(view === "account"){ goMenu("today"); return; }
   if(isCalcViewName(view)){ goBackFromCalc(); return; }
+  if(view === "quote-rates"){ renderPlacePicker(2); return; }
   if(view === "quote"){
     /* v4.3: a quote opened from the comparison card returns to the
        calculator layer it came from (result or trip drawer) — never
@@ -2510,7 +2600,7 @@ document.getElementById("step-row").addEventListener("click", e => {
   const d = e.target.closest("[data-ustep]");
   if(!d) return;
   const n = Number(d.dataset.ustep);
-  if(view === "step1" || view === "step2" || view === "notlisted") goToStep(n);
+  if(["step1","step2","notlisted","quote-rates"].includes(view)) goToStep(n);
 });
 document.getElementById("menu-pill").querySelectorAll("[data-menu]").forEach(b => {
   b.addEventListener("click", () => goMenu(b.dataset.menu));
@@ -2525,7 +2615,7 @@ $modal.addEventListener("keydown",event => {
 
 
 function todayNY(){const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const g=k=>p.find(x=>x.type===k).value;return g("year")+"-"+g("month")+"-"+g("day")}
-let tdDate=todayNY(), reviewFlowDate=null, todayTab="trips";
+let tdDate=todayNY(), reviewFlowDate=null, todayTab="trips", todayPeriod="day", homeRentalId=null;
 function tdMoney(n,d=0){return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:d,maximumFractionDigits:2}).format(n)}
 
 const LEDGER_VIEWS = ["today","jobs","money"];
@@ -2561,7 +2651,7 @@ async function tdLoad(){
  tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at,return_pending",user),
  tdFetch("fl2_segments","id,job_id,business_date,started_at,created_at,distance_mi,duration_minutes,category,origin,destination,source",user),
  tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source",user),
- tdFetch("fl2_fuel_purchases","id,business_date,amount,gallons",user),
+ tdFetch("fl2_fuel_purchases","id,business_date,purchased_at,amount,gallons",user),
  tdFetch("fl2_fuel_allocations","segment_id,allocated_cost,method",user),
  tdFetch("fl2_payments","id,job_id,received_on,amount",user),
  tdFetch("fl2_rentals","id,starts_on,ends_before,fixed_cost,planned_hours,hourly_goal",user),
@@ -2579,8 +2669,7 @@ async function tdLoad(){
 }
 function tdLine(l,v){return '<div class="tdline"><span>'+esc(l)+'</span><b>'+esc(v)+'</b></div>'}
 function tdSum(rows,key){return rows.reduce((a,r)=>a+Number(r[key]||0),0)}
-function tdDay(date){
-  const ledger = tdLedger;
+function tdDay(date,ledger = tdLedger){
   const jobs = ledger.jobs.filter(job => job.business_date === date && job.status === "completed");
   const jobIds = new Set(jobs.map(job => job.id));
   const belongsToDay = row => row.job_id ? jobIds.has(row.job_id) : row.business_date === date;
@@ -2874,14 +2963,14 @@ function openDayDriving(date,data,back){
     };
   });
 }
-function todaySheet(day,date,summary,reviewed){
-  const rental = ledgerRental(date);
+function todaySheet(day,date,summary,reviewed,period = null){
+  const rental = period ? period.rental : ledgerRental(date);
   const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
   const target = Number(rental?.planned_hours ?? calcCfg.targetHours);
-  const period = tdLedger.jobs.filter(job => job.status === "completed" && (rental ?
+  const periodJobs = tdLedger.jobs.filter(job => job.status === "completed" && (rental ?
     rental.starts_on <= job.business_date && job.business_date < rental.ends_before :
     job.business_date.slice(0,7) === date.slice(0,7)));
-  const periodHours = tdSum(period,"working_minutes") / 60;
+  const periodHours = period ? day.hours : tdSum(periodJobs,"working_minutes") / 60;
   const progress = Math.min(100,Math.max(0,periodHours / Math.max(target,0.01) * 100));
   const scale = Math.max(1,goal * 1.2);
   const ratio = Math.max(0,Math.min(1,(day.rate || 0) / scale));
@@ -2905,21 +2994,229 @@ function todaySheet(day,date,summary,reviewed){
     (summary.length || reviewed ? '<div class="today-footnote">' +
       esc([summary.join(" · "),reviewed ? "Driving reviewed" : ""].filter(Boolean).join(" · ")) + '</div>' : '') +
     '<div class="today-hours"><button type="button" id="td-worked"><strong>' + esc(working) +
-    '</strong><span>Hours worked</span></button><button type="button" id="td-period-hours">' +
-    '<strong>' + fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>' +
-    (rental ? "Rental period" : "Monthly target") + '</span></button></div>' +
-    '<div class="today-progress" role="progressbar" aria-label="Working hours target" aria-valuenow="' +
-    Math.round(progress) + '"><span style="width:' + progress + '%"></span></div></section>';
+    '</strong><span>Hours worked</span></button>' + (!period || rental ?
+    '<button type="button" id="td-period-hours"><strong>' + fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>' +
+    (rental ? "Rental period" : "Monthly target") + '</span></button>' : '') + '</div>' +
+    (!period || rental ? '<div class="today-progress" role="progressbar" aria-label="Working hours target" aria-valuenow="' +
+    Math.round(progress) + '"><span style="width:' + progress + '%"></span></div>' : '') + '</section>';
 }
 
+const HOME_PERIODS = {day:"Day",week:"Week",month:"Month",all:"All Time"};
+const workWeekBoundaries = new Map();
+let workWeekRequest = null;
+
+function homePeriods(){
+  return '<div class="today-tabs" role="group" aria-label="Home period">' +
+    Object.entries(HOME_PERIODS).map(([key,label]) => '<button type="button" data-home-period="' + key +
+      '" aria-pressed="' + (todayPeriod === key) + '">' + label + '</button>').join("") + '</div>';
+}
+function wireHomeTabs(){
+  $view.querySelectorAll("[data-home-period]").forEach(button => {
+    button.onclick = () => {
+      todayPeriod = button.dataset.homePeriod;
+      renderToday(false);
+      $view.querySelector('[data-home-period="' + todayPeriod + '"]')?.focus();
+    };
+  });
+  $view.querySelectorAll(".today-tabs [role=tab]").forEach(tab => {
+    tab.onclick = () => {
+      todayTab = tab.id === "today-tab-expenses" ? "expenses" : "trips";
+      renderToday(false);
+      document.getElementById(tab.id)?.focus();
+    };
+    tab.onkeydown = event => {
+      if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === "Home" ? "trips" : event.key === "End" ? "expenses" :
+        todayTab === "expenses" ? "trips" : "expenses";
+      document.getElementById("today-tab-" + next)?.click();
+    };
+  });
+}
+function dateOffset(date,days){
+  const day = new Date(date + "T12:00:00Z");
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0,10);
+}
+function workWeekDates(date){
+  const dow = new Date(date + "T12:00:00Z").getUTCDay();
+  const start = dateOffset(date,-((dow + 1) % 7));
+  return {start,end:dateOffset(start,6)};
+}
+async function fetchWorkWeek(start,end){
+  const base = new URL("https://www.hebcal.com/hebcal");
+  base.search = new URLSearchParams({
+    v:"1",cfg:"json",c:"on",geo:"zip",zip:"11233",b:"18",start,end
+  });
+  const nightfall = new URL(base);
+  nightfall.searchParams.set("M","on");
+  base.searchParams.set("m","42");
+  const results = await Promise.all([nightfall,base].map(async url => {
+    const response = await fetch(url,{signal:AbortSignal.timeout(12000)});
+    if(!response.ok) throw new Error("Zmanim unavailable");
+    return (await response.json()).items;
+  }));
+  const times = (category,date) => results.flat().filter(item =>
+    item.category === category && item.date.startsWith(date + "T")).map(item => Date.parse(item.date)).filter(Number.isFinite);
+  const opens = Math.min(...times("havdalah",start));
+  const closes = Math.max(...times("candles",end));
+  if(!Number.isFinite(opens) || !Number.isFinite(closes)) throw new Error("Incomplete zmanim");
+  return {opens,closes};
+}
+function homePeriodLedger(period){
+  const ledger = tdLedger;
+  const {start,end,opens,closes} = period;
+  const uncertain = new Set();
+  const dateInRange = date => !!date && (!start || date >= start) && (!end || date <= end);
+  const included = (row,timestamp,affectsTotals = true) => {
+    const date = row.business_date;
+    if(!dateInRange(date)) return false;
+    if(opens == null || (date !== start && date !== end)) return true;
+    const time = Date.parse(timestamp);
+    if(Number.isFinite(time)) return time >= opens && time < closes;
+    if(affectsTotals) uncertain.add(date);
+    return false;
+  };
+  const firstSegment = new Map();
+  ledger.segments.filter(row => row.job_id && row.started_at && row.category !== "personal").forEach(row => {
+    const old = firstSegment.get(row.job_id);
+    if(!old || Date.parse(row.started_at) < Date.parse(old)) firstSegment.set(row.job_id,row.started_at);
+  });
+  const jobs = ledger.jobs.filter(row => row.status !== "cancelled" &&
+    included(row,row.started_at || firstSegment.get(row.id),row.status === "completed"));
+  const jobIds = new Set(jobs.map(job => job.id));
+  const segments = ledger.segments.filter(row => row.job_id ? jobIds.has(row.job_id) :
+    row.category !== "personal" && included(row,row.started_at));
+  const expenses = ledger.expenses.filter(row => row.job_id ? jobIds.has(row.job_id) : included(row));
+  const purchases = ledger.purchases.filter(row => included(row,row.purchased_at,false));
+  const saved = pendingSavedTrips().filter(trip => included({business_date:trip.date},trip.started_at));
+  return {...ledger,jobs,segments,expenses,purchases,saved,uncertain};
+}
+function homePeriodTotals(ledger,rental){
+  const completed = ledger.jobs.filter(job => job.status === "completed");
+  const dates = [...new Set([...completed,...ledger.expenses,...ledger.segments.filter(row => !row.job_id)]
+    .map(row => row.business_date))];
+  const days = dates.map(date => tdDay(date,ledger));
+  const gross = tdSum(completed,"fare");
+  const hours = tdSum(completed,"working_minutes") / 60;
+  const completeTime = completed.every(job => job.working_minutes != null);
+  const operating = tdSum(days,"operatingCost");
+  const rentalCost = rental ? Number(rental.fixed_cost) :
+    days.every(day => day.rentalKnown) ? tdSum(days,"rent") : null;
+  const net = completed.length && !ledger.uncertain.size && !ledger.saved.length && rentalCost != null &&
+    days.every(day => day.operatingConfirmed) ? gross - operating - rentalCost : null;
+  return {gross,hours,completeTime,operating,rentalCost,net,
+    rate:net != null && completeTime && hours > 0 ? net / hours : null};
+}
+function renderHomePeriod(){
+  const head = '<header class="simple-head"><h1>Home</h1></header>';
+  if(ledgerLoading(head)) return;
+  const rentals = [...tdLedger.rentals].sort((a,b) => b.starts_on.localeCompare(a.starts_on));
+  const rental = todayPeriod === "month" ?
+    rentals.find(row => row.id === homeRentalId) || ledgerRental(tdDate) || rentals[0] : null;
+  const week = todayPeriod === "week" ? workWeekDates(tdDate) : null;
+  const header = head + homePeriods();
+  const label = date => new Date(date + "T12:00:00Z").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric",timeZone:"UTC"});
+  const selector = week ? '<label class="field" for="home-week-date">Week containing</label>' +
+    '<input id="home-week-date" type="date" value="' + esc(tdDate) + '">' :
+    todayPeriod === "month" && rental ? '<label class="field" for="home-rental">Rental period</label><select id="home-rental">' +
+    rentals.map(row => '<option value="' + esc(row.id) + '"' + (row === rental ? " selected" : "") + '>' +
+      esc(label(row.starts_on) + " to " + label(dateOffset(row.ends_before,-1))) + '</option>').join("") + '</select>' : "";
+  const wirePeriod = () => {
+    wireHomeTabs();
+    const date = document.getElementById("home-week-date");
+    if(date) date.onchange = () => { if(date.value){ tdDate = date.value; renderToday(false); } };
+    const picker = document.getElementById("home-rental");
+    if(picker) picker.onchange = () => { homeRentalId = picker.value; renderToday(false); };
+  };
+  if(todayPeriod === "month" && !rental){
+    h(header + '<button class="btn" id="home-add-rental">Set rental period</button>');
+    wirePeriod();
+    document.getElementById("home-add-rental").onclick = openLedgerRental;
+    return;
+  }
+  const bounds = week && workWeekBoundaries.get(week.start);
+  if(week && !bounds){
+    h(header + selector + '<p class="simple-caption" role="status">Loading Brooklyn Shabbos times…</p>');
+    wirePeriod();
+    if(workWeekRequest?.start === week.start) return;
+    const request = {start:week.start};
+    workWeekRequest = request;
+    fetchWorkWeek(week.start,week.end).then(result => {
+      workWeekBoundaries.set(week.start,result);
+      if(workWeekRequest === request) workWeekRequest = null;
+      if(view === "today" && todayPeriod === "week" && workWeekDates(tdDate).start === week.start) renderToday(false);
+    }).catch(() => {
+      if(workWeekRequest !== request) return;
+      workWeekRequest = null;
+      if(view !== "today" || todayPeriod !== "week" || workWeekDates(tdDate).start !== week.start) return;
+      h(header + selector + '<p role="alert">Couldn’t load Brooklyn Shabbos times.</p>' +
+        '<button class="btn secondary" id="home-week-retry">Try again</button>');
+      wirePeriod();
+      document.getElementById("home-week-retry").onclick = () => renderToday(false);
+    });
+    return;
+  }
+  const period = week ? {...week,...bounds} : rental ?
+    {start:rental.starts_on,end:dateOffset(rental.ends_before,-1),rental} : {};
+  const ledger = homePeriodLedger(period);
+  const totals = homePeriodTotals(ledger,rental);
+  const span = new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit",timeZone:"America/New_York"});
+  const weekNote = week ? '<p class="simple-caption">' + esc(span.format(bounds.opens) + " to " + span.format(bounds.closes)) +
+    ' · Brooklyn zmanim by Hebcal</p>' : "";
+  const uncertainty = ledger.uncertain.size ? '<p class="simple-caption">Some Friday or Saturday records lack a time. They’re available in Day view.</p>' : "";
+  const expenseTab = todayTab === "expenses";
+  const rows = [...ledger.jobs].sort((a,b) => b.business_date.localeCompare(a.business_date)).map(job =>
+    ledgerJobRow(job,label(job.business_date))).join("");
+  const expenseDates = [...new Set([...ledger.expenses,...ledger.purchases,...ledger.segments,...ledger.jobs]
+    .map(row => row.business_date))].filter(date => !period.start || (date >= period.start && date <= period.end)).sort().reverse();
+  const dayLinks = expenseDates.map((date,i) => detailRow("home-expense-" + i,label(date))).join("");
+  const expenseTotals = '<div class="list">' +
+    tdLine("Operating costs",totals.net == null ? "Pending review" : tdMoney(totals.operating,2)) +
+    tdLine("Rental",totals.rentalCost == null ? "Pending" : tdMoney(totals.rentalCost,2)) +
+    tdLine("Fuel bought",tdMoney(tdSum(ledger.purchases,"amount"),2)) + '</div>';
+  h(header + selector + weekNote + todaySheet(totals,tdDate,[],false,period) + uncertainty +
+    '<div class="today-tabs" role="tablist" aria-label="Period records">' +
+    ['trips','expenses'].map(key => '<button type="button" role="tab" id="today-tab-' + key +
+      '" aria-selected="' + (todayTab === key) + '" aria-controls="today-panel-' + key +
+      '" tabindex="' + (todayTab === key ? 0 : -1) + '">' + (key === "trips" ? "Trips" : "Expenses") + '</button>').join("") + '</div>' +
+    '<section role="tabpanel" id="today-panel-trips" aria-labelledby="today-tab-trips"' + (expenseTab ? ' hidden' : '') + '>' +
+    (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this period.</p>') +
+    savedTripEntries(ledger.saved) + '</section>' +
+    '<section role="tabpanel" id="today-panel-expenses" aria-labelledby="today-tab-expenses"' + (expenseTab ? '' : ' hidden') + '>' +
+    expenseTotals + '<div class="list simple-space">' + dayLinks + '</div></section>' +
+    (rental ? '<div class="list simple-space">' + detailRow("home-rental-details","Rental details") +
+      detailRow("home-add-rental","Add rental period") + '</div>' : ''));
+  wirePeriod();
+  const openTotals = () => openDrawer("Period earnings",'<div class="list">' + tdLine("Earned",tdMoney(totals.gross,2)) +
+    tdLine("Hours worked",fmtNum(totals.hours) + "h") + tdLine("Take-home",totals.net == null ? "Pending" : tdMoney(totals.net,2)) +
+    tdLine("Take-home per hour",totals.rate == null ? "Pending" : tdMoney(totals.rate,2)) + '</div>' + expenseTotals);
+  ["td-takehome","td-hourly","td-worked"].forEach(id => { document.getElementById(id).onclick = openTotals; });
+  expenseDates.forEach((date,i) => {
+    document.getElementById("home-expense-" + i).onclick = () => {
+      tdDate = date;
+      todayPeriod = "day";
+      renderToday(false);
+    };
+  });
+  if(rental){
+    const openRental = () => { moneyRentalId = rental.id; goMenu("money"); };
+    document.getElementById("home-rental-details").onclick = openRental;
+    document.getElementById("td-period-hours").onclick = openRental;
+    document.getElementById("home-add-rental").onclick = openLedgerRental;
+  }
+  wireLedgerJobRows();
+  wireSavedTripEntries();
+}
 function renderToday(reload=true){
   view = "today";
   inFlow = false;
-  setStep(0,"Today");
+  setStep(0,"Home");
   if(reload){ tdLoad(); return; }
+  if(todayPeriod !== "day"){ renderHomePeriod(); return; }
 
   const date = tdDate;
-  const heading = date === todayNY() ? "Today" : fmtDateShort(date);
+  const heading = date === todayNY() ? "Home" : fmtDateShort(date);
   const head = '<header class="simple-head"><h1>' + esc(heading) + '</h1>' +
     (calcUser ? '<div class="simple-date-wrap"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">' +
       '<rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 3v5m8-5v5M4 10h16"/></svg>' +
@@ -2945,7 +3242,7 @@ function renderToday(reload=true){
     return ledgerJobRow(job,detail);
   }).join("");
   const expenseTab = todayTab === "expenses";
-  h(head +
+  h(head + homePeriods() +
     todaySheet(day,date,summary,data.reviewed) +
     '<div class="today-tabs" role="tablist" aria-label="Day records">' +
     '<button type="button" role="tab" id="today-tab-trips" aria-controls="today-panel-trips" aria-selected="' +
@@ -2962,20 +3259,7 @@ function renderToday(reload=true){
     (data.reviewed ? '<div class="list simple-space">' + detailRow("td-review-details","Review details") + '</div>' : "") + '</section>' +
     '<section role="tabpanel" id="today-panel-expenses" aria-labelledby="today-tab-expenses"' + (expenseTab ? '' : ' hidden') + '>' +
     dayCostRows(date,day) + '</section>');
-  $view.querySelectorAll(".today-tabs [role=tab]").forEach(tab => {
-    tab.onclick = () => {
-      todayTab = tab.id === "today-tab-expenses" ? "expenses" : "trips";
-      renderToday(false);
-      document.getElementById(tab.id).focus();
-    };
-    tab.onkeydown = event => {
-      if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key)) return;
-      event.preventDefault();
-      const next = event.key === "Home" ? "trips" : event.key === "End" ? "expenses" :
-        todayTab === "expenses" ? "trips" : "expenses";
-      document.getElementById("today-tab-" + next).click();
-    };
-  });
+  wireHomeTabs();
   document.getElementById("td-date").onchange = event => {
     if(event.target.value){ tdDate = event.target.value; renderToday(false); }
   };
@@ -2989,8 +3273,9 @@ function renderToday(reload=true){
     ).join("") : '<p class="simple-empty">No completed jobs for this day.</p>') + '</div>');
   };
   document.getElementById("td-period-hours").onclick = () => {
-    moneyRentalId = ledgerRental(date)?.id ?? date.slice(0,7);
-    goMenu("money");
+    homeRentalId = ledgerRental(date)?.id ?? null;
+    todayPeriod = "month";
+    renderToday(false);
   };
   wireDayCosts($view,date,day);
   const reviewed = document.getElementById("td-review-details");
@@ -3152,7 +3437,7 @@ function openLedgerJob(job){
       '"><span class="row-main">Set payment date</span><b>' + tdMoney(Number(payment.amount),2) + '</b><span class="chev" aria-hidden="true">›</span></button>').join("") +
     segments.map(row => tdLine(carTripTitle(row),carTripFacts(row))).join("") +
     (completed && view === "jobs" ? detailRow("ledger-review","Go to day") : "") +
-    '</div>' + (job.notes ? '<p class="tdnote">' + esc(job.notes) + '</p>' : '') + linkedEvidence(job);
+    '</div>' + (job.notes && !quoteSnapshot(job.notes) ? '<p class="tdnote">' + esc(job.notes) + '</p>' : '') + linkedEvidence(job);
   openDrawer(ledgerJobTitle(job),
     '<div class="day-total"><div class="simple-label">' + esc(fmtDateShort(job.business_date)) + '</div><strong>' +
     (job.fare == null ? "—" : tdMoney(Number(job.fare))) + '</strong><div class="simple-caption">' +
@@ -3180,6 +3465,7 @@ function openLedgerJob(job){
   if(review) review.onclick = () => {
     closeDrawer();
     tdDate = job.business_date;
+    todayPeriod = "day";
     goMenu("today");
   };
 }
@@ -3429,6 +3715,8 @@ function openLedgerJobForm(job = null,prefill = {},back = null){
       });
       if(!saved?.length) throw new Error("This job changed. Close the form and refresh your ledger.");
     } else {
+      if(fromQuote) row.notes = QUOTE_SNAPSHOT_PREFIX + JSON.stringify({...calc,
+        fare:row.fare,endAtDropoff:calcEndsAtHub(calc)});
       await ledgerWriteOnce("fl2_jobs",{...row,user_id:user,source:"manual",source_key:key});
     }
   },() => {
@@ -3514,6 +3802,7 @@ function openLedgerRental(){
     });
     if(!rows?.[0]?.id) throw new Error("A rental period already starts on this date. Refresh and check the period list.");
     moneyRentalId = rows[0].id;
+    homeRentalId = rows[0].id;
   });
 }
 async function shareLedgerMonth(button,snapshot){
@@ -3656,6 +3945,7 @@ async function init(){
       if(quote?.calc){
         calcReset();
         Object.assign(calc,quote.calc);
+        calcStage = "result";
         renderCalc();
         document.getElementById("c-job")?.click();
       } else renderCalc();
