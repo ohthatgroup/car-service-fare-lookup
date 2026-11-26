@@ -222,27 +222,16 @@
     letter-spacing:-.055em; font-weight:720; overflow-wrap:anywhere; margin:4px 0 8px; }
   .simple-caption,.simple-empty,.simple-action p{ color:var(--muted); font-size:14px; line-height:1.45; }
   .today-sheet{ margin-bottom:16px; border:1px solid var(--border); padding:14px; border-radius:16px; background:var(--surface); font-variant-numeric:tabular-nums; }
-  .today-top,.today-hours{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:10px; }
-  .today-gauge,.today-hours button{ min-width:0; padding:0; border:0; background:none; color:inherit; font:inherit; cursor:pointer; }
-  .today-gauge{ position:relative; width:100%; }
+  .today-hours{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:10px; }
   .today-hours button{ min-height:44px; text-align:left; }
   .today-tabs{ display:flex; gap:4px; margin-bottom:16px; padding:3px; border-radius:14px; background:var(--chip); }
   .today-tabs button{ flex:1; min-height:44px; border:0; border-radius:11px; background:none; color:var(--muted); font:inherit; cursor:pointer; }
   [hidden]{ display:none !important; }
   .today-tabs button[aria-selected=true],.today-tabs button[aria-pressed=true]{ background:var(--surface); color:var(--link); font-weight:650; }
-  .today-gauge svg{ display:block; width:100%; }
-  .today-gauge-label{ position:absolute; left:0; right:0; bottom:4px; text-align:center; }
-  .today-gauge-label strong,.today-net strong{ display:block; font-size:clamp(20px,6vw,32px); letter-spacing:-.045em; }
-  .today-gauge-label small{ font-size:11px; font-weight:500; }
-  .today-sheet span{ display:block; color:var(--muted); font-size:12px; }
-  .today-sheet .today-gauge-label{ color:inherit; }
-  .today-net{ padding:4px 0 4px 12px; border:0; border-left:1px solid var(--border); border-radius:0;
-    background:none; color:inherit; text-align:left; font:inherit; cursor:pointer; overflow-wrap:anywhere; }
-  .today-net i{ font-style:normal; margin-left:3px; }
+  .today-sheet span{display:block}
+  .today-net i,.today-finance i{font-style:normal}
   .closeout-table input[type=number]{ display:block; width:100%; min-width:0; padding:6px 4px; margin:0; }
-  .today-footnote{ margin:8px 0; color:var(--muted); font-size:12px; text-align:center; }
   .today-hours{ margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
-  .today-hours > :last-child{ text-align:right; }
   .today-progress{ height:4px; border-radius:6px; overflow:hidden; background:var(--chip); margin-top:8px; }
   .today-progress span{ height:100%; background:var(--accent); }
   .simple-action{ margin-bottom:20px; }
@@ -413,6 +402,74 @@
     }
     #menu-pill button[aria-current=page],#modal .sheet-head button{ background:var(--chip); }
   }
+  /* Core driver surfaces */
+  body{background:var(--bg)}
+  .simple-head{margin-bottom:18px}
+  .simple-head h1{font-size:clamp(29px,7vw,36px); letter-spacing:-.045em}
+  .col{max-width:570px}
+  .today-sheet{background:#142441; color:#f6f8ff; border:1px solid #334565; padding:18px; border-radius:24px;
+    box-shadow:none; overflow:hidden}
+  .today-sheet span{color:#b9c8e3; font-size:13px}
+  .today-net,.today-metric,.today-hours button{border:0; background:none; font:inherit; color:inherit; cursor:pointer;text-align:left}
+  .today-net{padding:0 0 12px; display:block; width:100%; min-height:80px}
+  .today-net strong{font-size:clamp(34px,10vw,52px); line-height:1.05; font-weight:735; letter-spacing:-.055em; margin:3px 0}
+  .today-metric strong,.today-hours strong{display:block; font-size:17px; line-height:1.35}
+  .today-metric,.today-hours button{padding:0; min-height:44px}
+  .today-hours{border-color:#425274; margin-top:8px;padding-top:8px; grid-template-columns:repeat(2,minmax(0,1fr))}
+  .today-hours > :last-child{text-align:left}
+  .today-pace{height:4px; background:#425274; margin:6px 0 0;border-radius:8px;overflow:hidden}
+  .today-pace span,.today-progress span{height:100%; background:#90b4ff}
+  .today-progress{background:#425274}
+  .today-finance{margin-top:10px; display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center}
+  .today-finance button{background:none;border:0;color:#e7eeff;font:inherit; font-size:14px; padding:0; min-height:44px; cursor:pointer;text-align:left}
+  .today-finance .ledger-status{color:#cdd9ee}
+  .ledger-section{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px}
+  .ledger-section h2,.section-title{font-size:17px;letter-spacing:-.02em;margin:0}
+  .ledger-tools{display:flex;align-items:center;gap:12px}
+  .ledger-tools .quiet-link{margin:0;min-height:44px}
+  .review-card{margin-bottom:12px;border-radius:16px;border:1px solid var(--border)}
+  .review-card .row{min-height:48px}
+  .review-card .tdmuted{font-size:13px;text-align:right}
+  .route-card{border:1px solid var(--border); border-radius:20px; padding:3px 10px 3px 0; background:var(--surface);
+    display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center; margin:0 0 18px}
+  .route-stops{position:relative; min-width:0}
+  .route-stops::before{content:"";position:absolute; top:29px;bottom:29px;left:20px;width:1px;background:var(--border)}
+  .route-stop{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center; gap:12px; min-height:60px;width:100%;
+    background:none;border:0;color:var(--text);font:inherit;text-align:left;cursor:pointer;padding:6px 10px 6px 13px}
+  .route-stop-dot{z-index:1;width:12px;height:12px; border:2px solid var(--link);border-radius:50%;background:var(--surface)}
+  .route-stop:last-child .route-stop-dot{border-radius:3px;background:var(--link)}
+  .route-stop strong{display:block;overflow-wrap:anywhere}
+  .route-stop small{display:block;color:var(--muted);font-size:13px;margin-bottom:2px}
+  .route-reverse{width:44px;height:44px;border-radius:14px;border:1px solid var(--border);background:var(--bg);
+    color:var(--link);font-size:22px;cursor:pointer}
+  .route-reverse:disabled{display:none}
+  .quote-secondary{margin:10px 0 0; min-height:44px}
+  .rate-list .row{min-height:56px}
+  .rate-list .tdmuted{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
+  .quote-form{margin:18px 0 0}
+  .quote-form .section-title{margin-bottom:10px}
+  .quote-form .simple-field{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0;padding:6px 12px;
+    color:var(--text);min-height:56px}
+  .quote-form .simple-field + .simple-field{border-top:1px solid var(--border)}
+  .quote-form .simple-field input{min-width:5rem;width:42%;max-width:11rem;margin:0;text-align:right;font-variant-numeric:tabular-nums}
+  .quote-form .row select{width:auto;margin:0;max-width:58%}
+  .quote-form .row{justify-content:space-between;padding-inline:12px}
+  .quote-form .toggle-row{min-height:50px;border-top:1px solid var(--border)}
+  .quote-options,.review-totals{padding:0;margin:12px 0 0}
+  .quote-options summary,.review-totals summary{cursor:pointer; min-height:44px; padding:12px 14px;color:var(--link); font-weight:650}
+  .quote-options[open] summary,.review-totals[open] summary{border-bottom:1px solid var(--border)}
+  .quote-form input[type=checkbox]{margin-right:6px}
+  .quote-onward{margin-top:10px}
+  .quote-result-card{padding:18px;border-radius:22px;background:#142441;color:#f6f8ff;margin:0 0 14px}
+  .quote-result-card .simple-label,.quote-result-card .simple-caption{color:#b9c8e3}
+  .quote-result-card .day-total{margin:0 0 12px}
+  .quote-result-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 14px}
+  .quote-result-actions button{margin:0;min-height:44px}
+  .settings-heading{margin:16px 0 7px;font-size:14px;color:var(--muted)}
+  .drawer-search{position:sticky;top:52px;background:var(--glass-sheet);z-index:2;padding:3px 0}
+  :focus-visible{outline:2px solid var(--link); outline-offset:2px}
+  .today-sheet :focus-visible,.quote-result-card :focus-visible{outline-color:#b9d1ff}
+  @media(max-width:360px){.ledger-tools{gap:6px}.today-sheet{padding:14px}.quote-form .simple-field{padding-inline:9px}}
 </style>
 </head>
 <body>
@@ -1093,7 +1150,7 @@ function goMenu(section){
 let currentStep = 1;
 function setStep(n,label){
   currentStep = n;
-  const simpleRoot = ["today","money","step1","pending","account"].includes(view);
+  const simpleRoot = ["today","money","step1","step2","quote-rates","pending","account"].includes(view);
   const title = document.getElementById("nav-title");
   const nav = document.getElementById("topnav");
   title.style.display = simpleRoot || !isCalcViewName(view) ? "none" : "";
@@ -1183,51 +1240,105 @@ function placeListHTML(query,exclude,extra,custom){
     group("All fare stops",other.map(place => row(place)));
 }
 
+function quoteRouteHeader(){
+  const stop = (key,label,place) => '<button type="button" class="route-stop" id="route-' + key + '">' +
+    '<span class="route-stop-dot" aria-hidden="true"></span><span><small>' + label + '</small><strong>' +
+    esc(place || "Choose a stop") + '</strong></span><span class="chev" aria-hidden="true">›</span></button>';
+  return '<header class="simple-head"><h1>Quote</h1></header><div class="route-card">' +
+    '<div class="route-stops">' + stop("from","Pickup",sel.from) + stop("to","Drop-off",sel.to) + '</div>' +
+    '<button type="button" class="route-reverse" id="route-reverse" aria-label="Swap pickup and drop-off"' +
+    (sel.from && sel.to ? "" : " disabled") + '>⇅</button></div>';
+}
+function wireQuoteRoute(){
+  document.getElementById("route-from").onclick = () => openRouteStop("from");
+  document.getElementById("route-to").onclick = () => openRouteStop("to");
+  document.getElementById("route-reverse").onclick = () => {
+    const {from,to} = sel;
+    selectQuoteRoute(to,from);
+  };
+}
+function recentQuoteRoutes(){
+  const existing = tdLedger?.user === calcUser?.id ? (tdLedger?.jobs || []) : [];
+  const jobs = existing.filter(job => job.status !== "cancelled").map(job =>
+    ({from:job.pickup,to:job.destination,date:job.business_date}));
+  const legacy = calcTripsArr.map(trip => ({from:trip.from,to:trip.to,date:trip.date}));
+  const seen = new Set();
+  return [...jobs,...legacy].sort((a,b) => (b.date || "").localeCompare(a.date || "")).filter(row => {
+    if(!row.from || !row.to) return false;
+    const key = JSON.stringify([placeKey(resolvePlace(row.from)),placeKey(resolvePlace(row.to))]);
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0,3);
+}
+function selectQuoteRoute(from,to){
+  sel = {from,to,wait:{amount:"",unit:"hour",hours:1},addons:[]};
+  if(from && to){ inFlow = true; afterRoutePicked(); }
+  else renderPlacePicker(from ? 2 : 1);
+}
 function renderPlacePicker(step){
-  const isFrom = step === 1;
-  if(isFrom){ sel.wait = { amount: "", unit: "hour", hours: 1 }; sel.addons = []; sel.customPrice = null; sel.resolved = null; sel.fb = null; sel.to = null; }
-  view = isFrom ? "step1" : "step2";
-  setStep(step);
-  const other = isFrom ? null : sel.from;
-  const showFlatbush = !isFrom && !!gridFor(sel.from);
-  h(
-    (isFrom ? '<header class="simple-head"><h1>Quote</h1><button class="quiet-link" id="fare-calculator">Calculate without stops</button></header>' : '<div class="pill-row"><span class="pill">' + esc(sel.from) + ' <button id="pill-x" aria-label="Change starting point">✕</button></span></div>') +
-    '<div class="search-wrap"><input type="search" id="q" aria-label="' + (isFrom ? "Search pickup" : "Search destination") + '" placeholder="' + (isFrom ? "Search pickup" : "Search destination") + '" autocomplete="off"></div>' +
-    (showFlatbush
-      ? '<div class="list"><button class="row" data-place="' + esc(zoneLabel(sel.from)) + '">' + esc(sel.from + " zone fare") + '<span class="chev" aria-hidden="true">›</span></button></div>'
-      : "") +
-    '<div id="plist">' + placeListHTML("",other,calcHistoryPlaces()) + "</div>" +
-    '<button class="quiet-link" id="add-link">Add a price</button>'
-  );
-  const input = document.getElementById("q");
-  const calculator = document.getElementById("fare-calculator");
-  if(calculator) calculator.onclick = () => startCalculatedQuote();
-  input.addEventListener("input", () => {
-    document.getElementById("plist").innerHTML = placeListHTML(input.value,other,calcHistoryPlaces(),input.value);
-    bindPlaceRows(step);
+  view = step === 1 ? "step1" : "step2";
+  inFlow = false;
+  setStep(0,"Quote");
+  const suggested = recentQuoteRoutes();
+  h(quoteRouteHeader() + (suggested.length ? '<h2 class="section-title settings-heading">Recent routes</h2><div class="list">' +
+    suggested.map((row,index) => detailRow("recent-route-" + index,row.from + " → " + row.to)).join("") + '</div>' : '') +
+    '<button type="button" class="quiet-link quote-secondary" id="fare-calculator">Calculate without stops</button>');
+  wireQuoteRoute();
+  suggested.forEach((row,index) => {
+    document.getElementById("recent-route-" + index).onclick = () => selectQuoteRoute(row.from,row.to);
   });
-  bindPlaceRows(step);
-  const px = document.getElementById("pill-x");
-  if(px) px.addEventListener("click", () => renderPlacePicker(1));
-  document.getElementById("add-link").addEventListener("click", () => {
-    const term = input.value.trim();
-    openAddDrawer(isFrom ? (term ? { from: term } : {}) : Object.assign({ from: sel.from }, term ? { to: term } : {}));
-  });
+  document.getElementById("fare-calculator").onclick = () => startCalculatedQuote(sel.from,sel.to);
+  if(calcUser && !tdLedger && !tdLoading && !tdError) tdLoad();
 }
-function bindPlaceRows(step){
-  $view.querySelectorAll("[data-place],[data-custom]").forEach(b => {
-    b.addEventListener("click", () => pickPlace(step,b.dataset.place ?? b.dataset.custom));
-  });
+function openRouteStop(which){
+  const isPickup = which === "from";
+  const other = isPickup ? sel.to : sel.from;
+  const browse = detailRow("route-browse","Browse all stops");
+  openDrawer(isPickup ? "Pickup" : "Drop-off",
+    '<div class="search-wrap drawer-search"><input type="search" id="route-search" maxlength="250" autocomplete="off" ' +
+    'aria-label="Search stops" placeholder="Search or enter a stop"></div>' +
+    '<div id="route-results"></div>');
+  const search = document.getElementById("route-search");
+  const results = document.getElementById("route-results");
+  let showAll = false;
+  const suggestions = [...new Set([
+    ...recentQuoteRoutes().map(row => row[which]),
+    ...fares.filter(row => row.from_place === other || row.to_place === other)
+      .map(row => row.from_place === other ? row.to_place : row.from_place).slice(0,5),
+    ...topPlaces
+  ])].filter(place => place && place !== other).slice(0,8);
+  const update = () => {
+    const query = search.value.trim();
+    const grid = !isPickup && other && gridFor(other) && !query ?
+      '<div class="list simple-space">' + detailRow("route-zone-grid","Flatbush zone fare") + '</div>' : '';
+    results.innerHTML = grid + (query || showAll ? placeListHTML(query,other,calcHistoryPlaces(),query) :
+      '<div class="list">' + suggestions.map((place,index) => detailRow("route-suggest-" + index,place)).join("") + browse + '</div>');
+  };
+  const choose = place => {
+    const from = isPickup ? place : sel.from, to = isPickup ? sel.to : place;
+    closeDrawer();
+    selectQuoteRoute(from,to);
+    if(!other) openRouteStop(isPickup ? "to" : "from");
+  };
+  results.onclick = event => {
+    const button = event.target.closest("button");
+    if(!button) return;
+    if(button.id === "route-browse"){ showAll = true; update(); return; }
+    if(button.id === "route-zone-grid"){ choose(zoneLabel(other)); return; }
+    const place = button.dataset.place ?? button.dataset.custom ??
+      (button.id.startsWith("route-suggest-") ? suggestions[Number(button.id.slice(14))] : null);
+    if(place) choose(place);
+  };
+  search.oninput = update;
+  search.onkeydown = event => {
+    if(event.key !== "Enter") return;
+    const first = results.querySelector("[data-place],[data-custom]");
+    if(first){ event.preventDefault(); first.click(); }
+  };
+  update();
+  if(!window.matchMedia?.("(pointer: coarse)")?.matches) search.focus({preventScroll:true});
 }
-function pickPlace(step, place){
-  inFlow = true;
-  if(step === 1){
-    sel.from = place; renderPlacePicker(2);
-  } else {
-    sel.to = place; afterRoutePicked();
-  }
-}
-
 function afterRoutePicked(){
   if(isZoneLabel(sel.from) || isZoneLabel(sel.to)){
     const zb = zoneBaseOf(isZoneLabel(sel.from) ? sel.from : sel.to);
@@ -1273,6 +1384,9 @@ function renderRouteRates(){
   const from = sel.from, to = sel.to;
   if(!from || !to){ renderPlacePicker(from ? 2 : 1); return; }
   view = "quote-rates";
+  sel.resolved = null;
+  sel.fb = null;
+  quoteFromCalc = false;
   setStep(3,"Rates");
   if(!calc || calc.from !== from || calc.to !== to){
     calcReset();
@@ -1281,10 +1395,9 @@ function renderRouteRates(){
     calcPrefillFromJobs();
   }
   calcStage = "details";
-  h('<div class="route-line">' + esc(from) + ' → ' + esc(to) + '</div>' +
-    '<div class="list" id="route-rate-list"></div>' +
-    (!findFare(from,to) ? '<button class="quiet-link" id="quote-add-price">Add a price</button>' : '') +
-    calcFormMarkup());
+  h(quoteRouteHeader() + '<div class="list rate-list" id="route-rate-list"></div>' +
+    calcFormMarkup() + (!findFare(from,to) ? '<button class="quiet-link quote-secondary" id="quote-add-price">Add a community rate</button>' : ''));
+  wireQuoteRoute();
   renderRouteRateList(from,to);
   wireCalcForm(() => {
     calc.adjustedFare = null;
@@ -1309,8 +1422,11 @@ function startCalculatedQuote(from = null,to = null,saved = null){
     calc.adjustedFare = saved.fare;
     if(snapshot.endAtDropoff != null) calc.endAtDropoff = snapshot.endAtDropoff;
     calcStage = calc.miles > 0 && calc.hours > 0 ? "result" : "details";
-  } else calcPrefillFromJobs();
-  backTarget = from && to ? "quote-rates" : "step1";
+  } else {
+    if(!to) calc.endAtDropoff = true;
+    calcPrefillFromJobs();
+  }
+  backTarget = from && to ? "quote-rates" : from ? "step2" : "step1";
   screenStack = [];
   renderCalc();
 }
@@ -2087,12 +2203,12 @@ function renderCalc(){
   const head = '<header class="simple-head"><h1>' + (calcStage === "result" ? "Your rate" : "Trip details") + '</h1></header>' +
     (route ? '<p class="simple-caption">' + esc(route) + '</p>' : '');
   if(calcStage === "result"){
-    h(head + '<section id="c-result"><div class="day-total"><div class="simple-label" id="c-fare-label"></div>' +
-      '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div></section>' +
-      '<div class="list" id="c-result-breakdown"></div>' +
-      '<button class="btn" id="c-share-result">Share rate</button>' +
-      '<button class="btn secondary" id="c-customize">Customize</button>' +
-      '<button class="quiet-link" id="c-job">Save quote</button>');
+    h(head + '<section id="c-result" class="quote-result-card"><div class="day-total"><div class="simple-label" id="c-fare-label"></div>' +
+      '<strong id="c-fare-show"></strong><div class="simple-caption" id="c-takehome"></div></div>' +
+      '<button class="btn" id="c-share-result">Share rate</button></section>' +
+      '<div class="quote-result-actions"><button class="btn secondary" id="c-customize">Edit price</button>' +
+      '<button class="btn secondary" id="c-job">Save quote</button></div>' +
+      '<div class="list" id="c-result-breakdown"></div>');
     document.getElementById("c-share-result").onclick = event => shareCalc(event.currentTarget);
     document.getElementById("c-customize").onclick = openQuoteOptions;
     document.getElementById("c-job").onclick = () => openLedgerJobForm(null,{
@@ -2108,20 +2224,23 @@ function renderCalc(){
   updatePrice();
 }
 function calcFormMarkup(){
-  return '<form class="quote-form" id="quote-form">' +
-    '<label class="field" for="c-trip-type">Trip type</label><select id="c-trip-type">' +
+  const hasCosts = Number(calc.waitHours) > 0 || Number(calc.tolls) > 0 || Number(calc.parking) > 0;
+  const endsHere = calcEndsAtHub(calc);
+  return '<form class="quote-form" id="quote-form"><h2 class="section-title">Calculate a rate</h2><div class="list">' +
+    '<div class="row"><label for="c-trip-type">Trip type</label><select id="c-trip-type">' +
     '<option value="oneway"' + (calc.mode !== "round" ? " selected" : "") + '>One way</option>' +
-    '<option value="round"' + (calc.mode === "round" ? " selected" : "") + '>Round trip</option></select>' +
+    '<option value="round"' + (calc.mode === "round" ? " selected" : "") + '>Round trip</option></select></div>' +
     quoteInput("c-miles","Trip miles",calc.miles,"0.001") +
     quoteInput("c-dur","Drive minutes",quoteMinutes(calc.hours),"0.001") +
-    quoteInput("c-wait","Waiting minutes",quoteMinutes(calc.waitHours),"0.001") +
-    quoteInput("c-tolls","Tolls ($)",calc.tolls,"0.01") +
-    quoteInput("c-parking","Parking ($)",calc.parking,"0.01") +
-    '<label class="toggle-row"><input type="checkbox" id="c-end-here"' + (calcEndsAtHub(calc) ? " checked" : "") +
-    '> End at drop-off</label><div id="c-onward"' + (calcEndsAtHub(calc) ? " hidden" : "") + '>' +
+    '<label class="row toggle-row"><span>End at drop-off</span><input type="checkbox" id="c-end-here"' + (endsHere ? " checked" : "") +
+    '></label></div><div class="list quote-onward" id="c-onward"' + (endsHere ? " hidden" : "") + '>' +
     quoteInput("c-rmiles","Onward miles",calc.returnMiles,"0.001") +
     quoteInput("c-rh","Onward minutes",quoteMinutes(calc.returnHours),"0.001") +
     quoteInput("c-rtolls","Onward tolls ($)",calc.returnTolls,"0.01") + '</div>' +
+    '<details class="list quote-options"' + (hasCosts ? ' open' : '') + '><summary>Waiting, tolls &amp; parking</summary>' +
+    quoteInput("c-wait","Waiting minutes",quoteMinutes(calc.waitHours),"0.001") +
+    quoteInput("c-tolls","Tolls ($)",calc.tolls,"0.01") +
+    quoteInput("c-parking","Parking ($)",calc.parking,"0.01") + '</details>' +
     '<button class="btn" id="c-next" type="submit">Calculate</button></form>';
 }
 function wireCalcForm(calculate){
@@ -2334,12 +2453,12 @@ function renderAccount(){
   view = "account";
   setStep(0,"Account");
   h(
-    '<div class="tdhead"><h1>Settings</h1></div><div class="list">' +
+    '<header class="simple-head"><h1>Settings</h1></header><h2 class="settings-heading">Driving</h2><div class="list">' +
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-zones"><span>Operating zones</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-rentals"><span>Rental periods</span><span class="chev" aria-hidden="true">›</span></button>' +
-      '<button class="row" id="a-details"><span>Details</span><span class="chev" aria-hidden="true">›</span></button>' +
-    "</div>" +
+    '</div><h2 class="settings-heading">Account</h2><div class="list">' +
+      detailRow("a-details","About FareLookup") + '</div>' +
     (calcUser
       ? '<div class="card"><div class="route">Signed in as ' + esc(calcUser.email || calcUser.id) + '</div><div class="change">Your rates and trips sync across devices.</div></div>' +
         '<button class="btn secondary" id="a-signout">Sign out</button>'
@@ -2703,7 +2822,9 @@ async function tdLoad(){
  if(token === tdLoadToken){
    tdLoading = false;
    if(view === "quote-rates") renderRouteRateList(sel.from,sel.to);
-   else tdRenderView(view);
+   else if(["step1","step2"].includes(view) && tdLedger && $modal.classList.contains("hidden")){
+     renderPlacePicker(sel.from ? 2 : 1);
+   } else tdRenderView(view);
  }
 }
 function tdLine(l,v){return '<div class="tdline"><span>'+esc(l)+'</span><b>'+esc(v)+'</b></div>'}
@@ -2869,10 +2990,9 @@ function openDayCloseout(date,data){
   data.needsMatch.forEach(trip => items.push({
     label:carTripTitle(trip),status:"Match trip",action:() => openCarTrip(date,trip,null,null,back)
   }));
-  const pending = data.finance.length ? '<p class="simple-caption">You can add ' +
-    esc(data.finance.join(", ").toLowerCase()) + ' when available.</p>' : '';
-  const sources = '<p class="simple-caption">' + data.aximote.length + ' Aximote ' +
-    (data.aximote.length === 1 ? 'trip' : 'trips') + ' on ' + esc(fmtDateShort(date)) + '</p>';
+  const pending = data.finance.length ? '<div class="list simple-space">' +
+    detailRow("closeout-expenses","Expenses to confirm",data.finance.join(", ")) + '</div>' : '';
+  const sources = '<p class="simple-caption">' + esc(fmtDateShort(date)) + '</p>';
   const actions = '<div class="list simple-space">' +
     detailRow("closeout-driving","Driving log",String(data.tripRows.length)) +
     (data.reviewed ? "" : detailRow("closeout-car","Add Aximote trip") + detailRow("closeout-add","Add job")) + '</div>';
@@ -2882,8 +3002,10 @@ function openDayCloseout(date,data){
   } else {
     const issues = items.length ? '<div class="list simple-space">' + items.map((item,i) =>
       detailRow("closeout-item-" + i,item.label,item.status)).join("") + '</div>' : "";
-    openLedgerForm("Review day",sources + '<p class="simple-caption">Enter any totals you have from Aximote.</p>' +
-      aximoteComparisonHtml(data.aximote,reference,true) + issues + actions + pending,async (values,user) => {
+    openLedgerForm("Review day",sources + (issues ? '<h3 class="section-title">Needs review</h3>' + issues : '') +
+      '<details class="list review-totals"' + (data.aximote.length || Object.values(reference).some(value => value != null) ? ' open' : '') +
+      '><summary>Aximote totals</summary>' + aximoteComparisonHtml(data.aximote,reference,true) + '</details>' +
+      actions + pending,async (values,user) => {
       if(items.length) throw new Error("Check the remaining items to finish the review.");
       const totals = closeoutReference(values);
       if(aximoteComparison(data.aximote,totals).some(metric => metric.unresolved)){
@@ -2908,6 +3030,8 @@ function openDayCloseout(date,data){
       });
     };
   }
+  const expense = document.getElementById("closeout-expenses");
+  if(expense) expense.onclick = () => openDayCosts(date,"Expenses",back);
   const driving = document.getElementById("closeout-driving");
   if(driving) driving.onclick = () => openDayDriving(date,data,() => openDayCloseout(date,data));
   const car = document.getElementById("closeout-car");
@@ -2973,15 +3097,15 @@ function dayCostRows(date,day){
     (purchases.length ? tdMoney(tdSum(purchases,"amount"),2) : "—") +
     '</span><span class="chev" aria-hidden="true">›</span></button></div>';
 }
-function openDayCosts(date,title = "Take-home"){
+function openDayCosts(date,title = "Take-home",back = null){
   const day = tdDay(date);
   const rental = ledgerRental(date);
   const pace = tdLine("Take-home per hour",day.rate == null ? "Pending" : tdMoney(day.rate,2)) +
     tdLine("Hourly goal",tdMoney(Number(rental?.hourly_goal ?? calcCfg.earningsTarget)));
   openDrawer(title,'<div class="list">' + tdLine("Earned",tdMoney(day.gross,2)) + '</div>' +
     dayCostRows(date,day) + '<div class="list simple-space">' +
-    tdLine("Take-home",day.net == null ? "Pending" : tdMoney(day.net,2)) + pace + '</div>');
-  wireDayCosts(document.getElementById("sheet-body"),date,day,() => openDayCosts(date,title));
+    tdLine("Take-home",day.net == null ? "Pending" : tdMoney(day.net,2)) + pace + '</div>',back);
+  wireDayCosts(document.getElementById("sheet-body"),date,day,() => openDayCosts(date,title,back));
 }
 function wireDayCosts(container,date,day,back = null){
   container.querySelector("[data-td-fuel]").onclick = () => openDailyExpense(date,"fuel",day.manualFuel,back);
@@ -3002,7 +3126,7 @@ function openDayDriving(date,data,back){
     };
   });
 }
-function todaySheet(day,date,summary,reviewed,period = null){
+function todaySheet(day,date,summary,reviewed,period = null,due = 0){
   const rental = period ? period.rental : ledgerRental(date);
   const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
   const target = Number(rental?.planned_hours ?? calcCfg.targetHours);
@@ -3010,36 +3134,43 @@ function todaySheet(day,date,summary,reviewed,period = null){
     rental.starts_on <= job.business_date && job.business_date < rental.ends_before :
     job.business_date.slice(0,7) === date.slice(0,7)));
   const periodHours = period ? day.hours : tdSum(periodJobs,"working_minutes") / 60;
-  const progress = Math.min(100,Math.max(0,periodHours / Math.max(target,0.01) * 100));
-  const scale = Math.max(1,goal * 1.2);
-  const ratio = Math.max(0,Math.min(1,(day.rate || 0) / scale));
-  const angle = fraction => Math.PI * fraction;
-  const point = (fraction,radius) => [90-radius*Math.cos(angle(fraction)),82-radius*Math.sin(angle(fraction))].join(" ");
-  const color = day.rate == null ? "var(--muted)" : day.rate >= goal ? "#22875b" : "var(--accent)";
-  const goalFraction = goal / scale;
-  const gauge = '<button type="button" class="today-gauge" id="td-hourly" aria-label="Hourly earnings breakdown"><svg viewBox="0 0 180 90" aria-hidden="true">' +
-    '<path d="M18 82 A72 72 0 0 1 162 82" fill="none" stroke="var(--chip)" stroke-width="8" stroke-linecap="round"/>' +
-    (ratio ? '<path d="M18 82 A72 72 0 0 1 ' + point(ratio,72) + '" fill="none" stroke="' +
-      color + '" stroke-width="8" stroke-linecap="round"/>' : '') +
-    '<path d="M' + point(goalFraction,64) + ' L' + point(goalFraction,80) +
-    '" stroke="var(--muted)" stroke-width="2"/></svg><span class="today-gauge-label"><strong>' +
-    (day.rate == null ? "—" : tdMoney(day.rate,2)) + '<small>/hr</small></strong><span>' +
-    tdMoney(goal) + '/hr goal</span></span></button>';
-  const working = day.completeTime ? fmtNum(day.hours) + "h" : day.hours ? fmtNum(day.hours) + "h recorded" : "Pending";
-  return '<section class="today-sheet" aria-label="Day summary"><div class="today-top">' + gauge +
+  const progress = Math.round(Math.min(100,Math.max(0,periodHours / Math.max(target,0.01) * 100)));
+  const pace = day.rate == null ? 0 : Math.min(100,Math.max(0,day.rate / Math.max(1,goal) * 100));
+  const working = day.completeTime ? driveTimeLabel(Math.round(day.hours * 60)) : day.hours ?
+    driveTimeLabel(Math.round(day.hours * 60)) + " recorded" : "Pending";
+  return '<section class="today-sheet" aria-label="Earnings summary">' +
     '<button type="button" class="today-net" id="td-takehome" aria-label="Take-home breakdown">' +
     '<span>Take-home <i aria-hidden="true">›</i></span><strong>' + (day.net == null ? "—" : tdMoney(day.net,2)) +
-    '</strong><span>' + tdMoney(day.gross) + ' earned</span></button></div>' +
-    (summary.length || reviewed ? '<div class="today-footnote">' +
-      esc([summary.join(" · "),reviewed ? "Driving reviewed" : ""].filter(Boolean).join(" · ")) + '</div>' : '') +
-    '<div class="today-hours"><button type="button" id="td-worked"><strong>' + esc(working) +
-    '</strong><span>Hours worked</span></button>' + (!period || rental ?
-    '<button type="button" id="td-period-hours"><strong>' + fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>' +
-    (rental ? "Rental period" : "Monthly target") + '</span></button>' : '') + '</div>' +
-    (!period || rental ? '<div class="today-progress" role="progressbar" aria-label="Working hours target" aria-valuenow="' +
-    Math.round(progress) + '"><span style="width:' + progress + '%"></span></div>' : '') + '</section>';
+    '</strong><span>' + tdMoney(day.gross) + ' earned' + (day.net == null && day.gross ? ' · Costs pending' : '') + '</span></button>' +
+    '<div class="today-hours"><button type="button" class="today-metric" id="td-hourly" aria-label="Hourly earnings breakdown"><strong>' +
+    (day.rate == null ? "—" : tdMoney(day.rate,2) + "/hr") + '</strong><span>' + tdMoney(goal) + '/hr goal</span>' +
+    '<span class="today-pace" aria-hidden="true"><span style="width:' + pace + '%"></span></span></button>' +
+    '<button type="button" id="td-worked"><strong>' + esc(working) + '</strong><span>Hours worked</span></button></div>' +
+    (!period || rental ? '<div class="today-hours"><button type="button" id="td-period-hours"><strong>' +
+    fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>' + (rental ? "Rental period" : "Monthly target") + '</span></button>' +
+    '<div class="today-progress" role="progressbar" aria-label="Working hours target" aria-valuenow="' +
+    progress + '"><span style="width:' + progress + '%"></span></div></div>' : '') +
+    (due || summary.length || reviewed ? '<div class="today-finance">' +
+      (due ? '<button type="button" id="td-collect" aria-label="' + esc(tdMoney(due) + ' to collect. View unpaid trips') +
+        '">' + tdMoney(due) + ' to collect <i aria-hidden="true">›</i></button>' : '') +
+      (summary.length || reviewed ? '<span class="ledger-status">' +
+        esc([...summary,reviewed ? "Driving reviewed" : ""].filter(Boolean).join(" · ")) + '</span>' : '') + '</div>' : '') + '</section>';
 }
-
+function unpaidTrips(jobs){
+  return jobs.filter(job => job.status === "completed" && job.fare != null).map(job => {
+    const payments = tdLedger.payments.filter(payment => payment.job_id === job.id);
+    return {job,payments,due:round2(Number(job.fare) - tdSum(payments,"amount"))};
+  }).filter(entry => entry.due > 0);
+}
+function openHomePayments(jobs){
+  const unpaid = unpaidTrips(jobs);
+  openDrawer("To collect",'<div class="list">' + unpaid.map((entry,index) =>
+    detailRow("home-collect-" + index,ledgerJobTitle(entry.job),tdMoney(entry.due,2))).join("") + '</div>');
+  unpaid.forEach(({job,payments},index) => {
+    document.getElementById("home-collect-" + index).onclick = () =>
+      openLedgerPayment(job,payments,() => openHomePayments(jobs));
+  });
+}
 const HOME_PERIODS = {day:"Day",week:"Week",month:"Month",all:"All Time"};
 const workWeekBoundaries = new Map();
 let workWeekRequest = null;
@@ -3257,7 +3388,8 @@ function renderHomePeriod(){
     tdLine("Operating costs",totals.net == null ? "Pending review" : tdMoney(totals.operating,2)) +
     tdLine("Rental",totals.rentalCost == null ? "Pending" : tdMoney(totals.rentalCost,2)) +
     tdLine("Fuel bought",tdMoney(tdSum(ledger.purchases,"amount"),2)) + '</div>';
-  h(header + weekNote + todaySheet(totals,tdDate,[],false,period) + uncertainty +
+  const unpaid = unpaidTrips(ledger.jobs);
+  h(header + weekNote + todaySheet(totals,tdDate,[],false,period,tdSum(unpaid,"due")) + uncertainty +
     '<div class="today-tabs" role="tablist" aria-label="Period records">' +
     ['trips','expenses'].map(key => '<button type="button" role="tab" id="today-tab-' + key +
       '" aria-selected="' + (todayTab === key) + '" aria-controls="today-panel-' + key +
@@ -3273,6 +3405,8 @@ function renderHomePeriod(){
     tdLine("Hours worked",fmtNum(totals.hours) + "h") + tdLine("Take-home",totals.net == null ? "Pending" : tdMoney(totals.net,2)) +
     tdLine("Take-home per hour",totals.rate == null ? "Pending" : tdMoney(totals.rate,2)) + '</div>' + expenseTotals);
   ["td-takehome","td-hourly","td-worked"].forEach(id => { document.getElementById(id).onclick = openTotals; });
+  const collect = document.getElementById("td-collect");
+  if(collect) collect.onclick = () => openHomePayments(ledger.jobs);
   expenseDates.forEach((date,i) => {
     document.getElementById("home-expense-" + i).onclick = () => {
       tdDate = date;
@@ -3303,13 +3437,11 @@ function renderToday(reload=true){
   const hasWork = data.jobs.length || data.tripRows.length || data.pendingTrips.length;
   const active = tdLedger.jobs.filter(job => job.status === "scheduled" || job.status === "quoted").length;
   const summary = [];
-  if(day.jobs.length && day.completeFare){
-    summary.push(data.due ? tdMoney(data.due) + " to collect" : "Paid in full");
-  }
-  const primary = data.reviewed ? '' :
-    '<div class="simple-action"><button class="btn" id="' + (hasWork ? "td-closeout" : "td-add-job") + '">' +
-    (hasWork ? "Review day" : "Add job") + '</button>' +
-    (hasWork ? '<p role="status">' + esc(dayActions(data)) + '</p>' : '') + '</div>';
+  if(day.jobs.length && day.completeFare && !data.due) summary.push("Paid in full");
+  const reviewNeedsAttention = data.needsJob.length || data.needsMatch.length || data.pendingTrips.length || data.changed;
+  const primary = hasWork ? '<div class="list review-card">' +
+    detailRow("td-closeout",data.reviewed ? "Review details" : "Review day",
+      reviewNeedsAttention ? dayActions(data) : "") + '</div>' : "";
   const rows = data.jobs.map(job => {
     const detail = job.status === "scheduled" ? "Scheduled" :
       job.return_pending ? (dayReturnOnFile(data,job) ? "Check return trip" : "Return trip missing") :
@@ -3318,20 +3450,19 @@ function renderToday(reload=true){
   }).join("");
   const expenseTab = todayTab === "expenses";
   h(head + (date === todayNY() ? "" : '<p class="simple-caption home-range">' + esc(homeDateLabel(date)) + '</p>') +
-    todaySheet(day,date,summary,data.reviewed) +
+    todaySheet(day,date,summary,data.reviewed,null,data.due) +
     '<div class="today-tabs" role="tablist" aria-label="Day records">' +
     '<button type="button" role="tab" id="today-tab-trips" aria-controls="today-panel-trips" aria-selected="' +
     !expenseTab + '" tabindex="' + (expenseTab ? -1 : 0) + '">Trips</button>' +
     '<button type="button" role="tab" id="today-tab-expenses" aria-controls="today-panel-expenses" aria-selected="' +
     expenseTab + '" tabindex="' + (expenseTab ? 0 : -1) + '">Expenses</button></div>' +
     '<section role="tabpanel" id="today-panel-trips" aria-labelledby="today-tab-trips"' + (expenseTab ? ' hidden' : '') + '>' +
-    primary + '<div class="simple-section-head">' +
-    '<button class="quiet-link" id="td-all-jobs">All jobs' + (active ? ' <span class="tdmuted">(' + active + ' open)</span>' : '') +
-    ' <span aria-hidden="true">›</span></button></div>' +
+    primary + '<div class="ledger-section"><h2>Trips</h2><div class="ledger-tools">' +
+    '<button class="quiet-link" id="td-all-jobs">All jobs' + (active ? ' <span class="tdmuted">(' + active + ')</span>' : '') + '</button>' +
+    '<button class="quiet-link" id="td-add-job">Add job</button></div></div>' +
     (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this day.</p>') +
     savedTripEntries(data.pendingTrips) + '<div class="list simple-space">' +
-    detailRow("td-driving","Driving log",data.tripRows.length ? String(data.tripRows.length) : "") + '</div>' +
-    (data.reviewed ? '<div class="list simple-space">' + detailRow("td-review-details","Review details") + '</div>' : "") + '</section>' +
+    detailRow("td-driving","Driving log",data.tripRows.length ? String(data.tripRows.length) : "") + '</div></section>' +
     '<section role="tabpanel" id="today-panel-expenses" aria-labelledby="today-tab-expenses"' + (expenseTab ? '' : ' hidden') + '>' +
     dayCostRows(date,day) + '</section>');
   wireHomeTabs();
@@ -3350,8 +3481,8 @@ function renderToday(reload=true){
     renderToday(false);
   };
   wireDayCosts($view,date,day);
-  const reviewed = document.getElementById("td-review-details");
-  if(reviewed) reviewed.onclick = () => openDayCloseout(date,data);
+  const collect = document.getElementById("td-collect");
+  if(collect) collect.onclick = () => openHomePayments(day.jobs);
   const review = document.getElementById("td-closeout");
   if(review) review.onclick = () => openDayCloseout(date,data);
   const add = document.getElementById("td-add-job");
