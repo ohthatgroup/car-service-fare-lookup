@@ -497,6 +497,33 @@
   .fare-card summary{color:#d7e5fb;cursor:pointer;padding:10px 0}
   .fare-card .tdline{color:#e4edfc;border-color:#435375}
   body[data-view="shared"] #menu-pill{display:none}
+  .home-earnings{margin-bottom:16px}
+  .home-earnings .today-sheet{margin-bottom:0}
+  .funding-primary .today-net{padding-bottom:0}
+  .funding-primary .today-net strong{font-size:clamp(36px,11vw,54px)}
+  .funding-meta{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px}
+  .funding-primary .today-hours{margin-top:12px}
+  .funding-primary .today-hours strong{font-size:20px}
+  .home-income{padding:12px 16px;margin-top:8px}
+  .home-income .today-hours:first-child{border:0;margin-top:0;padding-top:0}
+  .home-income .today-hours button{width:100%;text-align:left}
+  .home-income .today-metric strong,.home-income .today-hours strong{color:var(--text)}
+  .home-income .today-hours span{color:var(--muted);display:block;font-size:13px}
+  .home-income .today-hours{border-color:var(--border);grid-template-columns:repeat(2,minmax(0,1fr))}
+  .home-income .today-progress{background:var(--chip)}
+  .home-income .today-progress span{background:var(--accent)}
+  .home-income .collect-link{font-weight:650;padding:0;min-height:44px;text-align:left}
+  .fare-breakdown{margin:12px 0 10px}
+  .fare-breakdown h2{font-size:14px;margin:0 0 4px;color:#bfcee6}
+  .fare-breakdown .tdline{padding:7px 0}
+  .quote-metric-heading{margin:16px 0 8px;font-size:16px}
+  .quote-mode{display:flex;gap:6px;margin:0 0 10px;padding:4px;background:var(--chip);border-radius:14px}
+  .quote-mode button{flex:1;min-height:44px;background:none;border:0;border-radius:10px;color:var(--text);font:inherit;cursor:pointer}
+  .quote-mode button[aria-pressed=true]{background:var(--surface);color:var(--link);font-weight:650}
+  .hourly-card{border:1px solid var(--border);padding:12px;border-radius:12px;margin:0 0 10px}
+  .hourly-card p{margin:8px 0}
+  .hourly-rate-value{padding:12px 0}
+  .hourly-rate-value strong{display:block;font-size:26px;letter-spacing:-.03em}
 </style>
 </head>
 <body>
@@ -1173,7 +1200,8 @@ function setStep(n,label){
   title.style.display = simpleRoot || !isCalcViewName(view) ? "none" : "";
   title.textContent = label || "Fare Lookup";
   const back = view === "jobs" ? "Today" : view === "account" ? "Money" :
-    view === "account-aliases" ? "Community" : view.startsWith("account-") ? "Settings" :
+    view === "account-aliases" ? "Community" : view.startsWith("account-") ?
+      (["quote-rates","calc"].includes(screenStack.at(-1)?.name) ? "Quote" : "Settings") :
     view === "calc" ? (calcStage === "result" && backTarget !== "quote-rates" ? "Trip details" : "Rates") :
     view === "pending" ? "Quote" : view === "quote" && quoteFromCalc ? quoteFromCalcBack :
     (view === "notlisted" || n === 3) ? "Where to?" : n === 2 ? "Where from?" : "Start over";
@@ -1257,22 +1285,19 @@ function placeListHTML(query,exclude,extra,custom){
     group("All fare stops",other.map(place => row(place)));
 }
 
-function quoteRouteHeader(){
+function quoteRouteHeader(route = sel){
   const stop = (key,label,place) => '<button type="button" class="route-stop" id="route-' + key + '">' +
     '<span class="route-stop-dot" aria-hidden="true"></span><span><small>' + label + '</small><strong>' +
     esc(place || "Choose a stop") + '</strong></span><span class="chev" aria-hidden="true">›</span></button>';
   return '<header class="simple-head"><h1>Quote</h1></header><div class="route-card">' +
-    '<div class="route-stops">' + stop("from","Pickup",sel.from) + stop("to","Drop-off",sel.to) + '</div>' +
+    '<div class="route-stops">' + stop("from","Pickup",route.from) + stop("to","Drop-off",route.to) + '</div>' +
     '<button type="button" class="route-reverse" id="route-reverse" aria-label="Swap pickup and drop-off"' +
-    (sel.from && sel.to ? "" : " disabled") + '>⇅</button></div>';
+    (route.from && route.to ? "" : " disabled") + '>⇅</button></div>';
 }
-function wireQuoteRoute(){
-  document.getElementById("route-from").onclick = () => openRouteStop("from");
-  document.getElementById("route-to").onclick = () => openRouteStop("to");
-  document.getElementById("route-reverse").onclick = () => {
-    const {from,to} = sel;
-    selectQuoteRoute(to,from);
-  };
+function wireQuoteRoute(route = sel,onChange = selectQuoteRoute){
+  document.getElementById("route-from").onclick = () => openRouteStop("from",route,onChange);
+  document.getElementById("route-to").onclick = () => openRouteStop("to",route,onChange);
+  document.getElementById("route-reverse").onclick = () => onChange(route.to,route.from);
 }
 function recentQuoteRoutes(){
   const existing = tdLedger?.user === calcUser?.id ? (tdLedger?.jobs || []) : [];
@@ -1308,9 +1333,9 @@ function renderPlacePicker(step){
   document.getElementById("fare-calculator").onclick = () => startCalculatedQuote(sel.from,sel.to);
   if(calcUser && !tdLedger && !tdLoading && !tdError) tdLoad();
 }
-function openRouteStop(which){
+function openRouteStop(which,route = sel,onChange = selectQuoteRoute){
   const isPickup = which === "from";
-  const other = isPickup ? sel.to : sel.from;
+  const other = isPickup ? route.to : route.from;
   const browse = detailRow("route-browse","Browse all stops");
   openDrawer(isPickup ? "Pickup" : "Drop-off",
     '<div class="search-wrap drawer-search"><input type="search" id="route-search" maxlength="250" autocomplete="off" ' +
@@ -1327,16 +1352,16 @@ function openRouteStop(which){
   ])].filter(place => place && place !== other).slice(0,8);
   const update = () => {
     const query = search.value.trim();
-    const grid = !isPickup && other && gridFor(other) && !query ?
+    const grid = onChange === selectQuoteRoute && !isPickup && other && gridFor(other) && !query ?
       '<div class="list simple-space">' + detailRow("route-zone-grid","Flatbush zone fare") + '</div>' : '';
     results.innerHTML = grid + (query || showAll ? placeListHTML(query,other,calcHistoryPlaces(),query) :
       '<div class="list">' + suggestions.map((place,index) => detailRow("route-suggest-" + index,place)).join("") + browse + '</div>');
   };
   const choose = place => {
-    const from = isPickup ? place : sel.from, to = isPickup ? sel.to : place;
+    const from = isPickup ? place : route.from, to = isPickup ? route.to : place;
     closeDrawer();
-    selectQuoteRoute(from,to);
-    if(!other) openRouteStop(isPickup ? "to" : "from");
+    onChange(from,to);
+    if(!other && onChange === selectQuoteRoute) openRouteStop(isPickup ? "to" : "from");
   };
   results.onclick = event => {
     const button = event.target.closest("button");
@@ -1432,12 +1457,12 @@ function startCalculatedQuote(from = null,to = null,saved = null){
   calc.to = to;
   if(saved){
     const snapshot = saved.snapshot;
-    for(const name of ["mode","miles","hours","waitHours","tolls","parking","returnMiles","returnHours","returnTolls"]){
+    for(const name of ["mode","pricing","miles","hours","waitHours","tolls","parking","returnMiles","returnHours","returnTolls"]){
       if(snapshot[name] != null) calc[name] = snapshot[name];
     }
     calc.adjustedFare = saved.fare;
     if(snapshot.endAtDropoff != null) calc.endAtDropoff = snapshot.endAtDropoff;
-    calcStage = calc.miles > 0 && calc.hours > 0 ? "result" : "details";
+    calcStage = calcQuoteReady(calc) ? "result" : "details";
   } else {
     if(!to) calc.endAtDropoff = true;
     calcPrefillFromJobs();
@@ -1460,8 +1485,8 @@ function vehicleMarkup(vehicle){
 function fareBreakdownMarkup(values){
   const lines = Array.isArray(values) ? values.slice(0,16).filter(line =>
     line && typeof line.label === "string" && typeof line.amount === "number" && Number.isFinite(line.amount)) : [];
-  return lines.length > 1 ? '<details><summary>Price breakdown</summary>' +
-    lines.map(line => tdLine(line.label.slice(0,100),money(line.amount))).join("") + '</details>' : '';
+  return lines.length > 1 ? '<section class="fare-breakdown" aria-label="Price breakdown"><h2>Price breakdown</h2>' +
+    lines.map(line => tdLine(line.label.slice(0,100),money(line.amount))).join("") + '</section>' : '';
 }
 function fareCardMarkup(fare,priceId = "",action = "",breakdownId = ""){
   const route = [["From",fare.from],["To",fare.to]].filter(([,place]) => place).map(([label,place]) =>
@@ -1541,9 +1566,8 @@ function renderQuote(){
       (sel.trip === "round" ? ' checked' : '') + '> Round trip</label>' : '') +
     (o.minivan ? '<label class="toggle-row"><input type="checkbox" id="opt-minivan"> Mini van <span class="amt">+' + money(miniVanAddition(plainPrice(fare.price), fare.from_place, sel.trip)) + "</span></label>" : "") +
     (o.airport ? '<label class="toggle-row"><input type="checkbox" id="opt-airport"> Airport pickup <span class="amt">+' + money(airportFee(fare.from_place)) + "</span></label>" : "") +
-    '<details class="form-details"><summary>Fare options</summary>' +
-    '<button class="quiet-link" id="customize">Adjust this quote</button>' +
-    '<button class="quiet-link" id="takehome">Calculate from miles and time</button></details>' +
+    '<div class="list simple-space">' + detailRow("customize","Adjust this quote") +
+    detailRow("takehome","Calculate from miles and time") + '</div>' +
     '<div id="q-suggest"></div>' +
     ((fare.origin === "community" || fare.note) ? '<div class="note-line">' +
       [fare.origin === "community" ? "Community price" : "", fare.note ? esc(fare.note) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
@@ -1582,9 +1606,7 @@ function refreshQuote(){
     if(amtEl){ const add = miniVanAddition(plainPrice(fare.price), fare.from_place, sel.trip); amtEl.textContent = add != null ? "+" + money(add) : ""; }
   }
   const bd = document.getElementById("q-breakdown");
-  const expanded = bd.querySelector("details")?.open;
   bd.innerHTML = q.complex ? "" : fareBreakdownMarkup(q.lines.filter(line => line.label !== "List price"));
-  if(expanded && bd.firstElementChild) bd.firstElementChild.open = true;
   const open = proposals.find(p => p.fare_id === fare.id);
   const sg = document.getElementById("q-suggest");
   if(open){
@@ -2105,7 +2127,10 @@ function calcRates(cfg){
   const vehiclePerHr = round2(monthlyFixed / targetHours);
   const passengerPerHr = roundToNearest50c(vehiclePerHr + earningsTarget);
   const fuelPerMile = round3((Number(cfg.gasPrice) || 0) / mpg);
-  return { vehiclePerHr, passengerPerHr, fuelPerMile };
+  const averageMiles = cfg.hourlyMiles == null ? null : Number(cfg.hourlyMiles);
+  const hourlyMiles = Number.isFinite(averageMiles) && averageMiles >= 0 ? averageMiles : null;
+  const hourlyFee = hourlyMiles == null ? null : round2(passengerPerHr + hourlyMiles * fuelPerMile);
+  return { vehiclePerHr, passengerPerHr, fuelPerMile, hourlyMiles, hourlyFee };
 }
 function fmtNum(n){
   const v = round2(Number(n) || 0);
@@ -2158,8 +2183,9 @@ function stopOptionsHtml(id){
 }
 function calcFare(t, cfg){
   const r = calcRates(cfg);
-  const miles = Math.max(0, parseFloat(t.miles) || 0);
+  const hourly = t.pricing === "hourly";
   const hours = Math.max(0, parseFloat(t.hours) || 0);
+  const miles = hourly ? hours * (r.hourlyMiles ?? 0) : Math.max(0, parseFloat(t.miles) || 0);
   const waitHours = Math.max(0, parseFloat(t.waitHours) || 0);
   const tolls = Math.max(0, parseFloat(t.tolls) || 0);
   const parking = Math.max(0, parseFloat(t.parking) || 0);
@@ -2172,7 +2198,9 @@ function calcFare(t, cfg){
   const fuelCharge = miles * r.fuelPerMile; // fuel at cost, in the fare — no separate mileage fee (v2)
   const tollsParking = tolls + parking;
   const returnCharge = hubNear ? 0 : returnMiles * r.fuelPerMile + returnHours * r.vehiclePerHr + returnTolls;
-  const suggestedFare = roundToNearest5(timeCharge + waitCharge + fuelCharge + tollsParking + returnCharge);
+  const total = timeCharge + waitCharge + fuelCharge + tollsParking + returnCharge;
+  const suggestedFare = hourly ? round2(hours * (r.hourlyFee ?? 0) + waitCharge + tollsParking + returnCharge) :
+    roundToNearest5(total);
   const fare = (t.adjustedFare != null && t.adjustedFare !== "") ? Number(t.adjustedFare) : suggestedFare;
   const fuelCost = round2((miles + returnMiles) * r.fuelPerMile);
   const totalHours = round2(hours + waitHours + returnHours);
@@ -2180,7 +2208,7 @@ function calcFare(t, cfg){
   const expenses = round2(fuelCost + tollsParking + returnTolls + recovery);
   const takeHome = round2(fare - expenses);
   const effectivePerHour = totalHours > 0 ? round2(takeHome / totalHours) : null;
-  return { rates: r, miles, hours, waitHours, tolls, parking, hubNear, returnMiles, returnHours, returnTolls,
+  return { rates: r, hourly, miles, hours, waitHours, tolls, parking, hubNear, returnMiles, returnHours, returnTolls,
     timeCharge: round2(timeCharge), waitCharge: round2(waitCharge), fuelCharge: round2(fuelCharge),
     tollsParking: round2(tollsParking), returnCharge: round2(returnCharge),
     suggestedFare, fare, fuelCost, recovery, expenses, takeHome, totalHours, effectivePerHour };
@@ -2197,9 +2225,11 @@ function calcReset(){
    parking, Return — no mileage-fee line anywhere. */
 function calcBreakdownLines(r){
   const lines = [];
-  lines.push({ label: "Time (" + fmtNum(r.hours) + " hr × " + money(r.rates.passengerPerHr) + ")", amount: r.timeCharge });
+  lines.push(r.hourly ? {label:"Hourly job (" + fmtNum(r.hours) + " hr × " + money(r.rates.hourlyFee) + ")",
+    amount:round2(r.hours * r.rates.hourlyFee)} :
+    {label:"Time (" + fmtNum(r.hours) + " hr × " + money(r.rates.passengerPerHr) + ")",amount:r.timeCharge});
   if(r.waitHours > 0) lines.push({ label: "Waiting (" + fmtWait(r.waitHours) + " × " + money(r.rates.passengerPerHr) + "/hr)", amount: r.waitCharge });
-  if(r.miles > 0) lines.push({ label: "Fuel (" + fmtNum(r.miles) + " mi)", amount: r.fuelCharge });
+  if(!r.hourly && r.miles > 0) lines.push({ label: "Fuel (" + fmtNum(r.miles) + " mi)", amount: r.fuelCharge });
   if(r.tollsParking > 0) lines.push({ label: "Tolls + parking", amount: r.tollsParking });
   if(!r.hubNear && r.returnCharge > 0){
     const parts = [];
@@ -2243,11 +2273,8 @@ function renderCalc(){
   view = "calc";
   inFlow = false;
   if(!calc) calcReset();
-  if(calcStage === "result" && !(calc.miles > 0 && calc.hours > 0)) calcStage = "details";
+  if(calcStage === "result" && !calcQuoteReady(calc)) calcStage = "details";
   setStep(0,"Quote");
-  const route = [calc.from,calc.to].filter(Boolean).join(" → ");
-  const head = '<header class="simple-head"><h1>' + (calcStage === "result" ? "Your rate" : "Trip details") + '</h1></header>' +
-    (route ? '<p class="simple-caption">' + esc(route) + '</p>' : '');
   if(calcStage === "result"){
     const result = calcFare(calc,calcCfg);
     const customerLines = customerCalcLines(result);
@@ -2257,20 +2284,29 @@ function renderCalc(){
         '<button class="btn" id="c-share-result">Share fare</button>') + '</div>' +
       '<div class="quote-result-actions"><button class="btn secondary" id="c-customize">Edit miles &amp; time</button>' +
       '<button class="btn secondary" id="c-job">Save quote</button></div>' +
-      '<details class="form-details"><summary>Driver breakdown</summary><p class="simple-caption" id="c-takehome"></p>' +
-      '<div class="list" id="c-result-breakdown"></div></details>');
+      '<h2 class="quote-metric-heading">Driver estimate</h2><div class="list">' +
+      detailRow("c-driver-cost","Take-home",money(result.takeHome) +
+        (result.effectivePerHour == null ? "" : " · " + money(result.effectivePerHour) + "/hr")) + '</div>');
+    document.getElementById("c-driver-cost").onclick = () => openDrawer("Driver estimate",
+      '<div class="list">' + calcBreakdownLines(result).map(row => tdLine(row.label,money(row.amount))).join("") +
+      tdLine("Take-home",money(result.takeHome)) + '</div>');
     document.getElementById("c-share-result").onclick = event => openShareFare(event.currentTarget,{
       from:calc.from,to:calc.to,round:calc.mode === "round",amount:money(result.fare),lines:customerLines,vehicle:calcCfg.vehicle
     });
-    document.getElementById("c-customize").onclick = () => goBackFromCalc();
+    const edit = document.getElementById("c-customize");
+    edit.textContent = result.hourly ? "Edit job time" : "Edit miles & time";
+    edit.onclick = () => goBackFromCalc();
     document.getElementById("c-job").onclick = () => openLedgerJobForm(null,{
       pickup:calc.from,destination:calc.to,fare:calcFare(calc,calcCfg).fare
     });
   } else {
-    h(head + '<div class="list">' + detailRow("c-from","From",calc.from || "Choose a stop") +
-      detailRow("c-to","To",calc.to || "Choose a stop") + '</div>' + calcFormMarkup());
-    document.getElementById("c-from").onclick = () => openQuotePlace("from",renderCalc);
-    document.getElementById("c-to").onclick = () => openQuotePlace("to",renderCalc);
+    h(quoteRouteHeader(calc) + calcFormMarkup());
+    wireQuoteRoute(calc,(from,to) => {
+      Object.assign(calc,{from,to,adjustedFare:null});
+      delete calc.sharedReturnIncluded;
+      calc.endAtDropoff = !calc.extras?.includes("onward");
+      renderCalc();
+    });
     wireCalcForm(() => { calcStage = "result"; renderCalc(); });
   }
   updatePrice();
@@ -2293,20 +2329,49 @@ function bindDuration(id,key){
   };
   hours.oninput = minutes.oninput = update;
 }
+function calcQuoteReady(trip){
+  return Number(trip.hours) > 0 && (trip.pricing === "hourly" ?
+    calcRates(calcCfg).hourlyFee != null : Number(trip.miles) > 0);
+}
 function calcFormMarkup(){
+  const hourly = calc.pricing === "hourly";
+  const rate = calcRates(calcCfg).hourlyFee;
   calc.extras ??= Object.keys(QUOTE_EXTRAS).filter(key =>
     key === "onward" ? !calcEndsAtHub(calc) && (calc.to || calc.returnMiles || calc.returnHours || calc.returnTolls) :
     Number(calc[{wait:"waitHours",toll:"tolls",parking:"parking"}[key]]) > 0);
-  return '<form class="quote-form" id="quote-form"><h2 class="section-title">Calculate a rate</h2><div class="list">' +
+  return '<form class="quote-form" id="quote-form"><h2 class="section-title">Calculate a rate</h2>' +
+    '<div class="quote-mode" role="group" aria-label="Pricing method">' +
+    '<button type="button" id="c-by-trip" aria-pressed="' + !hourly + '">By trip</button>' +
+    '<button type="button" id="c-hourly" aria-pressed="' + hourly + '">Hourly</button></div>' +
+    (hourly ? '<div class="hourly-card">' + (rate == null ?
+      '<button type="button" class="quiet-link" id="c-set-hourly">Set up hourly rate</button>' :
+      '<strong>' + money(rate) + '/hr</strong> · fuel included') + '</div>' : '') + '<div class="list">' +
     '<label class="row toggle-row"><span>Round trip</span><input type="checkbox" id="c-trip-type"' +
     (calc.mode === "round" ? " checked" : "") + '></label>' +
-    quoteInput("c-miles","Trip miles",calc.miles,"0.001") + durationFields("c-dur","Drive",calc.hours) + '</div>' +
+    (hourly ? '' : quoteInput("c-miles","Trip miles",calc.miles,"0.001")) +
+    durationFields("c-dur",hourly ? "Job time" : "Drive",calc.hours) + '</div>' +
     '<div id="quote-extras"></div><button class="btn secondary" id="c-add-extra" type="button">Add to quote</button>' +
-    formDetails("Set a custom total",quoteInput("c-fare-edit","Custom total ($)",calc.adjustedFare,"0.01"),calc.adjustedFare != null) +
+    '<button type="button" class="quiet-link" id="c-edit-total">' +
+    (calc.adjustedFare == null ? "Set a custom total" : "Custom total " + money(calc.adjustedFare)) + '</button>' +
     '<button class="btn" id="c-next" type="submit">Calculate</button></form>';
 }
 function wireCalcForm(calculate){
   const form = document.getElementById("quote-form");
+  const changeMode = pricing => {
+    if((calc.pricing || "trip") === pricing) return;
+    calc.pricing = pricing;
+    calc.adjustedFare = null;
+    if(view === "quote-rates") renderRouteRates();
+    else renderCalc();
+  };
+  document.getElementById("c-by-trip").onclick = () => changeMode("trip");
+  document.getElementById("c-hourly").onclick = () => changeMode("hourly");
+  const setup = document.getElementById("c-set-hourly");
+  if(setup) setup.onclick = () => {
+    const returnToQuote = view === "quote-rates" ? renderRouteRates : renderCalc;
+    pushScreen("account-rates",returnToQuote,renderAccountRates);
+    document.getElementById("ledger-hourlyMiles").focus();
+  };
   const keys = {onward:["returnMiles","returnHours","returnTolls"],wait:["waitHours"],toll:["tolls"],parking:["parking"]};
   const refreshExtras = () => {
     const content = {
@@ -2337,7 +2402,19 @@ function wireCalcForm(calculate){
     document.getElementById("c-add-extra").disabled = calc.extras.length === Object.keys(QUOTE_EXTRAS).length;
   };
   bindQuoteInput("c-miles","miles");
-  bindQuoteInput("c-fare-edit","adjustedFare");
+  document.getElementById("c-edit-total").onclick = () => {
+    openDrawer("Custom total",'<form id="custom-total-form">' +
+      ledgerInput("total","Total ($)","number",calc.adjustedFare,'min="0" max="9999999999.99" step="0.01"') +
+      '<button type="submit" class="btn">Apply</button></form>');
+    document.getElementById("custom-total-form").onsubmit = event => {
+      event.preventDefault();
+      const value = event.currentTarget.elements.total.value;
+      calc.adjustedFare = value === "" ? null : Number(value);
+      document.getElementById("c-edit-total").textContent =
+        calc.adjustedFare == null ? "Set a custom total" : "Custom total " + money(calc.adjustedFare);
+      closeDrawer();
+    };
+  };
   bindDuration("c-dur","hours");
   document.getElementById("c-trip-type").onchange = event => { calc.mode = event.target.checked ? "round" : "oneway"; };
   document.getElementById("c-add-extra").onclick = () => {
@@ -2355,48 +2432,14 @@ function wireCalcForm(calculate){
   refreshExtras();
   form.onsubmit = event => {
     event.preventDefault();
-    if(calc.miles > 0 && calc.hours > 0) calculate();
+    if(calcQuoteReady(calc)) calculate();
   };
   updatePrice();
 }
 function updatePrice(){
-  const r = calcFare(calc,calcCfg);
-  const output = document.getElementById("c-result");
   const next = document.getElementById("c-next");
-  if(next) next.disabled = !(r.miles > 0 && r.hours > 0);
-  if(!output) return;
-  document.getElementById("c-fare-show").textContent = money(r.fare);
-  document.getElementById("c-takehome").textContent = money(r.takeHome) + " estimated take-home" +
-    (r.effectivePerHour == null ? "" : " · " + money(r.effectivePerHour) + "/hr");
-  const resultBreakdown = document.getElementById("c-result-breakdown");
-  resultBreakdown.innerHTML = calcBreakdownLines(r).map(row => tdLine(row.label,money(row.amount))).join("");
+  if(next) next.disabled = !calcQuoteReady(calc);
 }
-function openQuotePlace(which,render = renderCalc){
-  const other = which === "to" ? calc.from : null;
-  openDrawer(which === "from" ? "Pickup" : "Destination",
-    '<div class="search-wrap"><input type="search" id="quote-place-search" aria-label="Search places" autocomplete="off"></div>' +
-    '<div id="quote-places"></div>');
-  const input = document.getElementById("quote-place-search");
-  const list = document.getElementById("quote-places");
-  const update = () => {
-    if(list.isConnected) list.innerHTML = placeListHTML(input.value,other,calcHistoryPlaces(),input.value);
-  };
-  input.oninput = update;
-  list.onclick = event => {
-    const row = event.target.closest("[data-place],[data-custom]");
-    if(!row) return;
-    calc[which] = row.dataset.place ?? row.dataset.custom;
-    delete calc.sharedReturnIncluded;
-    delete calc.endAtDropoff;
-    calc.adjustedFare = null;
-    calcPrefillFromJobs();
-    closeDrawer();
-    render();
-  };
-  update();
-  if(calcUser && tdLedger?.user !== calcUser.id) tdLoad().then(update);
-}
-
 function calcPrefillFromJobs(){
   if(!calc.from || !calc.to || !tdLedger || tdLedger.user !== calcUser?.id) return;
   const key = name => placeKey(resolvePlace(name));
@@ -2519,7 +2562,10 @@ function calcDerivedHtml(config = calcCfg){
   return '<div class="rate-stack">' +
     tile("Passenger & wait",money(rates.passengerPerHr) + "/hr","Rental recovery + earnings target") +
     tile("Onward driving",money(rates.vehiclePerHr) + "/hr","Rental cost ÷ planned hours") +
-    tile("Fuel","$" + rates.fuelPerMile.toFixed(3) + "/mi","Price per gallon ÷ MPG") + '</div>';
+    tile("Fuel","$" + rates.fuelPerMile.toFixed(3) + "/mi","Price per gallon ÷ MPG") + '</div>' +
+    '<div class="hourly-rate-value"><span>Hourly quote fee</span><strong>' +
+    (rates.hourlyFee == null ? "Set average miles" : money(rates.hourlyFee) + "/hr") +
+    '</strong><small>Passenger rate + fuel for average miles per working hour</small></div>';
 }
 function renderAccount(){
   view = "account";
@@ -2782,8 +2828,9 @@ function renderAccountRates(){
   h('<form id="rates-form" class="ledger-form"><div class="list" style="padding:0 14px">' +
     fields.map(([key,label,min]) => ledgerInput(key,label,"number",calcCfg[key],
       'required step="any" min="' + min + '"')).join("") + '</div>' +
-    '<div class="group-label">Derived rates</div><div class="list" style="padding:0 14px"><div id="s-derived">' +
-    calcDerivedHtml() + '</div></div><p class="simple-caption" id="s-saved" role="status">' +
+    '<div class="group-label">Derived rates</div><div class="list" style="padding:0 14px">' +
+    ledgerInput("hourlyMiles","Average miles per working hour","number",calcCfg.hourlyMiles,'min="0" max="999.999" step="any"') +
+    '<div id="s-derived">' + calcDerivedHtml() + '</div></div><p class="simple-caption" id="s-saved" role="status">' +
     (pendingPreferences() ? esc(preferenceStatus("pending")) : '') + '</p>' +
     '<button class="btn" id="s-save" type="submit">Save rates</button>' +
     '<button class="quiet-link" id="s-reset" type="button">Use defaults</button></form>');
@@ -2793,7 +2840,9 @@ function renderAccountRates(){
   const save = document.getElementById("s-save");
   const values = () => {
     const data = new FormData(form);
-    return Object.fromEntries(fields.map(([key]) => [key,Number(data.get(key))]));
+    const miles = data.get("hourlyMiles");
+    return {...Object.fromEntries(fields.map(([key]) => [key,Number(data.get(key))])),
+      hourlyMiles:miles === "" ? null : Number(miles)};
   };
   form.oninput = () => {
     if(form.checkValidity()) document.getElementById("s-derived").innerHTML = calcDerivedHtml(values());
@@ -2806,13 +2855,14 @@ function renderAccountRates(){
       status.textContent = "Your session changed. Reopen Settings to save.";
       return;
     }
-    const updates = Object.fromEntries(Object.entries(values()).filter(([key,value]) => value !== Number(calcCfg[key])));
+    const updates = Object.fromEntries(Object.entries(values()).filter(([key,value]) => key === "hourlyMiles" ? value !== (calcCfg.hourlyMiles ?? null) : value !== Number(calcCfg[key])));
     const group = [...form.querySelectorAll("input,button")];
     group.forEach(control => control.disabled = true);
     status.textContent = "Saving…";
     try {
       const result = await savePreferences(updates);
       for(const [key] of fields) form.elements[key].value = calcCfg[key];
+      form.elements.hourlyMiles.value = calcCfg.hourlyMiles ?? "";
       if(form.isConnected) document.getElementById("s-derived").innerHTML = calcDerivedHtml();
       status.textContent = preferenceStatus(result);
     }
@@ -2821,6 +2871,7 @@ function renderAccountRates(){
   };
   document.getElementById("s-reset").onclick = () => {
     for(const [key] of fields) form.elements[key].value = CALC_DEFAULTS[key];
+    form.elements.hourlyMiles.value = "";
     form.oninput();
   };
 }
@@ -3214,30 +3265,12 @@ function wireDayCosts(container,date,day,back = null){
       day.expenses.find(row => row.source === "manual_day_" + category),back);
   });
 }
-function openDayRecords(date){
-  const data = closeoutData(date);
-  const back = () => openDayRecords(date);
-  const jobs = tdLedger.jobs.filter(job => job.business_date === date && job.status !== "cancelled");
-  openDrawer("Jobs & Aximote drives",
-    '<button class="btn" id="day-record-job" type="button">Add job</button>' +
-    '<div class="list simple-space">' + detailRow("day-all-jobs","All jobs") +
-    jobs.map(job => ledgerJobRow(job,ledgerPaymentLabel(job,tdLedger.payments.filter(row => row.job_id === job.id)))).join("") +
-    '</div><h3 class="settings-heading">Aximote drives</h3>' + renderDayCarTrips(date,data.tripRows) +
-    '<div class="list simple-space">' + detailRow("day-compare","Compare Aximote totals") + '</div>');
-  document.getElementById("day-record-job").onclick = () =>
-    openLedgerJobForm(null,{business_date:date,status:"completed"},back);
-  document.getElementById("day-all-jobs").onclick = () => { closeDrawer(); goMenu("jobs"); };
-  document.getElementById("day-compare").onclick = () => openDayCloseout(date,data);
-  document.getElementById("td-add-car").onclick = () => openCarTrip(date,null,null,null,back);
-  document.getElementById("sheet-body").querySelectorAll("[data-td-job]").forEach(button => {
-    button.onclick = () => openLedgerJob(jobs.find(job => job.id === button.dataset.tdJob),back);
-  });
-  document.getElementById("sheet-body").querySelectorAll("[data-car-trip]").forEach(button => {
-    button.onclick = () => openCarTrip(date,data.tripRows.find(row => row.id === button.dataset.carTrip),null,null,back);
-  });
-}
+
 function openDayDriving(date,data,back){
-  openDrawer("Driving log",renderDayCarTrips(date,data.tripRows),back);
+  openDrawer("Aximote drives",renderDayCarTrips(date,data.tripRows) +
+    (back ? "" : '<div class="list simple-space">' + detailRow("driving-compare","Compare Aximote totals") + '</div>'),back);
+  const compare = document.getElementById("driving-compare");
+  if(compare) compare.onclick = () => openDayCloseout(date,data);
   document.getElementById("td-add-car").onclick = () => openCarTrip(date);
   document.getElementById("sheet-body").querySelectorAll("[data-car-trip]").forEach(button => {
     button.onclick = () => {
@@ -3291,7 +3324,7 @@ function wireRentalFunding(date,period){
     });
   };
 }
-function todaySheet(day,date,summary,reviewed,period = null,due = 0){
+function todaySheet(day,date,period = null,due = 0){
   const rental = period ? period.rental : ledgerRental(date);
   const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
   const target = Number(rental?.planned_hours ?? calcCfg.targetHours);
@@ -3300,37 +3333,33 @@ function todaySheet(day,date,summary,reviewed,period = null,due = 0){
     job.business_date.slice(0,7) === date.slice(0,7)));
   const periodHours = period ? day.hours : tdSum(periodJobs,"working_minutes") / 60;
   const progress = Math.round(Math.min(100,Math.max(0,periodHours / Math.max(target,0.01) * 100)));
-  const pace = day.rate == null ? 0 : Math.min(100,Math.max(0,day.rate / Math.max(1,goal) * 100));
   const working = day.completeTime ? driveTimeLabel(Math.round(day.hours * 60)) : day.hours ?
     driveTimeLabel(Math.round(day.hours * 60)) + " recorded" : "Pending";
   const funding = rentalFunding(date,period);
   const hasRental = funding.rentals.length > 0;
   const expenses = hasRental ? funding.operating : day.operatingCost ?? day.operating ?? 0;
   const cost = funding.base + expenses;
-  return '<section class="today-sheet" aria-label="Costs and earnings">' +
+  return '<div class="home-earnings"><section class="today-sheet funding-primary" aria-label="Costs and rental payments">' +
     '<div class="today-net"><span>Cost to cover' + (hasRental && (!period || todayPeriod === "week") ? ' · Rental to date' : '') +
-    '</span><strong>' + tdMoney(cost,2) + '</strong><span>' +
-    (hasRental ? tdMoney(funding.base,2) + ' rental + operating expenses' : 'Operating expenses') + '</span></div>' +
+    '</span><strong>' + tdMoney(cost,2) + '</strong></div><div class="funding-meta">' +
+    (hasRental ? '<span>Rental ' + tdMoney(funding.base,2) + '</span>' : '') +
+    '<span>Expenses ' + tdMoney(expenses,2) + '</span></div>' +
     (hasRental ? '<div class="today-hours"><div><strong>' + tdMoney(funding.ready,2) + '</strong><span>Ready to pay</span></div>' +
     '<button type="button" id="td-rental-paid"><strong>' + tdMoney(funding.paid,2) + '</strong><span>Paid toward rental ›</span></button></div>' : '') +
-    '<div class="today-hours"><div><strong>' + tdMoney(expenses,2) + '</strong><span>Expenses recorded</span></div>' +
+    '</section><section class="list home-income" aria-label="Earnings and hours">' +
+    '<div class="today-hours"><div><strong>' + tdMoney(day.gross,2) + '</strong><span>Gross earned</span></div>' +
     '<button type="button" id="td-takehome" aria-label="Take-home breakdown"><strong>' +
     (day.net == null ? "—" : tdMoney(day.net,2)) + '</strong><span>Take-home ›</span></button></div>' +
-    '<div class="today-hours"><div><strong>' + tdMoney(day.gross,2) + '</strong><span>Gross earned</span></div>' +
-    '</div>' +
     '<div class="today-hours"><button type="button" class="today-metric" id="td-hourly" aria-label="Hourly earnings breakdown"><strong>' +
     (day.rate == null ? "—" : tdMoney(day.rate,2) + "/hr") + '</strong><span>' + tdMoney(goal) + '/hr goal</span>' +
-    '<span class="today-pace" aria-hidden="true"><span style="width:' + pace + '%"></span></span></button>' +
+    '</button>' +
     '<button type="button" id="td-worked"><strong>' + esc(working) + '</strong><span>Hours worked</span></button></div>' +
     (!period || rental ? '<div class="today-hours"><button type="button" id="td-period-hours"><strong>' +
-    fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>' + (rental ? "Rental period" : "Monthly target") + '</span></button>' +
+    fmtNum(periodHours) + ' / ' + fmtNum(target) + 'h</strong><span>Planned hours ›</span></button>' +
     '<div class="today-progress" role="progressbar" aria-label="Working hours target" aria-valuenow="' +
     progress + '"><span style="width:' + progress + '%"></span></div></div>' : '') +
-    (due || summary.length || reviewed ? '<div class="today-finance">' +
-      (due ? '<button type="button" id="td-collect" aria-label="' + esc(tdMoney(due) + ' to collect. View unpaid trips') +
-        '">' + tdMoney(due) + ' to collect <i aria-hidden="true">›</i></button>' : '') +
-      (summary.length || reviewed ? '<span class="ledger-status">' +
-        esc([...summary,reviewed ? "Driving reviewed" : ""].filter(Boolean).join(" · ")) + '</span>' : '') + '</div>' : '') + '</section>';
+    (due ? '<button type="button" class="quiet-link collect-link" id="td-collect">' + tdMoney(due) + ' to collect ›</button>' : '') +
+    '</section></div>';
 }
 function unpaidTrips(jobs){
   return jobs.filter(job => job.status === "completed" && job.fare != null).map(job => {
@@ -3553,7 +3582,7 @@ function renderHomePeriod(){
     tdLine("Rental",totals.rentalCost == null ? "Pending" : tdMoney(totals.rentalCost,2)) +
     tdLine("Fuel bought",tdMoney(tdSum(ledger.purchases,"amount"),2)) + '</div>';
   const unpaid = unpaidTrips(ledger.jobs);
-  h(header + weekNote + todaySheet(totals,tdDate,[],false,period,tdSum(unpaid,"due")) + uncertainty +
+  h(header + weekNote + todaySheet(totals,tdDate,period,tdSum(unpaid,"due")) + uncertainty +
     '<div class="today-tabs" role="tablist" aria-label="Period records">' +
     ['trips','expenses'].map(key => '<button type="button" role="tab" id="today-tab-' + key +
       '" aria-selected="' + (todayTab === key) + '" aria-controls="today-panel-' + key +
@@ -3600,8 +3629,6 @@ function renderToday(reload=true){
   const day = tdDay(date);
   const data = closeoutData(date,day);
   const active = tdLedger.jobs.filter(job => job.status === "scheduled" || job.status === "quoted").length;
-  const summary = [];
-  if(day.jobs.length && day.completeFare && !data.due) summary.push("Paid in full");
   const rows = data.jobs.map(job => {
     const detail = job.status === "scheduled" ? "Scheduled" :
       job.return_pending ? (dayReturnOnFile(data,job) ? "Check return trip" : "Return trip missing") :
@@ -3610,24 +3637,26 @@ function renderToday(reload=true){
   }).join("");
   const expenseTab = todayTab === "expenses";
   h(head + (date === todayNY() ? "" : '<p class="simple-caption home-range">' + esc(homeDateLabel(date)) + '</p>') +
-    todaySheet(day,date,summary,data.reviewed,null,data.due) +
+    todaySheet(day,date,null,data.due) +
     '<div class="today-tabs" role="tablist" aria-label="Day records">' +
     '<button type="button" role="tab" id="today-tab-trips" aria-controls="today-panel-trips" aria-selected="' +
     !expenseTab + '" tabindex="' + (expenseTab ? -1 : 0) + '">Trips</button>' +
     '<button type="button" role="tab" id="today-tab-expenses" aria-controls="today-panel-expenses" aria-selected="' +
     expenseTab + '" tabindex="' + (expenseTab ? 0 : -1) + '">Expenses</button></div>' +
     '<section role="tabpanel" id="today-panel-trips" aria-labelledby="today-tab-trips"' + (expenseTab ? ' hidden' : '') + '>' +
-    '<div class="list review-card">' + detailRow("td-all-jobs","Jobs & Aximote drives",
-      active ? active + " open" : "") + '</div>' +
+    '<div class="ledger-section"><h2>Jobs</h2><button type="button" class="quiet-link" id="td-add-job">Add job</button></div>' +
     (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this day.</p>') +
-    savedTripEntries(data.pendingTrips) + '</section>' +
+    savedTripEntries(data.pendingTrips) + '<div class="list simple-space">' +
+    detailRow("td-all-jobs","All jobs",active ? active + " open" : "") + '</div></section>' +
     '<section role="tabpanel" id="today-panel-expenses" aria-labelledby="today-tab-expenses"' + (expenseTab ? '' : ' hidden') + '>' +
     '<div class="list">' + detailRow("home-add-toll","Record tolls") +
     detailRow("home-add-fuel","Record gas purchase") + detailRow("home-fuel-used","Adjust fuel cost") +
-    detailRow("home-expense-details","Expense details") + '</div></section>');
+    detailRow("home-expense-details","Expense details") + detailRow("td-aximote","Aximote drives",String(data.tripRows.length)) + '</div></section>');
   wireHomeTabs();
   wireRentalFunding(date,null);
-  document.getElementById("td-all-jobs").onclick = () => openDayRecords(date);
+  document.getElementById("td-add-job").onclick = () => openLedgerJobForm(null,{business_date:date,status:"completed"});
+  document.getElementById("td-all-jobs").onclick = () => goMenu("jobs");
+  document.getElementById("td-aximote").onclick = () => openDayDriving(date,data);
   document.getElementById("td-takehome").onclick = () => openDayCosts(date);
   document.getElementById("td-hourly").onclick = () => openDayCosts(date,"Hourly earnings");
   document.getElementById("td-worked").onclick = () => {
@@ -3852,7 +3881,8 @@ function openLedgerJob(job,parent = null){
     (payments.length ? tdLine("Payments recorded",tdMoney(tdSum(payments,"amount"),2)) : "") +
     undated.map(payment => '<button type="button" class="row" data-undated-payment="' + esc(payment.id) +
       '"><span class="row-main">Set payment date</span><b>' + tdMoney(Number(payment.amount),2) + '</b><span class="chev" aria-hidden="true">›</span></button>').join("") +
-    segments.map(row => tdLine(carTripTitle(row),carTripFacts(row))).join("") +
+    (completed ? detailRow("ledger-add-drive","Add Aximote drive") : "") +
+    segments.map((row,index) => detailRow("ledger-drive-" + index,carTripTitle(row),carTripFacts(row))).join("") +
     (completed && view === "jobs" ? detailRow("ledger-review","Go to day") : "") +
     '</div>' + (job.notes && !quoteSnapshot(job.notes) ? '<p class="tdnote">' + esc(job.notes) + '</p>' : '') + linkedEvidence(job);
   openDrawer(ledgerJobTitle(job),
@@ -3860,6 +3890,11 @@ function openLedgerJob(job,parent = null){
     (job.fare == null ? "—" : tdMoney(Number(job.fare))) + '</strong><div class="simple-caption">' +
     esc(ledgerPaymentLabel(job,payments)) + '</div></div>' +
     (active ? '<button type="button" class="btn" id="ledger-edit">Update job</button>' : "") + details,parent);
+  const addDrive = document.getElementById("ledger-add-drive");
+  if(addDrive) addDrive.onclick = () => openCarTrip(job.business_date,null,job.id,"passenger",back);
+  segments.forEach((row,index) => {
+    document.getElementById("ledger-drive-" + index).onclick = () => openCarTrip(job.business_date,row,job.id,null,back);
+  });
   const edit = document.getElementById("ledger-edit");
   if(edit) edit.onclick = () => openLedgerJobForm(job,{},back);
   const actuals = document.getElementById("ledger-actual-review");
