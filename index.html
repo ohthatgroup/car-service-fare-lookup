@@ -234,6 +234,7 @@
   .today-gauge-label strong,.today-net strong{ display:block; font-size:clamp(20px,6vw,32px); letter-spacing:-.045em; }
   .today-gauge-label small{ font-size:11px; font-weight:500; }
   .today-sheet span{ display:block; color:var(--muted); font-size:12px; }
+  .today-sheet .today-gauge-label{ color:inherit; }
   .today-net{ padding:4px 0 4px 12px; border:0; border-left:1px solid var(--border); border-radius:0;
     background:none; color:inherit; text-align:left; font:inherit; cursor:pointer; overflow-wrap:anywhere; }
   .today-net i{ font-style:normal; margin-left:3px; }
@@ -954,7 +955,7 @@ function summaryLine(withOptions){
 /* ---------- rendering helpers ---------- */
 /* Calculator + Account views (v3 layers included). The fare wizard views
    (step1/step2/quote/flatbush/notlisted/pending) are not in this list. */
-const CALC_VIEWS = ["calc", "account", "account-rates", "account-aliases"];
+const CALC_VIEWS = ["calc", "account", "account-rates", "account-aliases", "account-zones"];
 function isCalcViewName(v){ return CALC_VIEWS.includes(v); }
 /* Layered screens: layers pushed on top of a root calc/account
    screen; nav back pops. Root jumps (icon bar, deep links) clear it. */
@@ -1086,7 +1087,7 @@ function setStep(n,label){
   title.style.display = simpleRoot || !isCalcViewName(view) ? "none" : "";
   title.textContent = label || "Fare Lookup";
   const back = view === "jobs" ? "Today" : view === "account" ? "Money" :
-    view === "account-rates" || view === "account-aliases" ? "Account" :
+    view.startsWith("account-") ? "Account" :
     view === "pending" ? "Fare Sheet" : view === "quote" && quoteFromCalc ? quoteFromCalcBack :
     (view === "notlisted" || n === 3) ? "Where to?" : n === 2 ? "Where from?" : "Start over";
   document.getElementById("nav-back").textContent = "‹ " + back;
@@ -1874,17 +1875,11 @@ function fmtWait(h){
   const hrs = Math.floor(m / 60), rem = m % 60;
   return hrs + " hr" + (rem ? " " + rem + " min" : "");
 }
-/* v3 rule: endsAtHub = (To is set). Adding a location to To means the
-   trip ends at a hub; no To means a return leg to the closest hub.
-   The rule is uniform in both modes (answer 1): even in round-trip
-   mode, To set = no return leg, To empty = the return step applies.
-   The return-leg origin (drop-off one-way, origin round-trip) is
-   unchanged — with the hub drawer gone it has no code consumer left;
-   the return miles are simply entered from wherever the trip ends.
-   v4.3: only a FARE-SHEET place counts as ending at a hub — a custom
-   name from a saved trip is a list entry only, never a hub. */
-function calcEndsAtHub(t){
-  return !!t.to && places.includes(resolvePlace(t.to));
+// Shared quotes carry their original return inputs. Fresh quotes use the driver's zones.
+function calcEndsAtHub(t,cfg = calcCfg){
+  if(t.sharedReturnIncluded != null) return !t.sharedReturnIncluded;
+  const zones = Array.isArray(cfg.operatingZones) ? cfg.operatingZones : places;
+  return !!t.to && zones.includes(resolvePlace(t.to));
 }
 function calcHistoryPlaces(){
   const seen = new Set(places.map(placeKey));
@@ -1920,7 +1915,7 @@ function calcFare(t, cfg){
   const waitHours = Math.max(0, parseFloat(t.waitHours) || 0);
   const tolls = Math.max(0, parseFloat(t.tolls) || 0);
   const parking = Math.max(0, parseFloat(t.parking) || 0);
-  const hubNear = calcEndsAtHub(t); // v3: To set = ends at a hub
+  const hubNear = calcEndsAtHub(t,cfg);
   const returnMiles = hubNear ? 0 : Math.max(0, parseFloat(t.returnMiles) || 0);
   const returnHours = hubNear ? 0 : Math.max(0, parseFloat(t.returnHours) || 0);
   const returnTolls = hubNear ? 0 : Math.max(0, parseFloat(t.returnTolls) || 0);
@@ -2092,6 +2087,7 @@ function openQuotePlace(which){
     const row = event.target.closest("[data-place],[data-custom]");
     if(!row) return;
     calc[which] = row.dataset.place ?? row.dataset.custom;
+    delete calc.sharedReturnIncluded;
     calc.adjustedFare = null;
     calcPrefillFromJobs();
     renderCalc();
@@ -2156,6 +2152,7 @@ function calcOpenFromShare(q){
   const rhours = num("rhours"); if(rhours != null) calc.returnHours = rhours;
   const rtolls = num("rtolls"); if(rtolls != null) calc.returnTolls = String(rtolls);
   const adj = num("adj"); calc.adjustedFare = adj; // null when absent — the suggested fare stands
+  if(hasInputs) calc.sharedReturnIncluded = [rmiles,rhours,rtolls].some(value => value > 0);
   renderCalc();
   return true;
 }
@@ -2232,6 +2229,7 @@ function renderAccount(){
     '<div class="tdhead"><h1>Account</h1></div><div class="list">' +
       '<button class="row" id="a-rates"><span>Rates</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-aliases"><span>Stops &amp; aliases</span><span class="chev" aria-hidden="true">›</span></button>' +
+      '<button class="row" id="a-zones"><span>Operating zones</span><span class="chev" aria-hidden="true">›</span></button>' +
       '<button class="row" id="a-details"><span>Details</span><span class="chev" aria-hidden="true">›</span></button>' +
     "</div>" +
     (calcUser
@@ -2244,6 +2242,7 @@ function renderAccount(){
   if(rates) rates.addEventListener("click", () => pushScreen("account-rates", () => renderAccount(), renderAccountRates));
   const aliases = document.getElementById("a-aliases");
   if(aliases) aliases.addEventListener("click", () => pushScreen("account-aliases", () => renderAccount(), renderAliases));
+  document.getElementById("a-zones").onclick = () => pushScreen("account-zones",renderAccount,renderAccountZones);
   const details = document.getElementById("a-details");
   if(details) details.addEventListener("click", openDetails);
   const signin = document.getElementById("a-signin");
@@ -2345,6 +2344,49 @@ function openAliasEditor(index,target = ""){
   });
 }
 
+function renderAccountZones(){
+  view = "account-zones";
+  setStep(0,"Operating zones");
+  const selected = Array.isArray(calcCfg.operatingZones) ? calcCfg.operatingZones : null;
+  const options = [...new Set([...topPlaces,...(selected || [])])];
+  h('<form class="ledger-form" id="zones-form"><p class="simple-caption">Fare estimates include a return leg when a trip ends outside your operating zones.</p>' +
+    '<label class="field" for="zones-mode">Operating zones</label><select id="zones-mode" name="mode">' +
+    '<option value="sheet">All fare-sheet locations</option><option value="custom"' +
+    (selected ? " selected" : "") + '>Selected bases</option></select>' +
+    '<fieldset class="list simple-space" id="zone-bases"' + (selected ? "" : " hidden") + '><legend>Operating bases</legend>' +
+    options.map(place => '<label class="row"><span class="row-main">' + esc(place) +
+      '</span><input type="checkbox" name="zone" value="' + esc(place) + '"' +
+      ((selected || options).includes(place) ? ' checked' : '') + '></label>').join("") +
+    '</fieldset><p class="simple-caption" id="zones-status" role="status">' +
+    (pendingPreferences() ? esc(preferenceStatus("pending")) : "") +
+    '</p><button class="btn" type="submit">Save operating zones</button></form>');
+  const form = document.getElementById("zones-form");
+  const mode = document.getElementById("zones-mode");
+  const status = document.getElementById("zones-status");
+  const owner = calcUser?.id;
+  form.onchange = () => {
+    document.getElementById("zone-bases").hidden = mode.value !== "custom";
+    status.textContent = "Unsaved changes";
+  };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if(calcUser?.id !== owner){
+      status.textContent = "Your session changed. Reopen Settings to save.";
+      return;
+    }
+    const operatingZones = mode.value === "sheet" ? null : new FormData(form).getAll("zone");
+    const controls = [...form.querySelectorAll("input,select,button")];
+    controls.forEach(control => control.disabled = true);
+    status.textContent = "Saving…";
+    try {
+      status.textContent = preferenceStatus(await savePreferences({operatingZones}));
+    } catch(error){
+      status.textContent = error.message;
+    } finally {
+      controls.forEach(control => control.disabled = false);
+    }
+  };
+}
 function renderAccountRates(){
   view = "account-rates";
   setStep(0,"Rates");
