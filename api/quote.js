@@ -1,28 +1,6 @@
 "use strict";
-/* Share links.
-   Short form: /s/<fareId>[r][m][p]  (r=round trip, m=mini van, p=airport pickup)
-               /s/g<baseIdx>-<rowIdx>-<colIdx>  for zone-grid quotes.
-               /s/c<code>  for calculator fares — amount-only: the landing
-               page SHOWS the amount big and the route, never rates or
-               take-home, with an "Open FareLookup" button that starts
-               a NEW trip in the calculator with the shared inputs
-               prefilled (/?view=calc&f=..&t=..&miles=..&hours=..&
-               wait=..&tolls=..&parking=..&adj=..&rmiles=..&rhours=..&
-               rtolls=..) — the full breakdown of miles and time, the
-               shared amount exactly (adj=), and the return leg when
-               the trip has one. (v4.4.2 — was a deep-link to the
-               fare-sheet list price. Rows made before the inputs
-               were stored keep the old fare-sheet deep-link.)
-               /s/m<code>  for month snapshots (v4.4) — a point-in-time
-               snapshot of one month (revenue, expenses, take-home,
-               hours, recovered), frozen at share time; the landing
-               page shows the numbers with the take-home big, and the
-               WhatsApp preview shows the take-home. Stored as snap_*
-               columns on the shares row.
-   The fare is resolved from the database here, so the link stays tiny and
-   the preview image shows the real amount. Legacy /q?f=..&t=..&a=.. links
-   keep working. Either way the page carries the Open Graph tags and sends
-   people into the app at that quote. */
+/* Resolve short fare links for messaging previews and open the shared fare card.
+   Previously issued sheet, grid, calculator and monthly snapshot links still resolve. */
 const SB = "https://axmamofelrnewhbtkwlu.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4bWFtb2ZlbHJuZXdoYnRrd2x1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNjY3MzIsImV4cCI6MjEwOTk0MjczMn0.k7eq_pGtEsC9I7nv5AWQ9lk1AhsfmbxH4jrAMXXdsH4";
 
@@ -98,7 +76,7 @@ async function resolveShare(code){
     const base = custom != null ? custom : p;
     return { route: row.grid.base + " zone fare",
       amount: base != null ? money(base + ex.add) : (cell ? printedMoney(cell.price) : ""), extras,
-      appParams: { sh: row.code } };
+      appParams: { trip: row.trip === "round" ? "round" : "oneway" } };
   }
   if(row.fare_id){
     const fares = await db("fares?select=id,from_place,category,to_place,price,round_trip&id=eq." + row.fare_id);
@@ -125,56 +103,27 @@ async function resolveShare(code){
     }
     return { route: fare.from_place + " → " + fare.to_place,
       amount: total != null ? money(total) : printedMoney(printed), extras,
-      appParams: { sh: row.code } };
+      appParams: { trip: row.trip === "round" ? "round" : "oneway" } };
   }
   return null;
 }
 
 async function resolveCode(code){
+  const share = code.match(/^v([a-z0-9]{32})$/i);
+  if(share){
+    const rows = await db("shares?select=public_fare&code=eq." + encodeURIComponent(share[1]));
+    const fare = rows?.[0]?.public_fare;
+    if(!fare || typeof fare.amount !== "string" || !fare.amount) return null;
+    const route = [fare.from,fare.to].filter(value => typeof value === "string" && value).join(" → ");
+    return {route,amount:fare.amount,appParams:{view:"shared",code:share[1]}};
+  }
   const calc = code.match(/^c([a-z0-9]{4,})$/i);
   if(calc){
-    try {
-      const rows = await db("shares?code=eq." + encodeURIComponent(calc[1]) + "&select=calc_fare,calc_route,calc_roundtrip,calc_miles,calc_hours,calc_wait_hours,calc_tolls,calc_parking,calc_adjusted,calc_return_miles,calc_return_hours,calc_return_tolls");
-      const row = rows && rows[0];
-      if(row && row.calc_fare != null){
-        /* v4.4.2: the Open button starts a NEW trip in the calculator
-           with the shared inputs prefilled — /?view=calc&f=..&t=..&
-           trip=..&miles=..&hours=..&wait=..&tolls=..&parking=..,
-           including only the params that exist. Rows made before
-           the inputs were stored have none — those keep the v4.4
-           fare-sheet deep-link (/?f=..&t=..&trip=..).
-           Follow-up: the adjusted fare rides on the link too
-           (adj= — the fare actually shown when the share was made,
-           so the opened trip shows exactly the shared amount), and
-           so does the return leg (rmiles=/rhours=/rtolls=) when the
-           trip has one. Rows without them behave as before. */
-        const params = {};
-        const hasInputs = row.calc_miles != null || row.calc_hours != null || row.calc_wait_hours != null || row.calc_tolls != null || row.calc_parking != null || row.calc_adjusted != null || row.calc_return_miles != null || row.calc_return_hours != null || row.calc_return_tolls != null;
-        if(hasInputs) params.view = "calc";
-        if(row.calc_route){
-          const parts = String(row.calc_route).split(" → ");
-          if(parts.length === 2 && parts[0] && parts[1]){
-            params.f = parts[0]; params.t = parts[1];
-            if(row.calc_roundtrip) params.trip = "round";
-          }
-        }
-        if(hasInputs){
-          if(row.calc_miles != null) params.miles = String(row.calc_miles);
-          if(row.calc_hours != null) params.hours = String(row.calc_hours);
-          if(row.calc_wait_hours != null) params.wait = String(row.calc_wait_hours);
-          if(row.calc_tolls != null) params.tolls = String(row.calc_tolls);
-          if(row.calc_parking != null) params.parking = String(row.calc_parking);
-          if(row.calc_adjusted != null) params.adj = String(row.calc_adjusted);
-          if(row.calc_return_miles != null) params.rmiles = String(row.calc_return_miles);
-          if(row.calc_return_hours != null) params.rhours = String(row.calc_return_hours);
-          if(row.calc_return_tolls != null) params.rtolls = String(row.calc_return_tolls);
-        }
-        return { route: row.calc_route || "Calculator fare",
-          amount: money(Number(row.calc_fare)),
-          appParams: params, isCalc: true };
-      }
-    } catch(e){ return null; }
-    return null;
+    const rows = await db("shares?code=eq." + encodeURIComponent(calc[1]) + "&select=calc_fare,calc_route,calc_roundtrip");
+    const row = rows?.[0];
+    if(!row || row.calc_fare == null) return null;
+    return {route:row.calc_route || "",amount:money(Number(row.calc_fare)),
+      appParams:{trip:row.calc_roundtrip ? "round" : "oneway"}};
   }
   /* v4.4: month snapshot shares — the landing page shows the frozen
      month's numbers; the preview shows the take-home. */
@@ -247,11 +196,11 @@ module.exports = async (req, res) => {
   const host = req.headers.host || "fare-lookup.vercel.app";
   const origin = "https://" + host;
 
-  let route = "", amount = "", appParams = null, extrasTxt = "", isCalc = false, isMonth = false, snap = null;
+  let route = "", amount = "", appParams = null, extrasTxt = "", isMonth = false, snap = null;
   if(q.code){
     try {
       const res2 = await resolveCode(String(q.code));
-      if(res2){ route = res2.route; amount = String(res2.amount || ""); appParams = res2.appParams; extrasTxt = res2.extras || ""; isCalc = !!res2.isCalc; isMonth = !!res2.isMonth; snap = res2.snap || null; }
+      if(res2){ route = res2.route; amount = String(res2.amount || ""); appParams = res2.appParams; extrasTxt = res2.extras || ""; isMonth = !!res2.isMonth; snap = res2.snap || null; }
     } catch(e){ /* fall through to a generic page */ }
   }
   if(!appParams){
@@ -264,35 +213,11 @@ module.exports = async (req, res) => {
   const title = (route + (amount ? " — " + amount : "")).trim() || "Car Service Fare Lookup";
   const ogImg = origin + "/ogimg?a=" + encodeURIComponent(amount || "Fare Lookup") +
     "&r=" + encodeURIComponent(route) + (extrasTxt ? "&x=" + encodeURIComponent(extrasTxt) : "");
-  const appUrl = origin + "/?" + new URLSearchParams(appParams).toString();
-
-  /* Calculator shares land ON the fare: amount big, route under it, one
-     button that starts a NEW trip in the calculator with the shared
-     inputs prefilled (v4.4.2 — was the fare-sheet list price). No
-     redirect, no rates, no take-home. Rows without inputs keep the
-     old fare-sheet deep-link; rows with neither go home. */
-  if(isCalc){
-    const openUrl = (appParams && (appParams.view === "calc" || (appParams.f && appParams.t))) ? appUrl : origin + "/";
-    const calcHtml = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
-      "<title>" + esc(title) + "</title>" +
-      "<meta property=\"og:type\" content=\"website\">" +
-      "<meta property=\"og:title\" content=\"" + esc(title) + "\">" +
-      "<meta property=\"og:description\" content=\"Car service fare — tap to open the live quote.\">" +
-      "<meta property=\"og:image\" content=\"" + esc(ogImg) + "\">" +
-      "<meta property=\"og:image:width\" content=\"1200\">" +
-      "<meta property=\"og:image:height\" content=\"630\">" +
-      "<meta name=\"twitter:card\" content=\"summary_large_image\">" +
-      "</head><body style=\"font-family:-apple-system,sans-serif;text-align:center;padding:48px 20px;color:#111\">" +
-      "<div style=\"font-size:17px;color:#666\">" + esc(route) + "</div>" +
-      "<div style=\"font-size:64px;font-weight:800;letter-spacing:-.03em;margin:12px 0 28px\">" + esc(amount) + "</div>" +
-      "<a href=\"" + esc(openUrl) + "\" style=\"display:inline-block;background:#0071e3;color:#fff;text-decoration:none;font-size:17px;font-weight:600;padding:14px 28px;border-radius:12px\">Open FareLookup</a>" +
-      "</body></html>";
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=300");
-    res.status(200).send(calcHtml);
-    return;
-  }
-
+  const [from,to] = route.split(" → ");
+  const legacyFare = {from:from?.slice(0,250),to:to?.slice(0,250),amount:amount.slice(0,40),
+    round:appParams.trip === "round"};
+  const appUrl = appParams.view === "shared" ? origin + "/?" + new URLSearchParams(appParams) :
+    amount ? origin + "/#fare=" + encodeURIComponent(JSON.stringify(legacyFare)) : origin + "/";
   /* Month snapshots land on the frozen month: take-home big, the rest
      of the numbers under it, one button to the app home. No redirect. */
   if(isMonth && snap){
@@ -337,7 +262,6 @@ module.exports = async (req, res) => {
     "</head><body style=\"font-family:-apple-system,sans-serif;text-align:center;padding:40px\">" +
     "<p>" + esc(title) + "</p>" +
     "<p><a href=\"" + esc(appUrl) + "\">Open the quote</a></p>" +
-    "<script>location.replace(" + JSON.stringify(appUrl) + ");</script>" +
     "</body></html>";
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
