@@ -510,6 +510,9 @@
   .home-income .today-metric strong,.home-income .today-hours strong{color:var(--text)}
   .home-income .today-hours span{color:var(--muted);display:block;font-size:13px}
   .home-income .today-hours{border-color:var(--border);grid-template-columns:repeat(2,minmax(0,1fr))}
+  .home-income .earnings-summary{grid-template-columns:3fr 2fr;align-items:end}
+  .earnings-summary #td-takehome strong{font-size:clamp(2rem,8vw,3rem);letter-spacing:-.04em;line-height:1.1}
+  .home-income .earnings-summary>div strong,.home-income #td-period-hours strong{font-size:1rem;color:var(--muted)}
   .home-income .today-progress{background:var(--chip)}
   .home-income .today-progress span{background:var(--accent)}
   .home-income .collect-link{font-weight:650;padding:0;min-height:44px;text-align:left}
@@ -3342,9 +3345,9 @@ function todaySheet(day,date,period = null,due = 0){
     (hasRental ? '<div class="today-hours"><div><strong>' + tdMoney(funding.ready,2) + '</strong><span>Ready to pay</span></div>' +
     '<button type="button" id="td-rental-paid"><strong>' + tdMoney(funding.paid,2) + '</strong><span>Paid toward rental ›</span></button></div>' : '') +
     '</section><section class="list home-income" aria-label="Earnings and hours">' +
-    '<div class="today-hours"><div><strong>' + tdMoney(day.gross,2) + '</strong><span>Gross earned</span></div>' +
+    '<div class="today-hours earnings-summary">' +
     '<button type="button" id="td-takehome" aria-label="Take-home breakdown"><strong>' +
-    (day.net == null ? "—" : tdMoney(day.net,2)) + '</strong><span>Take-home ›</span></button></div>' +
+    (day.net == null ? "—" : tdMoney(day.net,2)) + '</strong><span>Take-home ›</span></button><div><strong>' + tdMoney(day.gross,2) + '</strong><span>Gross earned</span></div></div>' +
     '<div class="today-hours"><button type="button" class="today-metric" id="td-hourly" aria-label="Hourly earnings breakdown"><strong>' +
     (day.rate == null ? "—" : tdMoney(day.rate,2) + "/hr") + '</strong><span>' + tdMoney(goal) + '/hr goal</span>' +
     '</button></div><div class="today-hours"><button type="button" id="td-worked"><strong>' + esc(working) +
