@@ -3263,6 +3263,13 @@ function wireDayCosts(container,date,day,back = null){
 function openDayDriving(date,data,back){
   openDrawer("Aximote drives",renderDayCarTrips(date,data.tripRows) +
     (back ? "" : '<div class="list simple-space">' + detailRow("driving-compare","Compare Aximote totals") + '</div>'),back);
+  if(calcUser?.id === "5ef9a6f2-14c6-4325-a934-e98e20110fa7"){
+    const button = document.createElement("button");
+    button.className = "btn secondary";
+    button.textContent = "Sync recent drives";
+    document.getElementById("sheet-body").prepend(button);
+    button.onclick = () => reviewAximoteDrives(date,button,back);
+  }
   const compare = document.getElementById("driving-compare");
   if(compare) compare.onclick = () => openDayCloseout(date,data);
   document.getElementById("td-add-car").onclick = () => openCarTrip(date);
@@ -3272,6 +3279,42 @@ function openDayDriving(date,data,back){
       if(segment) openCarTrip(date,segment);
     };
   });
+}
+async function reviewAximoteDrives(date,button,back){
+  const owner = calcUser.id;
+  button.disabled = true;
+  try{
+    const headers = await calcAuthHeaders();
+    if(!headers) throw new Error("Sign in again to sync drives.");
+    const response = await fetch("/api/aximote",{headers:{Authorization:headers.Authorization},cache:"no-store"});
+    if(!response.ok) throw new Error("Could not sync drives (" + response.status + ").");
+    const {trips} = await response.json();
+    if(!button.isConnected || calcUser?.id !== owner) return;
+    const day = new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"});
+    const rows = trips.filter(row => day.format(new Date(row.started_at)) === date)
+      .sort((a,b) => Date.parse(a.started_at) - Date.parse(b.started_at));
+    const known = row => tdLedger.segments.some(old => old.source_key === row.source_key ||
+      (old.started_at && Math.abs(Date.parse(old.started_at) - Date.parse(row.started_at)) < 60000));
+    const time = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour:"numeric",minute:"2-digit"});
+    openDrawer("Recent Aximote drives",'<div class="list">' + (rows.map((row,i) =>
+      detailRow("ax-import-" + i,time.format(new Date(row.started_at)) +
+        (row.distance_mi == null ? "" : " · " + fmtNum(row.distance_mi) + " mi"),known(row) ? "Recorded" : "Import")).join("") ||
+      '<p class="simple-empty">No drives for this day in the latest 50 per vehicle.</p>') + '</div>',
+      () => openDayDriving(date,closeoutData(date),back));
+    rows.forEach((row,i) => {
+      const pick = document.getElementById("ax-import-" + i);
+      pick.disabled = known(row);
+      pick.onclick = async () => {
+        pick.disabled = true;
+        try{
+          if(calcUser?.id !== owner) throw new Error();
+          await ledgerWriteOnce("fl2_segments",{...row,user_id:owner,business_date:date,source:"aximote"});
+          await tdLoad();
+          if(pick.isConnected) pick.textContent = "Recorded";
+        }catch{ pick.textContent = "Import failed · Retry"; pick.disabled = false; }
+      };
+    });
+  }catch(error){ button.textContent = error.message; button.disabled = false; }
 }
 function rentalFunding(date,period){
   const activeRental = ledgerRental(date);
