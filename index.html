@@ -532,6 +532,33 @@
 .earnings-split .tdline{color:inherit;padding:5px 0;border:0}
 .earnings-card .today-hours button{color:inherit;text-align:left}
 .transaction-feed{margin-bottom:12px}.transaction-feed h3{padding:10px 16px 0;font-size:14px}
+/* FareLookup mobile ledger */
+body[data-view="today"]{color:var(--text)}
+.fl-summary{padding:16px 6px 4px;font-variant-numeric:tabular-nums}
+.fl-metrics{display:grid;grid-template-columns:1.12fr 1fr;gap:12px;margin-bottom:20px}
+.fl-metrics button,.fl-summary-actions button{font:inherit;text-align:left;background:none;border:0;color:inherit;padding:0;min-width:0}
+.fl-metrics button+button{border-left:1px solid #bac3d240;padding-left:16px}
+.fl-metrics span,.fl-metrics small,.fl-context{display:block;color:var(--muted);font-size:.875rem}
+.fl-metrics strong{display:block;font-size:clamp(1.15rem,5vw,1.85rem);line-height:1.2;letter-spacing:-.04em;overflow-wrap:anywhere}
+#td-takehome strong{font-size:clamp(1.65rem,9vw,3.2rem);line-height:1.1}
+.fl-split{display:flex;height:8px;overflow:hidden;border-radius:20px;margin:6px 0}
+.fl-split i{background:#0873ed}.fl-split i+i{background:#9bc5fb}.fl-split i+i+i{background:#c5ceda}
+.fl-summary .tdline{padding:6px 0;border:0}.fl-summary .tdline:first-of-type{font-weight:650}
+.fl-summary-actions{display:flex;justify-content:space-between;gap:8px}.fl-summary-actions button{min-height:40px;color:var(--link);font-size:.875rem}
+.fl-hero{margin:8px 0 16px}.fl-hero strong{font-size:clamp(2.2rem,11vw,3.8rem);font-weight:750;letter-spacing:-.055em;line-height:1.1}
+.fl-hero small{color:var(--muted);font-size:.875rem}
+.fl-amount{background:var(--chip);border-radius:18px;padding:14px;margin:12px 0}
+.fl-amount input{font-size:2.2rem;font-weight:700;border:0;padding:4px 0;background:transparent}
+.fl-choice{display:flex;align-items:center;gap:12px;min-height:44px;padding:6px 2px;font-size:.95rem}
+.fl-choice input{width:20px;height:20px;margin:0;flex:none;accent-color:#0873ed}
+.fl-choices{margin:8px 0 12px}.fl-driving{font:inherit;color:var(--link);background:transparent;border:0;padding:0;min-height:40px}
+.fl-context+.tdline{margin-top:4px}.fl-detail-list{border-top:1px solid var(--border);margin-top:12px}
+.fl-detail-list .row{min-height:44px}.fl-detail-list .tdline{font-size:.95rem}
+body[data-view="today"] .today-tabs{background:transparent;border-bottom:1px solid var(--border);border-radius:0;align-items:center;padding-bottom:8px}
+body[data-view="today"] .today-tabs button{flex:0 1 auto;padding:0 12px;white-space:nowrap}
+body[data-view="today"] .today-tabs button[aria-selected=true],body[data-view="today"] .today-tabs .fl-add{border-radius:40px;background:var(--glass);box-shadow:inset 0 1px 1px #ffffff55,0 2px 8px #17293d13;border:1px solid var(--border)}
+body[data-view="today"] .today-tabs .fl-add{margin-left:auto;color:var(--link);font-size:.82rem;font-weight:650}
+.fl-choices{border:0;padding:0}.fl-choices legend{font-weight:650}
 </style>
 </head>
 <body>
@@ -2960,9 +2987,9 @@ async function tdLoad(){
  tdRenderView(view);
  if(!user) return;
  try{const [jobs,segments,expenses,purchases,allocations,payments,rentals,reconciliations,legacyLinks,savedTrips]=await Promise.all([
- tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at,return_pending",user),
+ tdFetch("fl2_jobs","id,rental_id,business_date,pickup,destination,customer,status,fare,working_minutes,rental_hourly_snapshot,review_state,notes,started_at,return_pending,waiting_minutes,driving_minutes,drive_ids",user),
  tdFetch("fl2_segments","*",user),
- tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source,notes",user),
+ tdFetch("fl2_expenses","id,job_id,business_date,category,amount,review_state,source,notes,job_ids",user),
  tdFetch("fl2_fuel_purchases","id,business_date,purchased_at,amount,gallons",user),
  tdFetch("fl2_fuel_allocations","segment_id,allocated_cost,method",user),
  tdFetch("fl2_payments","id,job_id,received_on,amount",user),
@@ -2988,8 +3015,9 @@ function tdDay(date,ledger = tdLedger){
   const jobs = ledger.jobs.filter(job => job.business_date === date && job.status === "completed");
   const jobIds = new Set(jobs.map(job => job.id));
   const belongsToDay = row => row.job_id ? jobIds.has(row.job_id) : row.business_date === date;
-  const segments = ledger.segments.filter(row => belongsToDay(row) &&
-    row.category !== "personal" && row.category !== "unclassified");
+  const linkedDrives = new Set(jobs.flatMap(job => job.drive_ids || []));
+  const segments = ledger.segments.filter(row => row.category !== "personal" &&
+    (linkedDrives.has(row.id) || (belongsToDay(row) && row.category !== "unclassified")));
   const expenses = ledger.expenses.filter(row => belongsToDay(row) && ![MANUAL_FUEL,RENTAL_PAYMENT].includes(row.source));
   const manualFuel = ledger.expenses.find(row => row.business_date === date && row.source === MANUAL_FUEL);
   const segmentIds = new Set(segments.map(row => row.id));
@@ -3001,7 +3029,7 @@ function tdDay(date,ledger = tdLedger){
     segments.length > 0 && segments.every(segment => fuel.some(row => row.segment_id === segment.id)) &&
     fuel.every(row => row.method !== "estimated");
   const gross = tdSum(jobs,"fare");
-  const hours = tdSum(jobs,"working_minutes") / 60;
+  const hours = uniqueWork(jobs,ledger.segments) / 60;
   const completeTime = jobs.every(job => job.working_minutes != null);
   const completeFare = jobs.every(job => job.fare != null);
   const rentalKnown = completeTime && jobs.every(job => job.rental_hourly_snapshot != null);
@@ -3013,7 +3041,8 @@ function tdDay(date,ledger = tdLedger){
     expenses.every(row => row.review_state === "confirmed");
   const confirmed = jobs.length > 0 && operatingConfirmed && rentalKnown;
   const rent = jobs.reduce((sum, job) =>
-    sum + Number(job.working_minutes || 0) / 60 * Number(job.rental_hourly_snapshot || 0), 0);
+    sum + uniqueWork([job],segments) / 60 * Number(job.rental_hourly_snapshot || 0), 0) -
+    sharedRentalRecovery(jobs,segments);
   const operatingCost = tdSum(expenses,"amount") + fuelCost;
   const cost = operatingCost + rent;
   const net = confirmed ? gross - cost : null;
@@ -3385,17 +3414,24 @@ function todaySheet(day,date,period = null,due = 0){
   const hasRental = funding.rentals.length > 0;
   const recovery = period ? day.rentalCost : day.rentalKnown ? day.rent : null;
   const operating = day.operatingCost ?? day.operating;
-  return '<div class="home-earnings"><section class="today-sheet earnings-card">' +
-    '<button id="td-takehome" class="earnings-lead"><span>Take-home</span><strong>' +
+  const planned = hasRental ? tdSum(funding.rentals,"planned_hours") : null;
+  const gross = Number(day.gross);
+  const bar = day.net != null && gross > 0 && day.net >= 0 && recovery >= 0 && operating >= 0 ?
+    '<div class="fl-split" aria-hidden="true">' + [day.net,recovery,operating]
+      .map(value => '<i style="flex:' + Math.max(0,value) + '"></i>').join('') + '</div>' : '';
+  return '<div class="home-earnings"><section class="fl-summary">' +
+    '<div class="fl-metrics"><button type="button" id="td-takehome"><span>Take-home</span><strong>' +
     (day.net == null ? "Pending" : tdMoney(day.net,2)) + '</strong></button>' +
-    '<div class="earnings-split">' + tdLine("Gross earned",tdMoney(day.gross,2)) +
-    tdLine("Rental recovery",recovery == null ? "Pending" : tdMoney(recovery,2)) +
-    tdLine("Driving costs" + (day.net == null ? " recorded" : ""),tdMoney(operating,2)) + '</div>' +
-    '<div class="today-hours"><button id="td-hourly"><strong>' + (day.rate == null ? "—" : tdMoney(day.rate,2) + "/hr") +
-    '</strong><span>' + tdMoney(goal) + '/hr goal</span></button><button id="td-worked"><strong>' + esc(working) +
-    '</strong><span>Hours worked</span></button></div></section>' +
-    '<section class="list simple-space">' + (hasRental ? detailRow("td-rental-paid","Rental payments",tdMoney(funding.ready,2) + " ready to pay") : "") +
-    detailRow("td-period-hours","Rental hours planned",hasRental ? fmtNum(tdSum(funding.rentals,"planned_hours")) + "h" : "—") + '</section>' +
+    '<button type="button" id="td-worked"><span>Hours worked</span><strong>' + esc(working) +
+    '</strong>' + (planned == null ? '' : '<small>' + (period?.rental ? 'of ' : '') + fmtNum(planned) + 'h planned for rental</small>') +
+    '</button></div>' + tdLine("Gross earned",tdMoney(gross,2)) + bar +
+    tdLine("Rental recovery",recovery == null ? "Pending" : "−" + tdMoney(recovery,2)) +
+    tdLine("Driving costs" + (day.net == null ? " recorded" : ""), "−" + tdMoney(operating,2)) +
+    '<div class="fl-summary-actions"><button type="button" id="td-hourly">' + (day.rate == null ? "Hourly earnings" : tdMoney(day.rate,2) + "/hr") +
+    ' <small>· ' + tdMoney(goal) + '/hr goal</small></button>' +
+    '<button type="button" id="td-period-hours">Planned hours</button></div></section>' +
+    (hasRental ? '<section class="list simple-space">' +
+      detailRow("td-rental-paid","Rental payments",tdMoney(funding.ready,2) + " ready to pay") + '</section>' : '') +
     (due ? '<section class="list simple-space" aria-label="Outstanding payments">' +
       detailRow("td-collect","To collect",tdMoney(due,2)) + '</section>' : '') + '</div>';
 }
@@ -3556,7 +3592,7 @@ function homePeriodTotals(ledger,rental){
     .map(row => row.business_date))];
   const days = dates.map(date => tdDay(date,ledger));
   const gross = tdSum(completed,"fare");
-  const hours = tdSum(completed,"working_minutes") / 60;
+  const hours = tdSum(days,"hours");
   const completeTime = completed.every(job => job.working_minutes != null);
   const operating = tdSum(days,"operatingCost");
   const rentalCost = days.every(day => day.rentalKnown) ? tdSum(days,"rent") : null;
@@ -3565,25 +3601,28 @@ function homePeriodTotals(ledger,rental){
   return {gross,hours,completeTime,operating,rentalCost,net,
     rate:net != null && completeTime && hours > 0 ? net / hours : null};
 }
+let homeTransactions = [];
 function transactionsFor(start,end){
-  const entries = [];
-  function add(date,label,amount,incoming){
-    if(date && (!start || date >= start) && (!end || date <= end) && Number(amount) > 0)
-      entries.push({date,label,amount,incoming});
-  }
-  tdLedger.payments.forEach(row => {
-    const job = tdLedger.jobs.find(job => job.id === row.job_id);
-    add(row.received_on,job ? ledgerJobTitle(job) : "Fare payment",row.amount,true);
-  });
-  tdLedger.purchases.forEach(row => add(row.business_date,"Gas purchase",row.amount,false));
-  tdLedger.expenses.filter(row => row.source !== MANUAL_FUEL && row.category !== "fuel").forEach(row =>
-    add(row.business_date,row.source === RENTAL_PAYMENT ? "Rental payment" :
-      ({toll:"Toll",parking:"Parking",other:"Other expense"}[row.category] || "Expense"),row.amount,false));
-  entries.sort((a,b) => b.date.localeCompare(a.date));
-  return entries.length ? '<div class="list transaction-feed">' + entries.map((row,i) =>
-    ((start !== end || !start) && row.date !== entries[i-1]?.date ? '<h3>' + esc(homeDateLabel(row.date)) + '</h3>' : "") +
-    tdLine(row.label,(row.incoming ? "+" : "−") + tdMoney(Number(row.amount),2))).join("") + '</div>' :
-    '<p class="simple-empty">No transactions recorded.</p>';
+  const entries = [
+    ...tdLedger.payments.map(row => ({row,date:row.received_on,label:"Customer payment",incoming:true,
+      jobs:tdLedger.jobs.filter(job => job.id === row.job_id)})),
+    ...tdLedger.purchases.map(row => ({row,date:row.business_date,label:"Gas purchase",jobs:[]})),
+    ...tdLedger.expenses.filter(row => row.source !== MANUAL_FUEL && Number(row.amount) > 0).map(row => ({
+      row,date:row.business_date,label:row.source === RENTAL_PAYMENT ? "Rental payment" :
+        ({toll:"Toll",parking:"Parking",other:"Other expense"}[row.category] || "Expense"),
+      jobs:tdLedger.jobs.filter(job => expenseJobIds(row).includes(job.id))
+    }))
+  ].filter(entry => entry.date && (!start || entry.date >= start) && (!end || entry.date <= end))
+    .sort((a,b) => b.date.localeCompare(a.date));
+  homeTransactions = entries;
+  return entries.length ? '<div class="list transaction-feed">' + entries.map((entry,i) => {
+    const detail = entry.jobs.length > 1 ? "Linked to " + entry.jobs.length + " jobs" :
+      entry.jobs.length ? ledgerJobTitle(entry.jobs[0]) : entry.row.gallons ? fmtNum(Number(entry.row.gallons)) + " gal" : "";
+    return ((start !== end || !start) && entry.date !== entries[i-1]?.date ? '<h3>' + esc(homeDateLabel(entry.date)) + '</h3>' : "") +
+      '<button type="button" class="tdrow" data-fl-transaction="' + i + '"><span><b>' + esc(entry.label) + '</b>' +
+      (detail ? '<small class="tdmuted">' + esc(detail) + '</small>' : '') + '</span><span><b>' +
+      (entry.incoming ? "+" : "−") + tdMoney(Number(entry.row.amount),2) + '</b></span></button>';
+  }).join("") + '</div>' : '<p class="simple-empty">No transactions recorded.</p>';
 }
 function renderHomePeriod(){
   const header = homeHeader();
@@ -3643,7 +3682,7 @@ function renderHomePeriod(){
     '<div class="today-tabs" role="tablist" aria-label="Period records">' +
     ['trips','expenses'].map(key => '<button type="button" role="tab" id="today-tab-' + key +
       '" aria-selected="' + (todayTab === key) + '" aria-controls="today-panel-' + key +
-      '" tabindex="' + (todayTab === key ? 0 : -1) + '">' + (key === "trips" ? "Trips" : "Transactions") + '</button>').join("") + '</div>' +
+      '" tabindex="' + (todayTab === key ? 0 : -1) + '">' + (key === "trips" ? "Jobs" : "Transactions") + '</button>').join("") + '</div>' +
     '<section role="tabpanel" id="today-panel-trips" aria-labelledby="today-tab-trips"' + (expenseTab ? ' hidden' : '') + '>' +
     (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this period.</p>') +
     savedTripEntries(ledger.saved) + '</section>' +
@@ -3651,6 +3690,10 @@ function renderHomePeriod(){
     transactionsFor(period.start,period.end) + '<div class="list simple-space">' + dayLinks + '</div></section>' +
     (rental ? '<div class="list simple-space">' + detailRow("home-rental-details","Rental details") + '</div>' : ''));
   wireHomeTabs();
+  $view.querySelectorAll("[data-fl-transaction]").forEach(button => {
+    const entry = homeTransactions[Number(button.dataset.flTransaction)];
+    button.onclick = () => openTransactionDetail(entry.row,entry.label,entry.incoming);
+  });
   wireRentalFunding(tdDate,period);
   const openTotals = () => openDrawer("Period earnings",'<div class="list">' + tdLine("Earned",tdMoney(totals.gross,2)) +
     tdLine("Hours worked",fmtNum(totals.hours) + "h") + tdLine("Take-home",totals.net == null ? "Pending" : tdMoney(totals.net,2)) +
@@ -3691,8 +3734,8 @@ function renderToday(reload=true){
   const day = tdDay(date);
   const data = closeoutData(date,day);
   const active = tdLedger.jobs.filter(job => job.status === "scheduled" || job.status === "quoted").length;
-  const rows = data.jobs.map(job => {
-    const detail = job.status === "scheduled" ? "Scheduled" :
+  const rows = tdLedger.jobs.filter(job => job.business_date === date && job.status !== "cancelled").map(job => {
+    const detail = job.status === "quoted" ? "Quote" : job.status === "scheduled" ? "Scheduled" :
       job.working_minutes == null ? "Time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked";
     return ledgerJobRow(job,detail);
   }).join("");
@@ -3701,32 +3744,34 @@ function renderToday(reload=true){
     todaySheet(day,date,null,data.due) +
     '<div class="today-tabs" role="tablist" aria-label="Day records">' +
     '<button type="button" role="tab" id="today-tab-trips" aria-controls="today-panel-trips" aria-selected="' +
-    !expenseTab + '" tabindex="' + (expenseTab ? -1 : 0) + '">Trips</button>' +
+    !expenseTab + '" tabindex="' + (expenseTab ? -1 : 0) + '">Jobs</button>' +
     '<button type="button" role="tab" id="today-tab-expenses" aria-controls="today-panel-expenses" aria-selected="' +
-    expenseTab + '" tabindex="' + (expenseTab ? 0 : -1) + '">Transactions</button></div>' +
+    expenseTab + '" tabindex="' + (expenseTab ? 0 : -1) + '">Transactions</button><button type="button" class="fl-add" id="home-action">' + (expenseTab ? "+ Transaction" : "+ Add job") + '</button></div>' +
     '<section role="tabpanel" id="today-panel-trips" aria-labelledby="today-tab-trips"' + (expenseTab ? ' hidden' : '') + '>' +
     '<div class="list">' + detailRow("td-aximote","Review drives",data.needsMatch.length ? data.needsMatch.length + " to match" : String(data.tripRows.length)) + '</div>' +
-    '<div class="ledger-section"><h2>Jobs</h2><button type="button" class="quiet-link" id="td-add-job">Add job</button></div>' +
     (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this day.</p>') +
     savedTripEntries(data.pendingTrips) + '<div class="list simple-space">' +
     detailRow("td-all-jobs","All jobs",active ? active + " open" : "") + '</div></section>' +
     '<section role="tabpanel" id="today-panel-expenses" aria-labelledby="today-tab-expenses"' + (expenseTab ? '' : ' hidden') + '>' +
-    transactionsFor(date,date) + '<button type="button" class="btn secondary" id="transaction-add">Record transaction</button></section>');
-  document.getElementById("transaction-add").onclick = () => {
+    transactionsFor(date,date) + '</section>');
+  document.getElementById("home-action").onclick = () => {
+    if(!expenseTab) return openLedgerJobForm(null,{business_date:date});
     openDrawer("Record transaction",'<div class="list">' + detailRow("home-add-fuel","Gas purchase") +
       detailRow("home-add-toll","Toll") + detailRow("home-parking","Parking") + detailRow("home-payment","Customer payment") +
       (ledgerRental(date) ? detailRow("home-rent","Rental payment") : "") + '</div>');
     document.getElementById("home-add-toll").onclick = () => openJobToll(date);
     document.getElementById("home-add-fuel").onclick = () => openFuelPurchases(date);
-    document.getElementById("home-parking").onclick = () => openDailyExpense(date,"parking",
-      day.expenses.find(row => row.source === "manual_day_parking"));
+    document.getElementById("home-parking").onclick = () => openLinkedExpense(date,"parking");
     document.getElementById("home-payment").onclick = () => openHomePayments(tdLedger.jobs);
     const rent = document.getElementById("home-rent");
     if(rent) rent.onclick = () => openRentalRepayment(ledgerRental(date));
   };
   wireHomeTabs();
+  $view.querySelectorAll("[data-fl-transaction]").forEach(button => {
+    const entry = homeTransactions[Number(button.dataset.flTransaction)];
+    button.onclick = () => openTransactionDetail(entry.row,entry.label,entry.incoming);
+  });
   wireRentalFunding(date,null);
-  document.getElementById("td-add-job").onclick = () => openLedgerJobForm(null,{business_date:date,status:"completed"});
   document.getElementById("td-all-jobs").onclick = () => goMenu("jobs");
   document.getElementById("td-aximote").onclick = () => openDayDriving(date,data);
   document.getElementById("td-takehome").onclick = () => openDayCosts(date);
@@ -3748,6 +3793,7 @@ const CAR_CATEGORIES = {
   waiting:"Waiting",empty_return:"Empty return",business_other:"Other business driving",personal:"Personal"
 };
 function carTripNeedsReview(segment){
+  if(tdLedger?.jobs.some(job => job.status === "completed" && job.drive_ids?.includes(segment.id))) return false;
   return segment.category === "unclassified" ||
     (!segment.job_id && ["pickup","passenger","waiting","empty_return"].includes(segment.category));
 }
@@ -3928,90 +3974,176 @@ function wireLedgerJobRows(){
     };
   });
 }
+function expenseJobIds(row){
+  return [...new Set([row.job_id,...(row.job_ids || [])].filter(Boolean))];
+}
+function jobDrives(job,segments = tdLedger.segments){
+  return segments.filter(row => isAximoteTrip(row) && row.category !== "personal" &&
+    (Array.isArray(job.drive_ids) ? job.drive_ids.includes(row.id) : row.job_id === job.id));
+}
+function uniqueWork(jobs,segments){
+  const seen = new Set();
+  return jobs.reduce((sum,job) => {
+    const total = Number(job.working_minutes || 0);
+    const duplicate = jobDrives(job,segments).reduce((minutes,drive) => {
+      const shared = seen.has(drive.id);
+      seen.add(drive.id);
+      return minutes + (shared ? Number(drive.duration_minutes || 0) : 0);
+    },0);
+    return sum + Math.max(0,total - duplicate);
+  },0);
+}
+function sharedRentalRecovery(jobs,segments){
+  const seen = new Set();
+  return jobs.reduce((cost,job) => cost + jobDrives(job,segments).reduce((sum,drive) => {
+    const shared = seen.has(drive.id);
+    seen.add(drive.id);
+    return sum + (shared ? Number(drive.duration_minutes || 0) / 60 * Number(job.rental_hourly_snapshot || 0) : 0);
+  },0),0);
+}
+function openTransactionDetail(row,label,incoming,back = null){
+  const ids = expenseJobIds(row);
+  const jobs = tdLedger.jobs.filter(job => ids.includes(job.id));
+  const date = row.received_on || row.business_date;
+  openDrawer(label,'<div class="fl-hero"><strong>' + (incoming ? "+" : "−") + tdMoney(Number(row.amount),2) +
+    '</strong><span class="fl-context">' + (date ? esc(homeDateLabel(date)) : "Date pending") + '</span></div>' +
+    (row.gallons == null ? '' : tdLine("Gallons",fmtNum(Number(row.gallons)))) +
+    (jobs.length ? '<div class="fl-detail-list"><h3>Linked jobs</h3>' + jobs.map((job,i) =>
+      detailRow("fl-linked-" + i,ledgerJobTitle(job))).join("") + '</div>' : '') +
+    (row.category === "toll" || row.category === "parking" ?
+      '<button type="button" class="quiet-link" id="fl-edit-links">Edit linked jobs</button>' : ''),back);
+  jobs.forEach((job,i) => document.getElementById("fl-linked-" + i).onclick = () => openLedgerJob(job,() => openTransactionDetail(row,label,incoming,back)));
+  const edit = document.getElementById("fl-edit-links");
+  if(edit) edit.onclick = () => openLinkedExpense(row.business_date,row.category,null,row,back);
+}
+function openLinkedExpense(date,category,job = null,previous = null,back = null){
+  const key = crypto.randomUUID();
+  const ids = previous ? expenseJobIds(previous) : job ? [job.id] : [];
+  const jobs = tdLedger.jobs.filter(row => row.status === "completed" && (row.business_date === date || ids.includes(row.id)));
+  const label = category === "toll" ? "Toll" : "Parking";
+  openLedgerForm(previous ? "Edit " + label.toLowerCase() : "Record " + label.toLowerCase(),
+    ledgerInput("amount","Amount ($)","number",previous?.amount,'min="0" step="0.01" required') +
+    (jobs.length ? '<fieldset class="fl-choices"><legend>Linked jobs</legend>' + jobs.map(row =>
+      '<label class="fl-choice"><input type="checkbox" name="job" value="' + esc(row.id) + '"' +
+      (ids.includes(row.id) ? " checked" : "") + '>' + esc(ledgerJobTitle(row)) + '</label>').join("") + '</fieldset>' : ""),
+    (data,user) => {
+      const linked = data.getAll("job");
+      const values = {amount:Number(data.get("amount")),job_id:linked.length === 1 ? linked[0] : null,job_ids:linked};
+      return previous ? sbUser("fl2_expenses?id=eq." + encodeURIComponent(previous.id) + "&user_id=eq." + encodeURIComponent(user),
+        {method:"PATCH",body:JSON.stringify(values)}) : ledgerWriteOnce("fl2_expenses",{...values,user_id:user,
+        business_date:date,category,review_state:"confirmed",source:"manual",source_key:key});
+    },null,"Save",back);
+}
 function openLedgerJob(job,parent = null){
   const payments = tdLedger.payments.filter(row => row.job_id === job.id);
-  const segments = tdLedger.segments.filter(row => row.job_id === job.id);
-  const active = job.status === "quoted" || job.status === "scheduled";
+  const drives = jobDrives(job);
+  const costs = tdLedger.expenses.filter(row => expenseJobIds(row).includes(job.id));
   const completed = job.status === "completed";
-  const undated = payments.filter(row => row.received_on == null);
-  const payOpen = completed && (job.fare == null || round2(tdSum(payments,"amount")) < Number(job.fare));
-  const back = () => openLedgerJob(job,parent);
+  const active = ["quoted","scheduled"].includes(job.status);
   const working = job.working_minutes == null ? "Pending" : driveTimeLabel(Number(job.working_minutes));
-  const details = '<div class="list">' +
-    (job.customer ? tdLine("Customer",job.customer) : "") +
-    (completed ? detailRow("ledger-actual-review","Working time and fare",working) : tdLine("Working time",working)) +
-    (payOpen ? detailRow("ledger-payment","Record payment") : "") +
-    (payments.length ? tdLine("Payments recorded",tdMoney(tdSum(payments,"amount"),2)) : "") +
-    undated.map(payment => '<button type="button" class="row" data-undated-payment="' + esc(payment.id) +
-      '"><span class="row-main">Set payment date</span><b>' + tdMoney(Number(payment.amount),2) + '</b><span class="chev" aria-hidden="true">›</span></button>').join("") +
-    (completed ? detailRow("ledger-add-drive","Add Aximote drive") : "") +
-    segments.map((row,index) => detailRow("ledger-drive-" + index,carTripTitle(row),carTripFacts(row))).join("") +
-    (completed && view === "jobs" ? detailRow("ledger-review","Go to day") : "") +
-    '</div>' + (job.notes && !quoteSnapshot(job.notes) ? '<p class="tdnote">' + esc(job.notes) + '</p>' : '') + linkedEvidence(job);
-  openDrawer(ledgerJobTitle(job),
-    '<div class="day-total"><div class="simple-label">' + esc(fmtDateShort(job.business_date)) + '</div><strong>' +
-    (job.fare == null ? "—" : tdMoney(Number(job.fare))) + '</strong><div class="simple-caption">' +
-    esc(ledgerPaymentLabel(job,payments)) + '</div></div>' +
-    (active ? '<button type="button" class="btn" id="ledger-edit">Update job</button>' : "") + details,parent);
-  const addDrive = document.getElementById("ledger-add-drive");
-  if(addDrive) addDrive.onclick = () => openCarTrip(job.business_date,null,job.id,"passenger",back);
-  segments.forEach((row,index) => {
-    document.getElementById("ledger-drive-" + index).onclick = () => openCarTrip(job.business_date,row,job.id,null,back);
-  });
-  const edit = document.getElementById("ledger-edit");
+  const paymentLabel = ledgerPaymentLabel(job,payments);
+  const back = () => openLedgerJob(tdLedger.jobs.find(row => row.id === job.id) || job,parent);
+  openDrawer(ledgerJobTitle(job),'<div class="fl-hero"><strong>' +
+    (job.fare == null ? "—" : tdMoney(Number(job.fare),2)) + '</strong><span class="fl-context">' +
+    esc(completed ? "Fare earned · " + paymentLabel : paymentLabel) + '</span></div>' +
+    (job.customer ? tdLine("Customer",job.customer) : '') +
+    (completed ? '<div class="fl-detail-list">' + detailRow("fl-actual","Working time",working) +
+      (drives.length ? '<button type="button" class="fl-driving" id="fl-drives">' +
+        (drives.every(drive => drive.duration_minutes != null) ? esc(driveTimeLabel(tdSum(drives,"duration_minutes"))) + " driving · " : "") + 'Aximote drives</button>' : '') +
+      (job.waiting_minutes ? '<div class="fl-context">' + esc(driveTimeLabel(Number(job.waiting_minutes))) + ' waiting</div>' : '') +
+      '</div><div class="fl-detail-list">' +
+      payments.map((row,i) => detailRow("fl-in-" + i,"Customer payment","+" + tdMoney(Number(row.amount),2))).join("") +
+      costs.map((row,i) => detailRow("fl-out-" + i,(row.category === "toll" ? "Toll" : row.category === "parking" ? "Parking" : "Expense") +
+        (expenseJobIds(row).length > 1 ? " · Shared" : ""), "−" + tdMoney(Number(row.amount),2))).join("") +
+      '<button type="button" class="fl-driving" id="fl-add-txn">+ Add transaction</button></div>' : '') +
+    (active ? '<button type="button" class="btn" id="fl-actual">Add actuals</button>' +
+      '<button type="button" class="quiet-link" id="fl-edit-job">Edit job</button>' : ''),parent);
+  const actual = document.getElementById("fl-actual");
+  if(actual) actual.onclick = () => openJobActuals(job,drives,back);
+  const edit = document.getElementById("fl-edit-job");
   if(edit) edit.onclick = () => openLedgerJobForm(job,{},back);
-  const actuals = document.getElementById("ledger-actual-review");
-  if(actuals) actuals.onclick = () => openJobActuals(job,segments,back);
-  const payment = document.getElementById("ledger-payment");
-  if(payment) payment.onclick = () => openLedgerPayment(job,payments,back);
-  document.getElementById("sheet-body").querySelectorAll("[data-undated-payment]").forEach(button => {
-    button.onclick = () => {
-      const row = undated.find(payment => payment.id === button.dataset.undatedPayment);
-      if(row) openPaymentDate(row,back);
-    };
-  });
-  const review = document.getElementById("ledger-review");
-  if(review) review.onclick = () => {
-    closeDrawer();
-    tdDate = job.business_date;
-    todayPeriod = "day";
-    goMenu("today");
+  const linked = document.getElementById("fl-drives");
+  if(linked) linked.onclick = () => openLinkedDrives(job,back);
+  payments.forEach((row,i) => document.getElementById("fl-in-" + i).onclick =
+    () => row.received_on ? openTransactionDetail(row,"Customer payment",true,back) : openPaymentDate(row,back));
+  costs.forEach((row,i) => document.getElementById("fl-out-" + i).onclick =
+    () => openTransactionDetail(row,row.category === "toll" ? "Toll" : row.category === "parking" ? "Parking" : "Expense",false,back));
+  const add = document.getElementById("fl-add-txn");
+  if(add) add.onclick = () => {
+    openDrawer("Add transaction",'<div class="list">' + detailRow("fl-new-pay","Customer payment") +
+      detailRow("fl-new-toll","Toll") + detailRow("fl-new-parking","Parking") + '</div>',back);
+    document.getElementById("fl-new-pay").onclick = () => openLedgerPayment(job,payments,back);
+    document.getElementById("fl-new-toll").onclick = () => openLinkedExpense(job.business_date,"toll",job,null,back);
+    document.getElementById("fl-new-parking").onclick = () => openLinkedExpense(job.business_date,"parking",job,null,back);
   };
 }
+function openLinkedDrives(job,back){
+  const drives = jobDrives(job);
+  const dated = drives.every(row => row.duration_minutes != null);
+  const milesKnown = drives.every(row => row.distance_mi != null);
+  const again = () => openLinkedDrives(job,back);
+  openDrawer("Aximote drives",'<p class="fl-context">' + esc(ledgerJobTitle(job)) + '</p><div class="fl-hero"><strong>' +
+    (dated ? esc(driveTimeLabel(tdSum(drives,"duration_minutes"))) : "Pending") + '</strong>' +
+    (milesKnown ? '<small> · ' + fmtNum(tdSum(drives,"distance_mi")) + ' mi</small>' : '') + '</div><div class="list">' +
+    drives.map((drive,i) => detailRow("fl-drive-" + i,carTripTitle(drive),carTripFacts(drive))).join("") +
+    '</div><button type="button" class="fl-driving" id="fl-link-edit">Edit linked drives</button>',back);
+  drives.forEach((drive,i) => document.getElementById("fl-drive-" + i).onclick = () => {
+    const allocations = tdLedger.allocations.filter(row => row.segment_id === drive.id);
+    const jobs = tdLedger.jobs.filter(row => jobDrives(row,[drive]).length);
+    openDrawer(carTripTitle(drive),'<p class="fl-context">Recorded by Aximote</p><div class="fl-hero"><strong>' +
+      (drive.duration_minutes == null ? "Pending" : esc(driveTimeLabel(Number(drive.duration_minutes)))) + '</strong>' +
+      (drive.distance_mi == null ? '' : '<small> · ' + fmtNum(Number(drive.distance_mi)) + ' mi</small>') + '</div>' +
+      tdLine("Fuel used",drive.fuel_gallons == null ? "Pending" : fmtNum(Number(drive.fuel_gallons)) + " gal") +
+      tdLine("Fuel cost",allocations.length ? tdMoney(tdSum(allocations,"allocated_cost"),2) :
+        drive.reported_fuel_cost == null ? "Pending" : "Estimated " + tdMoney(Number(drive.reported_fuel_cost),2)) +
+      '<div class="fl-detail-list">' + jobs.map((row,j) => detailRow("fl-drive-job-" + j,ledgerJobTitle(row))).join("") + '</div>',again);
+    jobs.forEach((row,j) => document.getElementById("fl-drive-job-" + j).onclick = () => openLedgerJob(row,again));
+  });
+  document.getElementById("fl-link-edit").onclick = () => openJobActuals(job,drives,again);
+}
 function openJobActuals(job,segments,back = null){
-  const measured = segments.filter(row => isAximoteTrip(row) && row.category !== "personal");
-  const measuredMinutes = measured.length && measured.every(row => row.duration_minutes != null)
-    ? tdSum(measured,"duration_minutes") : null;
-  const observed = measuredMinutes == null ? "" :
-    '<button type="button" class="quiet-link preset-row" id="use-aximote-duration">Use linked drive time · ' +
-    esc(driveTimeLabel(measuredMinutes)) + '</button>';
-  const fields = tdLine("Job",ledgerJobTitle(job)) +
-    ledgerInput("fare","Fare earned ($)","number",job.fare,'min="0" max="9999999999.99" step="0.01" required') +
-    ledgerInput("minutes","Total working time (min)","number",job.working_minutes,
-      'min="0" max="9999999.999" step="0.001" required') + observed;
-  openLedgerForm("Review job actuals",fields,async (data,user) => {
-    const fare = data.get("fare"), minutes = data.get("minutes");
-    if(fare === "" || minutes === "") throw new Error("Enter the actual fare and working time.");
+  const selected = jobDrives(job).map(row => row.id);
+  const drives = tdLedger.segments.filter(row => isAximoteTrip(row) && row.category !== "personal" &&
+    (row.business_date === job.business_date || selected.includes(row.id)));
+  const originalFare = quoteSnapshot(job.notes)?.fare ?? job.fare;
+  const payments = tdLedger.payments.filter(row => row.job_id === job.id);
+  const waiting = job.waiting_minutes ?? 0;
+  const reference = job.working_minutes == null ? "" : Math.max(0,Number(job.working_minutes) - waiting);
+  const fields = '<p class="fl-context">' + esc(ledgerJobTitle(job)) + '</p><div class="fl-amount">' +
+    ledgerInput("fare","Fare earned ($)","number",job.fare,'min="0" step="0.01" required') +
+    (originalFare == null || (job.status === "completed" && !quoteSnapshot(job.notes)) ? '' : '<small class="fl-context">Quoted ' + tdMoney(Number(originalFare),2) + '</small>') + '</div>' +
+    (drives.length ? '<fieldset class="fl-choices"><legend>Aximote drives</legend>' + drives.map(drive =>
+      '<label class="fl-choice"><input type="checkbox" name="drive" value="' + esc(drive.id) + '"' +
+      (selected.includes(drive.id) ? " checked" : "") + '><span>' + esc(carTripTitle(drive)) + '<small class="fl-context">' +
+      esc(carTripFacts(drive)) + '</small></span></label>').join("") + '</fieldset>' : '') +
+    ledgerInput("driving","Driving time (min)","number",job.driving_minutes ?? reference,'min="0" step="0.001" required') +
+    ledgerInput("waiting","Waiting (min)","number",waiting || "",'min="0" step="0.001"') +
+    '<output id="fl-total" class="fl-context"></output>' +
+    (!payments.length ? '<label class="fl-choice"><input type="checkbox" name="paid">Paid now</label>' : "");
+  openLedgerForm("Add actuals",fields,(data,user) => {
+    const driving = Number(data.get("driving")), waitingMinutes = Number(data.get("waiting"));
+    const fare = Number(data.get("fare"));
     const rental = ledgerRental(job.business_date);
-    const snapshot = job.rental_hourly_snapshot ??
-      (rental ? Number((rental.fixed_cost / rental.planned_hours).toFixed(4)) : null);
-    const equal = value => value == null ? "is.null" : "eq." + encodeURIComponent(value);
-    const saved = await sbUser("fl2_jobs?id=eq." + encodeURIComponent(job.id) +
-      "&user_id=eq." + encodeURIComponent(user) + "&status=eq.completed&fare=" + equal(job.fare) +
-      "&working_minutes=" + equal(job.working_minutes) + "&review_state=eq." + job.review_state +
-      "&return_pending=eq." + !!job.return_pending,{
-        method:"PATCH",headers:{Prefer:"return=representation"},
-        body:JSON.stringify({fare:Number(fare),working_minutes:Number(minutes),review_state:"confirmed",
-          rental_id:job.rental_id ?? rental?.id ?? null,rental_hourly_snapshot:snapshot})
-      });
-    if(!saved?.length) throw new Error("This job changed. Refresh the day and try again.");
-  },null,"Confirm actuals",back);
-  const use = document.getElementById("use-aximote-duration");
-  if(use) use.onclick = () => {
-    const input = document.getElementById("ledger-minutes");
-    input.value = round3(measuredMinutes);
-    input.focus();
+    return sbUser("rpc/fl2_save_actuals",{method:"POST",body:JSON.stringify({
+      p_job:job.id,p_fare:fare,p_driving:driving,p_waiting:waitingMinutes,p_drives:data.getAll("drive"),
+      p_paid_on:data.has("paid") && fare > 0 ? todayNY() : null,
+      p_rate:job.rental_hourly_snapshot ?? (rental ? round2(rental.fixed_cost / rental.planned_hours) : null),
+      p_rental:job.rental_id ?? rental?.id ?? null,p_expected_status:job.status
+    })});
+  },null,"Save completed job",back);
+  const form = document.getElementById("ledger-form");
+  const driving = form.elements.driving;
+  const refresh = () => document.getElementById("fl-total").textContent =
+    "Working time · " + driveTimeLabel(Number(driving.value || 0) + Number(form.elements.waiting.value || 0));
+  const sync = () => {
+    const ids = new FormData(form).getAll("drive");
+    const linked = drives.filter(drive => ids.includes(drive.id));
+    if(linked.every(drive => drive.duration_minutes != null)) driving.value = linked.length ? round3(tdSum(linked,"duration_minutes")) : "";
+    refresh();
   };
+  form.oninput = event => event.target.name === "drive" ? sync() : refresh();
+  if(reference === "" && selected.length) sync();
+  else refresh();
 }
 
 function pendingSavedTrips(date){
@@ -4270,16 +4402,7 @@ function openLedgerPayment(job,payments,back = null){
   }),null,"Save",back);
 }
 function openJobToll(date){
-  const key = crypto.randomUUID();
-  const jobs = tdLedger.jobs.filter(job => job.business_date === date && job.status === "completed");
-  openLedgerForm("Record tolls",
-    ledgerInput("amount","Amount ($)","number","",'required min="0" max="9999999999.99" step="0.01"') +
-    (jobs.length ? '<label class="field" for="toll-job">Apply to</label><select name="job" id="toll-job"><option value="">Day expense</option>' +
-      jobs.map(job => '<option value="' + esc(job.id) + '">' + esc(ledgerJobTitle(job)) + '</option>').join("") + '</select>' : ''),
-    (data,user) => ledgerWriteOnce("fl2_expenses",{
-      user_id:user,job_id:data.get("job") || null,business_date:date,category:"toll",
-      amount:Number(data.get("amount")),review_state:"confirmed",source:"manual",source_key:key
-    }));
+  openLinkedExpense(date,"toll");
 }
 function openDailyExpense(date,category,previous,back = null){
   const fuel = category === "fuel";
@@ -4399,7 +4522,7 @@ function renderLedgerMoney(reload){
   const fixedCost = Number(rental?.fixed_cost);
   const recovered = Math.min(fixedCost,Math.max(0,earned - operating));
   const remaining = fixedCost - recovered;
-  const hours = tdSum(jobs,"working_minutes") / 60;
+  const hours = uniqueWork(jobs,ledger.segments) / 60;
   const hoursConfirmed = jobs.every(job => job.working_minutes != null);
   const purchases = ledger.purchases.filter(row => inPeriod(row.business_date));
   const outstanding = jobs.reduce((sum,job) => sum + (job.fare == null ? 0 : Math.max(0,Number(job.fare) -
