@@ -712,6 +712,36 @@ body[data-view="today"] .today-tabs .fl-add {
     backdrop-filter: none;
   }
 }
+body[data-view="today"] .period-heading{justify-self:start;flex:0 1 auto}
+body[data-view="today"] .period-heading select{min-width:0;width:auto;padding-right:23px}
+body[data-view="today"] .simple-head{margin-bottom:19px}
+.fl-metrics{align-items:start;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr)}
+.fl-metrics span{color:var(--text);font-weight:650}
+.fl-metrics strong{margin-block:5px 2px}
+.fl-summary .fl-gross .tdline{font-weight:720}
+.fl-summary .fl-cost .tdline{font-weight:450;color:var(--muted)}
+.fl-cost .tdline>span{display:flex;align-items:center;gap:9px}
+.fl-cost .tdline>span::before{content:"";width:13px;height:10px;border-radius:3px;background:#9bc5fb}
+.fl-operating .tdline>span::before{background:#c5ceda}
+.fl-collect{margin-top:16px;border:0;background:var(--surface)}
+.fl-collect .row{min-height:52px;font-weight:700}
+.fl-collect .row>span:nth-child(2){font-size:1.05rem;color:var(--text);font-weight:750}
+.fl-job-line,.fl-job-main,.fl-job-transaction,.fl-job-time>button{display:flex;align-items:center;gap:10px}
+.fl-job-line{border-bottom:1px solid var(--border)}
+.fl-job-main,.fl-job-transaction,.fl-job-time>button{justify-content:space-between;width:100%;min-width:0;text-align:left;color:inherit;padding:11px 0;background:none;border:0;font:inherit;min-height:44px}
+.fl-job-main b,.fl-job-transaction b{font-weight:680}
+.fl-job-main small,.fl-job-transaction small{display:block;font-size:.84rem;color:var(--muted);margin-top:3px}
+.fl-job-actual{flex:none;min-height:40px;border:0;border-radius:999px;padding:0 11px;color:var(--accent-text);background:var(--accent);font:inherit;font-size:.8rem;font-weight:680}
+#modal .fl-job-sheet #sheet-title{font-size:.91rem;font-weight:550;color:var(--muted)}
+#modal .fl-job-sheet .sheet-toolbar{background:transparent}
+.fl-job-title{font-size:clamp(1.25rem,5.3vw,1.8rem);line-height:1.16;letter-spacing:-.038em;margin:8px 0 12px}
+.fl-job-fare{margin:0 0 12px}.fl-job-fare small{margin-left:10px}
+.fl-job-time>button{padding:4px 0;font-weight:600}
+.fl-job-time>button strong{font-size:1.12rem}
+.fl-job-time-parts{display:flex;align-items:center;flex-wrap:wrap;column-gap:7px;color:var(--muted);font-size:.83rem}
+.fl-job-time-parts button{border:0;padding:0;background:none;color:var(--link);font:inherit;text-align:left;min-height:40px}
+.fl-job-transaction{border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+.fl-job-transaction>strong{flex:none}
 </style>
 </head>
 <body>
@@ -1878,6 +1908,7 @@ let DETAILS_HTML = "";
 let drawerFocus = null, drawerBack = null;
 function openDrawer(title, bodyHtml, back = null){
   if($modal.classList.contains("hidden")) drawerFocus = document.activeElement;
+  document.querySelector("#modal .sheet").classList.remove("fl-job-sheet");
   document.getElementById("sheet-title").textContent = title;
   document.getElementById("sheet-body").innerHTML = bodyHtml;
   $modal.classList.remove("hidden");
@@ -3559,34 +3590,33 @@ function wireRentalFunding(date,period){
   };
 }
 function todaySheet(day,date,period = null,due = 0){
-  const rental = period ? period.rental : ledgerRental(date);
-  const goal = Number(rental?.hourly_goal ?? calcCfg.earningsTarget);
   const working = day.completeTime ? driveTimeLabel(Math.round(day.hours * 60)) : day.hours ?
     driveTimeLabel(Math.round(day.hours * 60)) + " recorded" : "Pending";
   const funding = rentalFunding(date,period);
-  const hasRental = funding.rentals.length > 0;
   const recovery = period ? day.rentalCost : day.rentalKnown ? day.rent : null;
   const operating = day.operatingCost ?? day.operating;
-  const planned = hasRental ? tdSum(funding.rentals,"planned_hours") : null;
+  const rentalHours = tdSum(funding.rentals,"planned_hours");
+  const goal = period?.rental ? rentalHours : null;
   const gross = Number(day.gross);
   const bar = day.net != null && gross > 0 && day.net >= 0 && recovery >= 0 && operating >= 0 ?
     '<div class="fl-split" aria-hidden="true">' + [day.net,recovery,operating]
       .map(value => '<i style="flex:' + Math.max(0,value) + '"></i>').join('') + '</div>' : '';
   return '<div class="home-earnings"><section class="fl-summary">' +
     '<div class="fl-metrics"><button type="button" id="td-takehome"><span>Take-home</span><strong>' +
-    (day.net == null ? "Pending" : tdMoney(day.net,2)) + '</strong></button>' +
+    (day.net == null ? "Pending" : tdMoney(day.net)) + '</strong></button>' +
     '<button type="button" id="td-worked"><span>Hours worked</span><strong>' + esc(working) +
-    '</strong>' + (planned == null ? '' : '<small>' + (period?.rental ? 'of ' : '') + fmtNum(planned) + 'h planned for rental</small>') +
-    '</button></div>' + tdLine("Gross earned",tdMoney(gross,2)) + bar +
-    tdLine("Rental recovery",recovery == null ? "Pending" : "−" + tdMoney(recovery,2)) +
-    tdLine("Driving costs" + (day.net == null ? " recorded" : ""), "−" + tdMoney(operating,2)) +
-    '<div class="fl-summary-actions"><button type="button" id="td-hourly">' + (day.rate == null ? "Hourly earnings" : tdMoney(day.rate,2) + "/hr") +
-    ' <small>· ' + tdMoney(goal) + '/hr goal</small></button>' +
-    '<button type="button" id="td-period-hours">Planned hours</button></div></section>' +
-    (hasRental ? '<section class="list simple-space">' +
-      detailRow("td-rental-paid","Rental payments",tdMoney(funding.ready,2) + " ready to pay") + '</section>' : '') +
-    (due ? '<section class="list simple-space" aria-label="Outstanding payments">' +
-      detailRow("td-collect","To collect",tdMoney(due,2)) + '</section>' : '') + '</div>';
+    '</strong>' + (goal ? '<small>of ' + fmtNum(goal) + 'h planned</small>' :
+      rentalHours ? '<small>' + fmtNum(rentalHours) + 'h planned for rental</small>' : '') +
+    '</button></div>' + '<div class="fl-gross">' + tdLine("Gross earned",tdMoney(gross)) + '</div>' + bar +
+    '<div class="fl-cost fl-recovery">' + tdLine("Rental recovery",recovery == null ? "Pending" : "−" + tdMoney(recovery)) + '</div>' +
+    '<div class="fl-cost fl-operating">' + tdLine("Gas & tolls" + (day.net == null ? " recorded" : ""), "−" + tdMoney(operating)) +
+    '</div></section>' + (due ? '<section class="list fl-collect" aria-label="Outstanding payments">' +
+      detailRow("td-collect","To collect",tdMoney(due)) + '</section>' : '') + '</div>';
+}
+function homeRentalRow(date,period = null){
+  const funding = rentalFunding(date,period);
+  return funding.rentals.length ? '<div class="list simple-space">' +
+    detailRow("td-rental-paid","Rental payments",tdMoney(funding.ready,2) + " ready to pay") + '</div>' : '';
 }
 function unpaidTrips(jobs){
   return jobs.filter(job => job.status === "completed" && job.fare != null).map(job => {
@@ -3841,7 +3871,7 @@ function renderHomePeriod(){
     savedTripEntries(ledger.saved) + '</section>' +
     '<section role="tabpanel" id="today-panel-expenses" aria-labelledby="today-tab-expenses"' + (expenseTab ? '' : ' hidden') + '>' +
     transactionsFor(period.start,period.end) + '<div class="list simple-space">' + dayLinks + '</div></section>' +
-    (rental ? '<div class="list simple-space">' + detailRow("home-rental-details","Rental details") + '</div>' : ''));
+    (rental ? '<div class="list simple-space">' + detailRow("home-rental-details","Rental details") + '</div>' : '') + homeRentalRow(tdDate,period));
   wireHomeTabs();
   $view.querySelectorAll("[data-fl-transaction]").forEach(button => {
     const entry = homeTransactions[Number(button.dataset.flTransaction)];
@@ -3851,7 +3881,8 @@ function renderHomePeriod(){
   const openTotals = () => openDrawer("Period earnings",'<div class="list">' + tdLine("Earned",tdMoney(totals.gross,2)) +
     tdLine("Hours worked",fmtNum(totals.hours) + "h") + tdLine("Take-home",totals.net == null ? "Pending" : tdMoney(totals.net,2)) +
     tdLine("Take-home per hour",totals.rate == null ? "Pending" : tdMoney(totals.rate,2)) + '</div>' + expenseTotals);
-  ["td-takehome","td-hourly","td-worked"].forEach(id => { document.getElementById(id).onclick = openTotals; });
+  document.getElementById("td-takehome").onclick = openTotals;
+  document.getElementById("td-worked").onclick = () => openPlannedHours(rentalFunding(tdDate,period));
   const collect = document.getElementById("td-collect");
   if(collect) collect.onclick = () => openHomePayments(ledger.jobs);
   expenseDates.forEach((date,i) => {
@@ -3865,7 +3896,6 @@ function renderHomePeriod(){
     const openRental = () => { moneyRentalId = rental.id; goMenu("money"); };
     document.getElementById("home-rental-details").onclick = openRental;
   }
-  document.getElementById("td-period-hours").onclick = () => openPlannedHours(rentalFunding(tdDate,period));
   wireLedgerJobRows();
   wireSavedTripEntries();
 }
@@ -3887,11 +3917,8 @@ function renderToday(reload=true){
   const day = tdDay(date);
   const data = closeoutData(date,day);
   const active = tdLedger.jobs.filter(job => job.status === "scheduled" || job.status === "quoted").length;
-  const rows = tdLedger.jobs.filter(job => job.business_date === date && job.status !== "cancelled").map(job => {
-    const detail = job.status === "quoted" ? "Quote" : job.status === "scheduled" ? "Scheduled" :
-      job.working_minutes == null ? "Time pending" : driveTimeLabel(Number(job.working_minutes)) + " worked";
-    return ledgerJobRow(job,detail);
-  }).join("");
+  const rows = tdLedger.jobs.filter(job => job.business_date === date && job.status !== "cancelled")
+    .map(homeJobRow).join("");
   const expenseTab = todayTab === "expenses";
   h(head + (date === todayNY() ? "" : '<p class="simple-caption home-range">' + esc(homeDateLabel(date)) + '</p>') +
     todaySheet(day,date,null,data.due) +
@@ -3901,12 +3928,12 @@ function renderToday(reload=true){
     '<button type="button" role="tab" id="today-tab-expenses" aria-controls="today-panel-expenses" aria-selected="' +
     expenseTab + '" tabindex="' + (expenseTab ? 0 : -1) + '">Transactions</button><button type="button" class="fl-add" id="home-action">' + (expenseTab ? "+ Transaction" : "+ Add job") + '</button></div>' +
     '<section role="tabpanel" id="today-panel-trips" aria-labelledby="today-tab-trips"' + (expenseTab ? ' hidden' : '') + '>' +
-    '<div class="list">' + detailRow("td-aximote","Review drives",data.needsMatch.length ? data.needsMatch.length + " to match" : String(data.tripRows.length)) + '</div>' +
     (rows ? '<div class="list">' + rows + '</div>' : '<p class="simple-empty">No jobs for this day.</p>') +
     savedTripEntries(data.pendingTrips) + '<div class="list simple-space">' +
+    detailRow("td-aximote","Review drives",data.needsMatch.length ? data.needsMatch.length + " to match" : "") +
     detailRow("td-all-jobs","All jobs",active ? active + " open" : "") + '</div></section>' +
     '<section role="tabpanel" id="today-panel-expenses" aria-labelledby="today-tab-expenses"' + (expenseTab ? '' : ' hidden') + '>' +
-    transactionsFor(date,date) + '</section>');
+    transactionsFor(date,date) + '</section>' + homeRentalRow(date));
   document.getElementById("home-action").onclick = () => {
     if(!expenseTab) return openLedgerJobForm(null,{business_date:date});
     openDrawer("Record transaction",'<div class="list">' + detailRow("home-add-fuel","Gas purchase") +
@@ -3928,13 +3955,13 @@ function renderToday(reload=true){
   document.getElementById("td-all-jobs").onclick = () => goMenu("jobs");
   document.getElementById("td-aximote").onclick = () => openDayDriving(date,data);
   document.getElementById("td-takehome").onclick = () => openDayCosts(date);
-  document.getElementById("td-hourly").onclick = () => openDayCosts(date,"Hourly earnings");
   document.getElementById("td-worked").onclick = () => {
     openDrawer("Hours worked",'<div class="list">' + (day.jobs.length ? day.jobs.map(job =>
       tdLine(ledgerJobTitle(job),job.working_minutes == null ? "Pending" : driveTimeLabel(Number(job.working_minutes)))
-    ).join("") : '<p class="simple-empty">No completed jobs for this day.</p>') + '</div>');
+    ).join("") : '<p class="simple-empty">No completed jobs for this day.</p>') + '</div><div class="list simple-space">' +
+      detailRow("fl-plan","Rental hours planned") + '</div>');
+    document.getElementById("fl-plan").onclick = () => openPlannedHours(rentalFunding(date,null));
   };
-  document.getElementById("td-period-hours").onclick = () => openPlannedHours(rentalFunding(date,null));
   const collect = document.getElementById("td-collect");
   if(collect) collect.onclick = () => openHomePayments(day.jobs);
   wireLedgerJobRows();
@@ -4119,7 +4146,23 @@ function ledgerJobRow(job, detail){
     (job.fare == null ? "Pending" : tdMoney(Number(job.fare))) + '</b><small class="tdmuted">' +
     ledgerPaymentLabel(job,payments) + '</small></span></button>';
 }
+function homeJobRow(job){
+  const payments = tdLedger.payments.filter(row => row.job_id === job.id);
+  const amount = job.fare == null ? "" : tdMoney(Number(job.fare));
+  const complete = job.status === "completed";
+  const state = complete ? "Completed · " + ledgerPaymentLabel(job,payments) :
+    (job.status === "scheduled" ? "Quoted" : "Quote") + (amount ? " · " + amount : "");
+  return '<div class="fl-job-line"><button type="button" class="fl-job-main" data-td-job="' + esc(job.id) +
+    '"><span><b>' + esc(ledgerJobTitle(job)) + '</b><small>' + esc(state) + '</small></span>' +
+    (complete ? '<strong>' + esc(amount) + '</strong>' : job.status === "quoted" ? '<span class="chev" aria-hidden="true">›</span>' : '') +
+    '</button>' + (job.status === "scheduled" ? '<button type="button" class="fl-job-actual" data-fl-actual="' +
+      esc(job.id) + '">Add actuals</button>' : '') + '</div>';
+}
 function wireLedgerJobRows(){
+  $view.querySelectorAll("[data-fl-actual]").forEach(button => {
+    const job = tdLedger.jobs.find(row => row.id === button.dataset.flActual);
+    button.onclick = () => openJobActuals(job,jobDrives(job),() => openLedgerJob(job));
+  });
   $view.querySelectorAll("[data-td-job]").forEach(button => {
     button.onclick = () => {
       const job = tdLedger.jobs.find(row => row.id === button.dataset.tdJob);
@@ -4158,7 +4201,7 @@ function openTransactionDetail(row,label,incoming,back = null){
   const ids = expenseJobIds(row);
   const jobs = tdLedger.jobs.filter(job => ids.includes(job.id));
   const date = row.received_on || row.business_date;
-  openDrawer(label,'<div class="fl-hero"><strong>' + (incoming ? "+" : "−") + tdMoney(Number(row.amount),2) +
+  openDrawer(label,'<div class="fl-hero"><strong>' + (incoming ? "+" : "−") + tdMoney(Number(row.amount)) +
     '</strong><span class="fl-context">' + (date ? esc(homeDateLabel(date)) : "Date pending") + '</span></div>' +
     (row.gallons == null ? '' : tdLine("Gallons",fmtNum(Number(row.gallons)))) +
     (jobs.length ? '<div class="fl-detail-list"><h3>Linked jobs</h3>' + jobs.map((job,i) =>
@@ -4187,6 +4230,10 @@ function openLinkedExpense(date,category,job = null,previous = null,back = null)
         business_date:date,category,review_state:"confirmed",source:"manual",source_key:key});
     },null,"Save",back);
 }
+function jobTransactionRow(id,label,detail,amount){
+  return '<button type="button" class="fl-job-transaction" id="' + id + '"><span><b>' + esc(label) + '</b>' +
+    (detail ? '<small>' + esc(detail) + '</small>' : '') + '</span><strong>' + esc(amount) + '</strong></button>';
+}
 function openLedgerJob(job,parent = null){
   const payments = tdLedger.payments.filter(row => row.job_id === job.id);
   const drives = jobDrives(job);
@@ -4196,21 +4243,33 @@ function openLedgerJob(job,parent = null){
   const working = job.working_minutes == null ? "Pending" : driveTimeLabel(Number(job.working_minutes));
   const paymentLabel = ledgerPaymentLabel(job,payments);
   const back = () => openLedgerJob(tdLedger.jobs.find(row => row.id === job.id) || job,parent);
-  openDrawer(ledgerJobTitle(job),'<div class="fl-hero"><strong>' +
-    (job.fare == null ? "—" : tdMoney(Number(job.fare),2)) + '</strong><span class="fl-context">' +
-    esc(completed ? "Fare earned · " + paymentLabel : paymentLabel) + '</span></div>' +
+  const fare = job.fare == null ? "—" : tdMoney(Number(job.fare));
+  const driving = drives.length && drives.every(drive => drive.duration_minutes != null) ?
+    driveTimeLabel(tdSum(drives,"duration_minutes")) :
+    job.driving_minutes == null ? "" : driveTimeLabel(Number(job.driving_minutes));
+  openDrawer(completed ? "Completed job" : paymentLabel,'<h2 class="fl-job-title">' + esc(ledgerJobTitle(job)) +
+    '</h2><div class="fl-hero fl-job-fare"><strong>' + fare + '</strong>' +
+    (completed ? '<small>' + esc(paymentLabel) + '</small><span class="fl-context">Fare earned</span>' : '') + '</div>' +
     (job.customer ? tdLine("Customer",job.customer) : '') +
-    (completed ? '<div class="fl-detail-list">' + detailRow("fl-actual","Working time",working) +
-      (drives.length ? '<button type="button" class="fl-driving" id="fl-drives">' +
-        (drives.every(drive => drive.duration_minutes != null) ? esc(driveTimeLabel(tdSum(drives,"duration_minutes"))) + " driving · " : "") + 'Aximote drives</button>' : '') +
-      (job.waiting_minutes ? '<div class="fl-context">' + esc(driveTimeLabel(Number(job.waiting_minutes))) + ' waiting</div>' : '') +
-      '</div><div class="fl-detail-list">' +
-      payments.map((row,i) => detailRow("fl-in-" + i,"Customer payment","+" + tdMoney(Number(row.amount),2))).join("") +
-      costs.map((row,i) => detailRow("fl-out-" + i,(row.category === "toll" ? "Toll" : row.category === "parking" ? "Parking" : "Expense") +
-        (expenseJobIds(row).length > 1 ? " · Shared" : ""), "−" + tdMoney(Number(row.amount),2))).join("") +
-      '<button type="button" class="fl-driving" id="fl-add-txn">+ Add transaction</button></div>' : '') +
+    (completed ? '<div class="fl-job-time"><button type="button" id="fl-actual"><span>Working time</span><strong>' +
+      esc(working) + '</strong></button><div class="fl-job-time-parts">' + (drives.length ?
+      '<button type="button" id="fl-drives">' + (driving ? esc(driving) + ' driving · ' : '') + 'Aximote ›</button>' :
+      driving ? '<span>' + esc(driving) + ' driving</span>' : '') +
+      (driving && job.waiting_minutes ? '<span aria-hidden="true">·</span>' : '') +
+      (job.waiting_minutes ? '<span>' + esc(driveTimeLabel(Number(job.waiting_minutes))) + ' waiting</span>' : '') +
+      '</div></div><div class="fl-detail-list fl-job-transactions">' +
+      payments.map((row,i) => jobTransactionRow("fl-in-" + i,"Customer payment",
+        row.received_on === todayNY() ? "Paid today" : row.received_on ? homeDateLabel(row.received_on) : "Payment date pending",
+        "+" + tdMoney(Number(row.amount)))).join("") +
+      costs.map((row,i) => {
+        const shared = expenseJobIds(row).length - 1;
+        return jobTransactionRow("fl-out-" + i,row.category === "toll" ? "Toll" : row.category === "parking" ? "Parking" : "Expense",
+          shared ? "Shared with " + shared + (shared === 1 ? " other job" : " other jobs") : "",
+          "−" + tdMoney(Number(row.amount)));
+      }).join("") + '<button type="button" class="fl-driving" id="fl-add-txn">+ Add transaction</button></div>' : '') +
     (active ? '<button type="button" class="btn" id="fl-actual">Add actuals</button>' +
       '<button type="button" class="quiet-link" id="fl-edit-job">Edit job</button>' : ''),parent);
+  document.querySelector("#modal .sheet").classList.add("fl-job-sheet");
   const actual = document.getElementById("fl-actual");
   if(actual) actual.onclick = () => openJobActuals(job,drives,back);
   const edit = document.getElementById("fl-edit-job");
