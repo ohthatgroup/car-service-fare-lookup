@@ -2672,7 +2672,7 @@ function calcPrefillFromJobs(){
     row.category !== "personal" && row.category !== "unclassified" && row.category !== "waiting");
   if(!legs.length || legs.some(row => row.distance_mi == null)) return;
   const returnLegs = calcEndsAtHub(calc) ? [] : legs.filter(row => row.category === "empty_return");
-  if(returnLegs.some(row => row.duration_minutes == null)) return;
+  if(returnLegs.some(row => row.duration_minutes == null || hasAximoteElapsedTime(row))) return;
   const returnMinutes = tdSum(returnLegs,"duration_minutes");
   const miles = round3(tdSum(legs,"distance_mi") - tdSum(returnLegs,"distance_mi"));
   if(miles <= 0 || Number(job.working_minutes) <= returnMinutes) return;
@@ -3310,7 +3310,7 @@ const AXIMOTE_METRICS = [
   {key:"miles",label:"Miles",step:0.001,tolerance:0.1,max:999999, total:rows =>
     rows.some(row => row.distance_mi == null) ? null : tdSum(rows,"distance_mi"),
     format:n => Number(n.toFixed(2)) + " mi"},
-  {key:"minutes",label:"Driving minutes",step:0.001,tolerance:1,max:999999, total:rows =>
+  {key:"minutes",label:"Recorded minutes",step:0.001,tolerance:1,max:999999, total:rows =>
     rows.some(row => row.duration_minutes == null) ? null : tdSum(rows,"duration_minutes"),
     format:n => Number(n.toFixed(2)) + " min"}
 ];
@@ -3508,7 +3508,7 @@ async function reviewAximoteDrives(date,button,back){
     if(!response.ok) throw new Error("Could not sync drives (" + response.status + ").");
     const {trips} = await response.json();
     if(!button.isConnected || calcUser?.id !== owner) return;
-    const day = new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"});
+    const day = new Intl.DateTimeFormat("sv-SE",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"});
     const rows = trips.filter(row => day.format(new Date(row.started_at)) === date)
       .sort((a,b) => Date.parse(a.started_at) - Date.parse(b.started_at));
     const known = row => tdLedger.segments.some(old => old.source_key === row.source_key ||
@@ -3980,10 +3980,13 @@ function carTripNeedsReview(segment){
 function carTripTitle(segment){
   return [segment.origin,segment.destination].filter(Boolean).join(" → ") || "Car trip";
 }
+function hasAximoteElapsedTime(segment){
+  return segment.source === "aximote" && segment.source_key?.startsWith("api:");
+}
 function carTripFacts(segment){
   return [
     segment.distance_mi == null ? null : fmtNum(Number(segment.distance_mi)) + " mi",
-    segment.duration_minutes == null ? null : fmtNum(Number(segment.duration_minutes)) + " min",
+    segment.duration_minutes == null ? null : fmtNum(Number(segment.duration_minutes)) + (hasAximoteElapsedTime(segment) ? " min elapsed" : " min"),
     segment.fuel_gallons == null ? null : Number(segment.fuel_gallons) + " gal",
     segment.reported_fuel_cost == null ? null : tdMoney(Number(segment.reported_fuel_cost),2) + " est."
   ].filter(Boolean).join(" · ") || "Mileage and time pending";
@@ -4184,7 +4187,7 @@ function uniqueWork(jobs,segments){
     const duplicate = jobDrives(job,segments).reduce((minutes,drive) => {
       const shared = seen.has(drive.id);
       seen.add(drive.id);
-      return minutes + (shared ? Number(drive.duration_minutes || 0) : 0);
+      return minutes + (shared && !hasAximoteElapsedTime(drive) ? Number(drive.duration_minutes || 0) : 0);
     },0);
     return sum + Math.max(0,total - duplicate);
   },0);
@@ -4194,7 +4197,7 @@ function sharedRentalRecovery(jobs,segments){
   return jobs.reduce((cost,job) => cost + jobDrives(job,segments).reduce((sum,drive) => {
     const shared = seen.has(drive.id);
     seen.add(drive.id);
-    return sum + (shared ? Number(drive.duration_minutes || 0) / 60 * Number(job.rental_hourly_snapshot || 0) : 0);
+    return sum + (shared && !hasAximoteElapsedTime(drive) ? Number(drive.duration_minutes || 0) / 60 * Number(job.rental_hourly_snapshot || 0) : 0);
   },0),0);
 }
 function openTransactionDetail(row,label,incoming,back = null){
@@ -4244,7 +4247,7 @@ function openLedgerJob(job,parent = null){
   const paymentLabel = ledgerPaymentLabel(job,payments);
   const back = () => openLedgerJob(tdLedger.jobs.find(row => row.id === job.id) || job,parent);
   const fare = job.fare == null ? "—" : tdMoney(Number(job.fare));
-  const driving = drives.length && drives.every(drive => drive.duration_minutes != null) ?
+  const driving = drives.length && drives.every(drive => drive.duration_minutes != null && !hasAximoteElapsedTime(drive)) ?
     driveTimeLabel(tdSum(drives,"duration_minutes")) :
     job.driving_minutes == null ? "" : driveTimeLabel(Number(job.driving_minutes));
   openDrawer(completed ? "Completed job" : paymentLabel,'<h2 class="fl-job-title">' + esc(ledgerJobTitle(job)) +
@@ -4292,10 +4295,11 @@ function openLedgerJob(job,parent = null){
 function openLinkedDrives(job,back){
   const drives = jobDrives(job);
   const dated = drives.every(row => row.duration_minutes != null);
+  const timeLabel = drives.some(hasAximoteElapsedTime) ? "Recorded time" : "Driving time";
   const milesKnown = drives.every(row => row.distance_mi != null);
   const again = () => openLinkedDrives(job,back);
   openDrawer("Aximote drives",'<p class="fl-context">' + esc(ledgerJobTitle(job)) + '</p><div class="fl-hero"><strong>' +
-    (dated ? esc(driveTimeLabel(tdSum(drives,"duration_minutes"))) : "Pending") + '</strong>' +
+    (dated ? esc(driveTimeLabel(tdSum(drives,"duration_minutes"))) : "Pending") + '</strong><span class="fl-context">' + timeLabel + '</span>' +
     (milesKnown ? '<small> · ' + fmtNum(tdSum(drives,"distance_mi")) + ' mi</small>' : '') + '</div><div class="list">' +
     drives.map((drive,i) => detailRow("fl-drive-" + i,carTripTitle(drive),carTripFacts(drive))).join("") +
     '</div><button type="button" class="fl-driving" id="fl-link-edit">Edit linked drives</button>',back);
@@ -4303,7 +4307,8 @@ function openLinkedDrives(job,back){
     const allocations = tdLedger.allocations.filter(row => row.segment_id === drive.id);
     const jobs = tdLedger.jobs.filter(row => jobDrives(row,[drive]).length);
     openDrawer(carTripTitle(drive),'<p class="fl-context">Recorded by Aximote</p><div class="fl-hero"><strong>' +
-      (drive.duration_minutes == null ? "Pending" : esc(driveTimeLabel(Number(drive.duration_minutes)))) + '</strong>' +
+      (drive.duration_minutes == null ? "Pending" : esc(driveTimeLabel(Number(drive.duration_minutes)))) + '</strong><span class="fl-context">' +
+      (hasAximoteElapsedTime(drive) ? "Elapsed time" : "Driving time") + '</span>' +
       (drive.distance_mi == null ? '' : '<small> · ' + fmtNum(Number(drive.distance_mi)) + ' mi</small>') + '</div>' +
       tdLine("Fuel used",drive.fuel_gallons == null ? "Pending" : fmtNum(Number(drive.fuel_gallons)) + " gal") +
       tdLine("Fuel cost",allocations.length ? tdMoney(tdSum(allocations,"allocated_cost"),2) :
@@ -4350,7 +4355,11 @@ function openJobActuals(job,segments,back = null){
   const sync = () => {
     const ids = new FormData(form).getAll("drive");
     const linked = drives.filter(drive => ids.includes(drive.id));
-    if(linked.every(drive => drive.duration_minutes != null)) driving.value = linked.length ? round3(tdSum(linked,"duration_minutes")) : "";
+    if(linked.every(drive => drive.duration_minutes != null && !hasAximoteElapsedTime(drive))){
+      driving.value = linked.length ? round3(tdSum(linked,"duration_minutes")) : "";
+    } else if(job.driving_minutes == null && job.working_minutes == null){
+      driving.value = "";
+    }
     refresh();
   };
   form.oninput = event => event.target.name === "drive" ? sync() : refresh();
@@ -4812,9 +4821,8 @@ async function init(){
       if(fragment.has("fare")) fare = JSON.parse(fragment.get("fare"));
       else {
         const code = q.get("code") || "";
-        if(!/^[a-z0-9]{4,64}$/i.test(code)) throw new Error("Invalid fare link.");
-        const rows = await sb("shares?select=public_fare&code=eq." + encodeURIComponent(code));
-        fare = rows?.[0]?.public_fare;
+        if(!/^[a-f0-9]{32}$/.test(code)) throw new Error("Invalid fare link.");
+        fare = await sb("rpc/fl_get_public_fare?p_code=" + encodeURIComponent(code));
       }
       if(!fare || typeof fare.amount !== "string" || !fare.amount) throw new Error("Fare unavailable.");
       renderSharedFare(fare);

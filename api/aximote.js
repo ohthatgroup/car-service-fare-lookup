@@ -31,7 +31,9 @@ module.exports = async function handler(req,res){
         if(!trip.startTime || !Number.isFinite(Date.parse(trip.startTime))) throw new Error("Invalid trip date");
         trips.push({source_key:"api:" + vehicle.id + ":" + (trip.id ?? trip.startTime),
           started_at:trip.startTime,ended_at:trip.endTime ?? null,distance_mi:units(trip.distanceKm,1.609344),
-          duration_minutes:units(trip.durationSec,60),fuel_gallons:units(trip.fuelConsumedL,3.785411784)});
+          duration_minutes:units(trip.durationSec,60),fuel_gallons:units(trip.fuelConsumedL,3.785411784),
+          origin:typeof trip.startLocation?.locality === "string" ? trip.startLocation.locality : null,
+          destination:typeof trip.endLocation?.locality === "string" ? trip.endLocation.locality : null});
       }
     }
     return res.status(200).json({trips});

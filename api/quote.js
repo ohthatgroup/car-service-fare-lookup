@@ -111,8 +111,7 @@ async function resolveShare(code){
 async function resolveCode(code){
   const share = code.match(/^v([a-z0-9]{32})$/i);
   if(share){
-    const rows = await db("shares?select=public_fare&code=eq." + encodeURIComponent(share[1]));
-    const fare = rows?.[0]?.public_fare;
+    const fare = await db("rpc/fl_get_public_fare?p_code=" + encodeURIComponent(share[1]));
     if(!fare || typeof fare.amount !== "string" || !fare.amount) return null;
     const route = [fare.from,fare.to].filter(value => typeof value === "string" && value).join(" → ");
     return {route,amount:fare.amount,appParams:{view:"shared",code:share[1]}};
